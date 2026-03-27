@@ -167,14 +167,15 @@ const Hooks = {
         })
         html += `</div>`
 
-        // Annotations — each on its own line, indented to align near correction
+        // Annotations — positioned below their correction, wrapping stays compact
         if (line.corrections.length > 0) {
           line.corrections.forEach(c => {
-            // Calculate indent: center of correction, clamped to stay in bounds
-            const centerCh = c.charOffset + Math.floor(c.charWidth / 2)
-            // Clamp: don't start before 0 or too far right
-            const indent = Math.max(0, Math.min(centerCh, maxChars - 15))
-            html += `<div class="ann-note" style="padding-left:${indent}ch">`
+            const startCh = c.charOffset
+            const containerPx = maxChars * charW
+            const marginPx = Math.round(Math.min(startCh, maxChars * 0.5) * charW)
+            // Max width = remaining space from margin to container edge
+            const maxWidthPx = Math.round(containerPx - marginPx)
+            html += `<div class="ann-note" style="margin-left:${marginPx}px;max-width:${maxWidthPx}px">`
             html += `<span class="ann-note-id">${c.id}</span> `
             html += `${escapeHtml(c.explanation)}`
             html += `</div>`

@@ -8,16 +8,16 @@ defmodule SprachjournalWeb.Layouts do
 
   attr :flash, :map, required: true
   attr :current_scope, :map, default: nil
-  slot :inner_block, required: true
+  slot :inner_block
 
   def app(assigns) do
     ~H"""
     <div class="min-h-screen flex flex-col">
-      <header class="border-b-4 border-ink bg-paper">
+      <header class="border-b-4 border-ink block-blue">
         <div class="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <a href="/" class="flex items-baseline gap-2 no-underline">
+          <a href="/" class="no-underline text-white">
             <span class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
-              Sprach<span class="text-bold-red">journal</span>
+              SPRACH<span class="block-yellow text-ink px-1">JOURNAL</span>
             </span>
           </a>
           <nav class="flex items-center gap-1 sm:gap-2">
@@ -31,14 +31,18 @@ defmodule SprachjournalWeb.Layouts do
               navigate={~p"/settings"}
               class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm bg-base-200 no-underline"
             >
-              <.icon name="hero-cog-6-tooth" class="size-4" />
+              <.icon name="hero-cog-6-tooth" class="size-4 inline" /> Settings
             </.link>
           </nav>
         </div>
       </header>
 
       <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6">
-        {render_slot(@inner_block)}
+        <%= if assigns[:inner_content] do %>
+          {@inner_content}
+        <% else %>
+          {render_slot(@inner_block)}
+        <% end %>
       </main>
 
       <footer class="border-t-4 border-ink px-4 sm:px-6 lg:px-8 py-3 bg-ink text-paper">

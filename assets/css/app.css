@@ -216,7 +216,7 @@ h1, h2, h3 {
   margin-left: 1px;
 }
 
-/* Annotation note: block element, indented with padding-left in ch units */
+/* Annotation note: margin-left aligns with correction, max-width constrains wrapping */
 .ann-note {
   font-size: 0.72rem;
   line-height: 1.3;

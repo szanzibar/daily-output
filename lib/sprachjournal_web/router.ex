@@ -13,10 +13,12 @@ defmodule SprachjournalWeb.Router do
   scope "/", SprachjournalWeb do
     pipe_through :browser
 
-    live "/", HomeLive
-    live "/entries/new", EntryLive.New
-    live "/entries/:id", EntryLive.Show
-    live "/entries/:id/edit", EntryLive.Edit
-    live "/settings", SettingsLive
+    live_session :default, layout: {SprachjournalWeb.Layouts, :app} do
+      live "/", HomeLive
+      live "/entries/new", EntryLive.New
+      live "/entries/:id", EntryLive.Show
+      live "/entries/:id/edit", EntryLive.Edit
+      live "/settings", SettingsLive
+    end
   end
 end
