@@ -72,7 +72,28 @@ defmodule SprachjournalWeb.SettingsLive do
     end
   end
 
-  def handle_event("update_topic_input", %{"topic" => value}, socket) do
+  def handle_event("update_topic_input", %{"key" => "Enter", "value" => value}, socket) do
+    # Enter pressed — add the topic
+    topic = String.trim(value)
+
+    if topic != "" and topic not in socket.assigns.config.topics do
+      new_topics = socket.assigns.config.topics ++ [topic]
+
+      case Settings.update_config(socket.assigns.config, %{topics: new_topics}) do
+        {:ok, config} ->
+          changeset = Settings.change_config(config)
+          {:noreply, assign(socket, config: config, form: to_form(changeset), topic_input: "")}
+
+        {:error, _} ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, assign(socket, topic_input: "")}
+    end
+  end
+
+  def handle_event("update_topic_input", params, socket) do
+    value = params["topic_input"] || params["value"] || ""
     {:noreply, assign(socket, topic_input: value)}
   end
 
@@ -152,19 +173,24 @@ defmodule SprachjournalWeb.SettingsLive do
           </p>
 
           <div class="flex gap-2 mb-3">
-            <form phx-submit="add_topic" class="flex gap-2 flex-1">
-              <input
-                type="text"
-                name="topic"
-                value={@topic_input}
-                phx-change="update_topic_input"
-                placeholder="z.B. Arbeit, Einkaufen, Nachbarn..."
-                class="input border-3 border-ink flex-1 font-mono text-sm"
-              />
-              <button type="submit" class="brutal-btn px-4 py-2 block-green text-sm">
-                +
-              </button>
-            </form>
+            <input
+              type="text"
+              name="topic_input"
+              value={@topic_input}
+              phx-keyup="update_topic_input"
+              phx-key="Enter"
+              placeholder="z.B. Arbeit, Einkaufen, Nachbarn..."
+              class="input border-3 border-ink flex-1 font-mono text-sm"
+              phx-change="update_topic_input"
+            />
+            <button
+              type="button"
+              phx-click="add_topic"
+              phx-value-topic={@topic_input}
+              class="brutal-btn px-4 py-2 block-green text-sm"
+            >
+              +
+            </button>
           </div>
 
           <div :if={@config.topics != []} class="flex flex-wrap gap-2">
