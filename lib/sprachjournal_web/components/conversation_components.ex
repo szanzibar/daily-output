@@ -32,58 +32,75 @@ defmodule SprachjournalWeb.ConversationComponents do
     """
   end
 
+  @doc """
+  Renders the conversation feedback as an interleaved chat with corrections on user messages.
+  AI messages shown as-is. User messages get inline corrections via the AnnotatedText JS hook.
+  The annotated_text is split by ---MSG_BREAK--- to map back to individual user messages.
+  """
   attr :messages, :list, required: true
   attr :feedback, :map, required: true
 
   def chat_feedback(assigns) do
-    annotations_json = Jason.encode!(assigns.feedback["annotations"] || [])
+    annotated_text = assigns.feedback["annotated_text"] || ""
+    annotations = assigns.feedback["annotations"] || []
 
-    # Build the annotated conversation: AI messages shown as-is, user messages annotated
-    user_texts =
+    # Split annotated text by our separator to get per-user-message chunks
+    user_chunks =
+      annotated_text
+      |> String.split("---MSG_BREAK---")
+      |> Enum.map(&String.trim/1)
+
+    # Build interleaved conversation: pair user messages with their annotated chunks
+    user_messages =
       assigns.messages
       |> Enum.filter(&(&1.role == "user"))
-      |> Enum.map(& &1.body)
-      |> Enum.join("\n\n")
+      |> Enum.with_index()
 
-    assigns =
-      assign(assigns,
-        annotations_json: annotations_json,
-        user_texts: user_texts
-      )
+    user_chunk_map =
+      Enum.zip(user_messages, user_chunks ++ List.duplicate("", 20))
+      |> Enum.into(%{}, fn {{_msg, idx}, chunk} -> {idx, chunk} end)
+
+    # Build display items in conversation order
+    {items, _user_idx} =
+      Enum.reduce(assigns.messages, {[], 0}, fn msg, {items, ui} ->
+        if msg.role == "user" do
+          chunk = Map.get(user_chunk_map, ui, msg.body)
+          item = %{type: :user, body: msg.body, annotated: chunk, index: ui}
+          {items ++ [item], ui + 1}
+        else
+          item = %{type: :ai, body: msg.body}
+          {items ++ [item], ui}
+        end
+      end)
+
+    annotations_json = Jason.encode!(annotations)
+
+    assigns = assign(assigns, items: items, annotations_json: annotations_json)
 
     ~H"""
     <div class="space-y-3">
-      <%= for msg <- @messages do %>
-        <div class={[
-          "chat-bubble-row",
-          if(msg.role == "user", do: "chat-user", else: "chat-ai")
-        ]}>
-          <div class="chat-role">
-            {if msg.role == "user", do: "Du", else: "Partner"}
+      <%= for item <- @items do %>
+        <%= if item.type == :ai do %>
+          <div class="chat-bubble-row chat-ai">
+            <div class="chat-role">Partner</div>
+            <div class="chat-bubble chat-bubble-ai">{item.body}</div>
           </div>
-          <div class={[
-            "chat-bubble",
-            if(msg.role == "user", do: "chat-bubble-user", else: "chat-bubble-ai")
-          ]}>
-            {msg.body}
+        <% else %>
+          <div class="chat-bubble-row">
+            <div class="chat-role" style="text-align:right">Du</div>
+            <div class="chat-bubble-user-feedback">
+              <div
+                id={"annotated-msg-#{item.index}"}
+                phx-hook="AnnotatedText"
+                class="annotated-text"
+                data-annotated-text={item.annotated}
+                data-annotations={@annotations_json}
+              >
+              </div>
+            </div>
           </div>
-        </div>
+        <% end %>
       <% end %>
-    </div>
-
-    <%!-- Inline corrections on user messages only --%>
-    <div class="mt-6 border-4 border-ink p-4">
-      <h2 class="text-lg font-black uppercase mb-4 flex items-center gap-2">
-        <span class="inline-block w-3 h-3 block-red"></span> Korrekturen
-      </h2>
-      <div
-        id="annotated-text"
-        phx-hook="AnnotatedText"
-        class="annotated-text"
-        data-annotated-text={@feedback["annotated_text"] || ""}
-        data-annotations={@annotations_json}
-      >
-      </div>
     </div>
     """
   end

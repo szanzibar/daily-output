@@ -51,6 +51,8 @@ defmodule Sprachjournal.AI.Proofreader do
     - For insertions (adding a missing word), use [[id:||word]] with empty original
     - For deletions (removing a word), use [[id:word||]] with empty corrected
     - Each id should be unique — do not reuse the same id for different corrections
+    - NEVER put ]] inside a marker — the marker must end with exactly ]]
+    - Both original and corrected text should be simple text with no special bracket characters
     - Keep annotation explanations VERY SHORT (5-10 words)
     - Put longer explanations and teaching points in "commentary" instead
     - commentary type can be "pattern", "suggestion", or "alternative"

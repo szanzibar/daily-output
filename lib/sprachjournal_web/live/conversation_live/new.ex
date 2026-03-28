@@ -112,13 +112,17 @@ defmodule SprachjournalWeb.ConversationLive.New do
 
   @impl true
   def handle_event("select_opener", %{"opener" => opener}, socket) do
-    start_conversation(socket, opener)
+    start_conversation(socket, opener, :ai_opens)
   end
 
   def handle_event("freestyle", %{"topic" => topic}, socket) do
     topic = String.trim(topic)
-    opener = if topic == "", do: nil, else: topic
-    start_conversation(socket, opener)
+
+    if topic == "" do
+      start_conversation(socket, nil, :empty)
+    else
+      start_conversation(socket, topic, :user_opens)
+    end
   end
 
   def handle_event("send", %{"message" => message}, socket) do
@@ -152,11 +156,12 @@ defmodule SprachjournalWeb.ConversationLive.New do
 
     {:ok, conversation} = Conversations.complete_conversation(conversation)
 
+    # Join user messages with a separator so we can split them back after proofreading
     user_text =
       messages
       |> Enum.filter(&(&1.role == "user"))
       |> Enum.map(& &1.body)
-      |> Enum.join("\n\n")
+      |> Enum.join("\n---MSG_BREAK---\n")
 
     socket = assign(socket, conversation: conversation, phase: :feedback, feedback_loading: true)
 
@@ -177,7 +182,7 @@ defmodule SprachjournalWeb.ConversationLive.New do
     {:noreply, socket}
   end
 
-  defp start_conversation(socket, topic) do
+  defp start_conversation(socket, topic, mode) do
     config = socket.assigns.config
 
     case Conversations.create_conversation(%{
@@ -187,17 +192,31 @@ defmodule SprachjournalWeb.ConversationLive.New do
       {:ok, conversation} ->
         socket = assign(socket, conversation: conversation, phase: :chat, messages: [])
 
-        # If the user picked an opener, it becomes the AI's first message
-        if topic do
-          case Conversations.add_message(conversation, %{role: "assistant", body: topic}) do
-            {:ok, msg} ->
-              {:noreply, assign(socket, messages: [msg])}
+        case mode do
+          :ai_opens ->
+            # AI opens with the selected opener
+            case Conversations.add_message(conversation, %{role: "assistant", body: topic}) do
+              {:ok, msg} ->
+                {:noreply, assign(socket, messages: [msg])}
 
-            {:error, _} ->
-              {:noreply, socket}
-          end
-        else
-          {:noreply, socket}
+              {:error, _} ->
+                {:noreply, socket}
+            end
+
+          :user_opens ->
+            # User's freestyle text is their first message, AI responds
+            case Conversations.add_message(conversation, %{role: "user", body: topic}) do
+              {:ok, msg} ->
+                messages = [msg]
+                socket = assign(socket, messages: messages, ai_loading: true)
+                request_ai_response(socket, messages)
+
+              {:error, _} ->
+                {:noreply, socket}
+            end
+
+          :empty ->
+            {:noreply, socket}
         end
 
       {:error, _} ->
@@ -256,12 +275,15 @@ defmodule SprachjournalWeb.ConversationLive.New do
           </button>
 
           <form phx-submit="freestyle" class="brutal-btn p-4 block-yellow text-left w-full">
-            <div class="font-bold text-base mb-2">Freestyle</div>
+            <div class="font-bold text-base">Freestyle</div>
+            <div class="text-xs opacity-70 mb-2 font-mono">
+              Schreib den ersten Satz — dein Partner antwortet darauf
+            </div>
             <div class="flex gap-2">
               <input
                 type="text"
                 name="topic"
-                placeholder="Eigenes Thema eingeben..."
+                placeholder="z.B. Ich habe gestern einen tollen Film gesehen!"
                 class="input border-3 border-ink flex-1 font-mono text-sm"
               />
               <button type="submit" class="brutal-btn px-4 py-2 bg-ink text-paper text-sm">
@@ -303,17 +325,16 @@ defmodule SprachjournalWeb.ConversationLive.New do
           </div>
         </div>
 
-        <form :if={!@ai_loading} phx-submit="send" class="flex gap-2">
-          <input
-            type="text"
+        <form :if={!@ai_loading} phx-submit="send" class="flex items-end gap-2">
+          <textarea
+            id="chat-input"
+            phx-hook="AutoExpand"
             name="message"
-            value={@input}
-            phx-change="update_input"
+            rows="1"
             placeholder="Schreib eine Nachricht..."
-            class="journal-editor !h-auto !min-h-0 flex-1 py-3"
+            class="chat-input flex-1"
             autofocus
-            autocomplete="off"
-          />
+          >{@input}</textarea>
           <button type="submit" class="brutal-btn px-6 py-3 block-blue text-lg shrink-0">
             &rarr;
           </button>

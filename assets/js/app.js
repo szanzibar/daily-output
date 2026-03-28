@@ -38,6 +38,24 @@ const Hooks = {
     }
   },
 
+  // Auto-expanding textarea for chat input, Enter to send
+  AutoExpand: {
+    mounted() {
+      this.el.addEventListener("input", () => this.resize())
+      this.el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault()
+          this.el.closest("form").requestSubmit()
+        }
+      })
+      this.resize()
+    },
+    resize() {
+      this.el.style.height = "auto"
+      this.el.style.height = this.el.scrollHeight + "px"
+    }
+  },
+
   // Renders annotated text with corrections + annotations
   // Measures container width to word-wrap at the right character count
   AnnotatedText: {
@@ -52,28 +70,39 @@ const Hooks = {
       const annMap = {}
       annotations.forEach(a => { annMap[a.id] = a.explanation })
 
-      // Parse [[id:orig||corrected]] markers (allowing empty orig or corrected)
+      // Parse [[id:orig||corrected]] markers
+      // Use a robust regex: match [[ then id: then everything up to ]]
+      // Then split the inner content on the first || occurrence
       const segments = []
-      const regex = /\[\[(\d+):(.*?)\|\|(.*?)\]\]/g
+      const regex = /\[\[(\d+):([\s\S]*?)\]\]/g
       let lastIdx = 0
       let match
       while ((match = regex.exec(raw)) !== null) {
         if (match.index > lastIdx) {
           segments.push({ type: "text", text: raw.slice(lastIdx, match.index) })
         }
-        const orig = match[2]
-        const corr = match[3]
-        // Skip malformed markers (both empty)
+        const id = parseInt(match[1], 10)
+        const inner = match[2]
+        // Split on first || to get original and corrected
+        const sepIdx = inner.indexOf("||")
+        if (sepIdx === -1) {
+          // Malformed marker — no || found, show as plain text
+          segments.push({ type: "text", text: match[0] })
+          lastIdx = regex.lastIndex
+          continue
+        }
+        const orig = inner.slice(0, sepIdx)
+        const corr = inner.slice(sepIdx + 2)
         if (!orig && !corr) {
           lastIdx = regex.lastIndex
           continue
         }
         segments.push({
           type: "correction",
-          id: parseInt(match[1], 10),
+          id: id,
           original: orig,
           corrected: corr,
-          explanation: annMap[parseInt(match[1], 10)] || ""
+          explanation: annMap[id] || ""
         })
         lastIdx = regex.lastIndex
       }
