@@ -28,16 +28,31 @@ defmodule SprachjournalWeb.EntryLive.Edit do
 
   def handle_event("save", _params, socket) do
     body = socket.assigns.body
+    entry = socket.assigns.entry
 
     if String.trim(body) == "" do
       {:noreply, put_flash(socket, :error, "Write something first!")}
     else
-      case Journal.update_entry(socket.assigns.entry, %{body: body}) do
-        {:ok, entry} ->
+      # If entry already has feedback, save as a new version (don't overwrite old feedback)
+      # If no feedback yet, it's a draft — true edit is fine
+      result =
+        if entry.feedback do
+          Journal.create_entry(%{
+            body: body,
+            prompt: entry.prompt,
+            language: entry.language,
+            duration: entry.duration
+          })
+        else
+          Journal.update_entry(entry, %{body: body})
+        end
+
+      case result do
+        {:ok, saved_entry} ->
           {:noreply,
            socket
            |> put_flash(:info, "Gespeichert.")
-           |> push_navigate(to: ~p"/entries/#{entry.id}")}
+           |> push_navigate(to: ~p"/entries/#{saved_entry.id}")}
 
         {:error, _changeset} ->
           {:noreply, put_flash(socket, :error, "Could not save.")}
@@ -145,7 +160,7 @@ defmodule SprachjournalWeb.EntryLive.Edit do
 
       <%!-- PHASE: Feedback --%>
       <div :if={@phase == :feedback}>
-        <.loading :if={@feedback_loading} />
+        <.loading :if={@feedback_loading} title="Feedback" message="Dein Text wird geprüft" />
 
         <.feedback_view
           :if={@feedback && !@feedback_loading}

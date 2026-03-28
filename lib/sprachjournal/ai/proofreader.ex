@@ -38,6 +38,9 @@ defmodule Sprachjournal.AI.Proofreader do
     - Reproduce the ENTIRE original text, preserving all original line breaks
     - Only mark actual errors with [[id:original||corrected]]
     - Do NOT rewrite correct text
+    - For insertions (adding a missing word), use [[id:||word]] with empty original
+    - For deletions (removing a word), use [[id:word||]] with empty corrected
+    - Each id should be unique — do not reuse the same id for different corrections
     - Keep annotation explanations VERY SHORT (e.g. "'sein' not 'haben' with motion verbs")
     - Put longer explanations and teaching points in "commentary" instead
     - commentary type can be "pattern", "suggestion", or "alternative"

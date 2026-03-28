@@ -52,21 +52,28 @@ const Hooks = {
       const annMap = {}
       annotations.forEach(a => { annMap[a.id] = a.explanation })
 
-      // Parse [[id:orig||corrected]] markers
+      // Parse [[id:orig||corrected]] markers (allowing empty orig or corrected)
       const segments = []
-      const regex = /\[\[(\d+):(.+?)\|\|(.+?)\]\]/g
+      const regex = /\[\[(\d+):(.*?)\|\|(.*?)\]\]/g
       let lastIdx = 0
       let match
       while ((match = regex.exec(raw)) !== null) {
         if (match.index > lastIdx) {
           segments.push({ type: "text", text: raw.slice(lastIdx, match.index) })
         }
+        const orig = match[2]
+        const corr = match[3]
+        // Skip malformed markers (both empty)
+        if (!orig && !corr) {
+          lastIdx = regex.lastIndex
+          continue
+        }
         segments.push({
           type: "correction",
-          id: parseInt(match[1]),
-          original: match[2],
-          corrected: match[3],
-          explanation: annMap[parseInt(match[1])] || ""
+          id: parseInt(match[1], 10),
+          original: orig,
+          corrected: corr,
+          explanation: annMap[parseInt(match[1], 10)] || ""
         })
         lastIdx = regex.lastIndex
       }
@@ -159,8 +166,12 @@ const Hooks = {
             html += escapeHtml(seg.text)
           } else {
             html += `<span class="correction-inline">`
-            html += `<span class="correction-deleted">${escapeHtml(seg.original)}</span>`
-            html += `<span class="correction-added">${escapeHtml(seg.corrected)}</span>`
+            if (seg.original) {
+              html += `<span class="correction-deleted">${escapeHtml(seg.original)}</span>`
+            }
+            if (seg.corrected) {
+              html += `<span class="correction-added">${escapeHtml(seg.corrected)}</span>`
+            }
             html += `<sup class="correction-id">${seg.id}</sup>`
             html += `</span>`
           }

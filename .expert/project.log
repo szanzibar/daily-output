@@ -262,3 +262,37 @@
 22:58:10.160 instance_id=19D30CA036A [info] Plugins found 0 results in 0.005 ms
 
 23:02:00.559 instance_id=19D30CA036A [info] Plugins found 0 results in 0.006 ms
+
+23:11:01.425 instance_id=19D30CA036A [info] Plugins found 0 results in 0.006 ms
+
+23:11:20.689 instance_id=19D30CA036A [info] Plugins found 0 results in 0.006 ms
+
+23:13:30.967 instance_id=19D30CA036A [info] Plugins found 0 results in 0.009 ms
+
+23:14:03.194 instance_id=19D30CA036A [info] Plugins found 0 results in 0.008 ms
+
+23:23:38.029 instance_id=19D30CA036A [info] Plugins found 0 results in 0.004 ms
+
+23:24:31.390 instance_id=19D30CA036A [info] Plugins found 0 results in 0.003 ms
+
+23:24:53.895 instance_id=19D30CA036A [info] Resolved entity: {:call, Kernel, :defmodule, 2}
+
+23:25:18.726 instance_id=19D30CA036A [info] Plugins found 0 results in 0.005 ms
+
+23:25:28.132 instance_id=19D30CA036A [info] Resolved entity: {:call, Kernel, :defmodule, 2}
+
+23:25:28.517 instance_id=19D30CA036A [info] Resolved entity: {:call, Kernel, :defmodule, 2}
+
+23:27:10.341 instance_id=19D30CA036A [info] Plugins found 0 results in 0.003 ms
+
+23:27:34.898 instance_id=19D30CA036A [info] Plugins found 0 results in 0.007 ms
+
+23:27:49.084 instance_id=19D30CA036A [info] Plugins found 0 results in 0.007 ms
+
+23:27:55.578 instance_id=19D30CA036A [info] Plugins found 0 results in 0.005 ms
+
+09:05:54.488 instance_id=19D30CA036A [info] Resolved entity: {:variable, :original}
+
+09:06:34.868 instance_id=19D30CA036A [info] Resolved entity: {:call, Kernel, :defmodule, 2}
+
+09:07:11.716 instance_id=19D30CA036A [info] Resolved entity: {:variable, :original}
