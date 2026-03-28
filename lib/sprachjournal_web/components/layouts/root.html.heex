@@ -4,10 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <meta name="theme-color" content="#000000" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <link rel="manifest" href={~p"/manifest.json"} />
+    <link rel="icon" type="image/svg+xml" href={~p"/images/icon.svg"} />
+    <link rel="apple-touch-icon" href={~p"/images/icon.svg"} />
     <.live_title default="Sprachjournal">
       {assigns[:page_title]}
     </.live_title>
