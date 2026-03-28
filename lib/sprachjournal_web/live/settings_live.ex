@@ -108,19 +108,29 @@ defmodule SprachjournalWeb.SettingsLive do
       <hr class="brutal-hr" />
 
       <.form for={@form} phx-change="validate" phx-submit="save" class="space-y-6">
-        <%!-- Timer --%>
+        <%!-- Timer + Exchanges --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-red"></span> Timer
+            <span class="inline-block w-3 h-3 block-red"></span> Timer & Gespräch
           </h2>
-          <.input
-            field={@form[:timer_minutes]}
-            type="number"
-            label="Minuten pro Eintrag"
-            min="1"
-            max="60"
-            class="w-24 input font-mono text-lg border-3 border-ink"
-          />
+          <div class="grid grid-cols-2 gap-4">
+            <.input
+              field={@form[:timer_minutes]}
+              type="number"
+              label="Minuten pro Eintrag"
+              min="1"
+              max="60"
+              class="w-24 input font-mono text-lg border-3 border-ink"
+            />
+            <.input
+              field={@form[:min_exchanges]}
+              type="number"
+              label="Min. Austausche pro Gespräch"
+              min="1"
+              max="50"
+              class="w-24 input font-mono text-lg border-3 border-ink"
+            />
+          </div>
         </div>
 
         <%!-- Languages --%>

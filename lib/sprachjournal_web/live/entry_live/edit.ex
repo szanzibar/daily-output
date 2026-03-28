@@ -117,13 +117,17 @@ defmodule SprachjournalWeb.EntryLive.Edit do
     {:noreply,
      assign(socket,
        feedback_loading: false,
-       error: "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
+       error:
+         "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
      )}
   end
 
   def handle_info({:feedback_loaded, {:error, reason}, _entry}, socket) do
     {:noreply,
-     assign(socket, feedback_loading: false, error: "Feedback konnte nicht geladen werden: #{inspect(reason)}")}
+     assign(socket,
+       feedback_loading: false,
+       error: "Feedback konnte nicht geladen werden: #{inspect(reason)}"
+     )}
   end
 
   @impl true

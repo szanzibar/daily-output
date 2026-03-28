@@ -87,6 +87,7 @@ defmodule SprachjournalWeb do
       # Core UI components
       import SprachjournalWeb.CoreComponents
       import SprachjournalWeb.JournalComponents
+      import SprachjournalWeb.ConversationComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

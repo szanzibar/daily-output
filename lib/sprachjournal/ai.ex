@@ -3,7 +3,7 @@ defmodule Sprachjournal.AI do
   AI context wrapping Anthropix for prompt generation and proofreading.
   """
 
-  alias Sprachjournal.AI.{PromptGenerator, Proofreader}
+  alias Sprachjournal.AI.{PromptGenerator, Proofreader, TopicGenerator, ConversationPartner}
   alias Sprachjournal.Cache
 
   @model_cache_key "anthropic_sonnet_model"
@@ -12,7 +12,12 @@ defmodule Sprachjournal.AI do
   defdelegate generate_prompts(topics, target_language, native_language),
     to: PromptGenerator
 
+  defdelegate generate_openers(topics, target_language, native_language),
+    to: TopicGenerator
+
   defdelegate proofread(text, opts), to: Proofreader
+
+  defdelegate conversation_respond(messages, opts), to: ConversationPartner, as: :respond
 
   def client do
     case System.get_env("ANTHROPIC_API_KEY") do

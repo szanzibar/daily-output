@@ -57,7 +57,8 @@ defmodule SprachjournalWeb.EntryLive.New do
      assign(socket,
        prompts: [],
        prompts_loading: false,
-       error: "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
+       error:
+         "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
      )}
   end
 
@@ -66,7 +67,8 @@ defmodule SprachjournalWeb.EntryLive.New do
      assign(socket,
        prompts: [],
        prompts_loading: false,
-       error: "Prompts konnten nicht generiert werden: #{inspect(reason)}. Du kannst trotzdem Freestyle schreiben!"
+       error:
+         "Prompts konnten nicht generiert werden: #{inspect(reason)}. Du kannst trotzdem Freestyle schreiben!"
      )}
   end
 
