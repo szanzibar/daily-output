@@ -57,9 +57,9 @@ defmodule SprachjournalWeb.HomeLive do
         </h2>
         <p class="text-sm mb-4 opacity-80">
           {if @today_entry do
-            "Start a new entry with fresh prompts."
+            "Neuer Eintrag mit frischen Prompts starten."
           else
-            "Start your daily journal entry. Write in #{@settings.target_language || "de"} for #{@settings.timer_minutes || 5} minutes."
+            "Täglicher Journaleintrag. Schreib #{@settings.timer_minutes || 5} Minuten lang."
           end}
         </p>
         <.link

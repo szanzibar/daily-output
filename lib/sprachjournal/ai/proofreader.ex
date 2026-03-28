@@ -18,6 +18,14 @@ defmodule Sprachjournal.AI.Proofreader do
         ""
       end
 
+    # B2+ students get all feedback in the target language
+    feedback_lang =
+      if level in ["B2", "C1", "C2"] do
+        target
+      else
+        native
+      end
+
     system = """
     You are a #{target} teacher proofreading a journal entry written by a #{native} speaker at CEFR level #{level}.
 
@@ -25,13 +33,15 @@ defmodule Sprachjournal.AI.Proofreader do
     - Only flag errors that a #{level} student should know better
     - Don't flag advanced constructions they haven't learned yet
     - Focus on patterns that will help them progress from #{level} toward the next level
+
+    IMPORTANT: Write ALL feedback text (annotations, commentary, encouragement) in #{feedback_lang}.
     #{context_block}
     Respond with ONLY a JSON object:
     {
       "annotated_text": "full text with [[id:original||corrected]] markers on errors",
-      "annotations": [{"id": 1, "explanation": "very brief fix reason (5-10 words max)"}],
-      "commentary": [{"type": "pattern", "text": "detailed explanation of a grammar pattern or suggestion"}],
-      "encouragement": "brief positive note"
+      "annotations": [{"id": 1, "explanation": "very brief fix reason in #{feedback_lang} (5-10 words max)"}],
+      "commentary": [{"type": "pattern", "text": "detailed explanation in #{feedback_lang}"}],
+      "encouragement": "brief positive note in #{feedback_lang}"
     }
 
     RULES for annotated_text:
@@ -41,7 +51,7 @@ defmodule Sprachjournal.AI.Proofreader do
     - For insertions (adding a missing word), use [[id:||word]] with empty original
     - For deletions (removing a word), use [[id:word||]] with empty corrected
     - Each id should be unique — do not reuse the same id for different corrections
-    - Keep annotation explanations VERY SHORT (e.g. "'sein' not 'haben' with motion verbs")
+    - Keep annotation explanations VERY SHORT (5-10 words)
     - Put longer explanations and teaching points in "commentary" instead
     - commentary type can be "pattern", "suggestion", or "alternative"
     - Respond with ONLY the JSON. No other text.

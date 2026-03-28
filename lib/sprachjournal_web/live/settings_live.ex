@@ -152,7 +152,7 @@ defmodule SprachjournalWeb.SettingsLive do
             <span class="inline-block w-3 h-3 block-green"></span> Niveau
           </h2>
           <p class="text-sm text-base-content/60 mb-3">
-            Your CEFR level. Feedback will be calibrated — only flagging errors you should know at this level.
+            Dein GER-Niveau. Feedback wird kalibriert — nur Fehler, die du auf diesem Niveau kennen solltest. Ab B2 ist das Feedback auf Deutsch.
           </p>
           <.input
             field={@form[:language_level]}
@@ -169,7 +169,7 @@ defmodule SprachjournalWeb.SettingsLive do
             <span class="inline-block w-3 h-3 block-yellow"></span> Themen
           </h2>
           <p class="text-sm text-base-content/60 mb-3">
-            Topics for AI-generated writing prompts. What do you want to practice talking about?
+            Themen für KI-generierte Schreibanlässe. Worüber möchtest du schreiben?
           </p>
 
           <div class="flex gap-2 mb-3">
@@ -217,13 +217,13 @@ defmodule SprachjournalWeb.SettingsLive do
             <span class="inline-block w-3 h-3 block-orange"></span> Prompt-Kontext
           </h2>
           <p class="text-sm text-base-content/60 mb-3">
-            Extra context injected into the AI prompt. Tell it about your specific goals, weaknesses, or preferences.
+            Zusätzlicher Kontext für die KI. Erzähl ihr von deinen Zielen, Schwächen oder Vorlieben.
           </p>
           <.input
             field={@form[:prompt_context]}
             type="textarea"
-            label="Additional instructions for the AI"
-            placeholder="e.g. I struggle with Dativ/Akkusativ. I want to practice Konjunktiv II. Focus on formal register."
+            label="Zusätzliche Anweisungen für die KI"
+            placeholder="z.B. Ich habe Schwierigkeiten mit Dativ/Akkusativ. Ich möchte Konjunktiv II üben."
             rows="4"
             class="w-full textarea border-3 border-ink font-mono text-sm"
           />
@@ -251,7 +251,7 @@ defmodule SprachjournalWeb.SettingsLive do
           </span>
         </div>
         <p :if={!api_key_set?()} class="text-xs text-base-content/60 mt-2 font-mono">
-          Set the ANTHROPIC_API_KEY environment variable to enable AI features.
+          Setze die Umgebungsvariable ANTHROPIC_API_KEY in der .env Datei.
         </p>
       </div>
     </div>

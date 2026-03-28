@@ -5802,3 +5802,1035 @@ Type: :worker
 09:07:11.720 instance_id=19D30CA036A [debug] handled request client -> server textDocument/hover in 8ms
 
 09:07:12.351 instance_id=19D30CA036A [debug] handled request client -> server textDocument/hover in 9ms
+
+09:22:53.679 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 910µs
+
+09:22:53.800 instance_id=19D30CA036A [debug] Node port message: 
+09:22:53.799 [info] Plugins found 0 results in 0.005 ms
+
+
+09:22:53.800 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.800 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.800 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.800 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.801 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.801 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.801 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.801 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.801 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.801 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.802 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.802 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.802 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.802 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.803 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.803 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.803 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.803 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:22:53.822 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 44ms
+
+09:22:53.927 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 736µs
+
+09:22:54.065 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 35ms
+
+09:23:01.305 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:23:01.304 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal/ai/prompt_generator.ex
+
+09:23:01.305 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 1ms
+
+09:23:08.155 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:23:08.155 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web/live/home_live.ex
+
+09:23:08.155 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 996µs
+
+09:23:15.585 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:23:15.639 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.639 instance_id=19D30CA036A [debug] Node port message: 
+09:23:15.639 [info] Plugins found 0 results in 0.007 ms
+
+
+09:23:15.639 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.639 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.640 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.640 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.640 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.640 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.640 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.641 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.641 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.641 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.642 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.642 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.642 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.643 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.643 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.643 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.643 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:15.834 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 1ms
+
+09:23:48.710 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 845µs
+
+09:23:48.818 instance_id=19D30CA036A [debug] Node port message: 
+09:23:48.818 [info] Plugins found 0 results in 0.005 ms
+
+
+09:23:48.818 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.818 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.818 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.818 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.819 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.819 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.819 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.819 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.819 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.819 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.819 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.820 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.820 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.820 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.820 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.821 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.821 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.821 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:23:48.957 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 646µs
+
+09:24:13.003 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:24:13.003 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web/live/settings_live.ex
+
+09:24:13.003 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 736µs
+
+09:24:18.398 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:24:18.453 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.453 instance_id=19D30CA036A [debug] Node port message: 
+09:24:18.453 [info] Plugins found 0 results in 0.006 ms
+
+
+09:24:18.454 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.454 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.454 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.454 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.454 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.454 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.455 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.455 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.455 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.455 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.456 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.456 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.456 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.456 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.457 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.457 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.457 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:18.643 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 770µs
+
+09:24:24.829 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:24:24.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.883 instance_id=19D30CA036A [debug] Node port message: 
+09:24:24.883 [info] Plugins found 0 results in 0.005 ms
+
+
+09:24:24.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.884 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.884 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.884 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.884 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.884 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.884 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.885 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.885 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.885 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.885 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.885 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.886 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.886 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:24.886 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:25.079 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 646µs
+
+09:24:31.268 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:24:31.322 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.322 instance_id=19D30CA036A [debug] Node port message: 
+09:24:31.321 [info] Plugins found 0 results in 0.005 ms
+
+
+09:24:31.322 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.322 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.322 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.322 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.322 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.323 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.323 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.323 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.323 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.323 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.323 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.323 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.324 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.324 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.324 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.324 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.324 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:31.516 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 720µs
+
+09:24:38.511 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:24:38.565 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.565 instance_id=19D30CA036A [debug] Node port message: 
+09:24:38.565 [info] Plugins found 0 results in 0.006 ms
+
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.566 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.567 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.567 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.567 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.567 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.567 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.568 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.568 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.568 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.568 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:38.763 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 570µs
+
+09:24:52.429 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:24:52.485 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.485 instance_id=19D30CA036A [debug] Node port message: 
+09:24:52.484 [info] Plugins found 0 results in 0.007 ms
+
+
+09:24:52.485 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.485 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.485 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.486 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.486 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.486 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.486 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.486 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.486 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.487 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.487 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.487 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.488 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.488 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.488 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.488 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.488 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:52.675 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 873µs
+
+09:24:59.655 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:24:59.709 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.710 instance_id=19D30CA036A [debug] Node port message: 
+09:24:59.709 [info] Plugins found 0 results in 0.006 ms
+
+
+09:24:59.710 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.710 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.710 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.710 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.710 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.710 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.710 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.711 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.711 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.711 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.712 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.712 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.712 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.712 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.712 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.712 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.712 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:24:59.898 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 675µs
+
+09:25:11.673 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:25:11.673 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web/live/entry_live/new.ex
+
+09:25:11.673 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 864µs
+
+09:25:11.771 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 910µs
+
+09:25:11.825 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.825 instance_id=19D30CA036A [debug] Node port message: 
+09:25:11.825 [info] Plugins found 0 results in 0.006 ms
+
+
+09:25:11.825 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.825 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.825 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.826 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.827 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.827 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.827 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.827 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.827 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:11.827 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:12.017 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 632µs
+
+09:25:17.825 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:25:17.881 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.881 instance_id=19D30CA036A [debug] Node port message: 
+09:25:17.881 [info] Plugins found 0 results in 0.007 ms
+
+
+09:25:17.881 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.881 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.881 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.881 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.882 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:17.883 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:18.074 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 1ms
+
+09:25:25.812 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:25:25.866 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.866 instance_id=19D30CA036A [debug] Node port message: 
+09:25:25.866 [info] Plugins found 0 results in 0.005 ms
+
+
+09:25:25.866 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.866 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.866 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.866 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.867 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.867 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.867 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.867 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.867 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.867 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.867 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.868 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.868 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.868 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.868 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.868 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:25.868 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:26.054 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 837µs
+
+09:25:33.830 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 871µs
+
+09:25:33.888 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.888 instance_id=19D30CA036A [debug] Node port message: 
+09:25:33.888 [info] Plugins found 0 results in 0.007 ms
+
+
+09:25:33.889 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.889 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.889 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.890 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.890 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.890 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.890 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.890 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.890 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.891 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.891 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.891 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.891 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.891 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.892 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.892 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:33.892 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:34.082 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 1ms
+
+09:25:40.099 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:25:40.154 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.154 instance_id=19D30CA036A [debug] Node port message: 
+09:25:40.154 [info] Plugins found 0 results in 0.006 ms
+
+
+09:25:40.154 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.154 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.154 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.155 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.155 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.155 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.155 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.155 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.155 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.156 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.156 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.156 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.156 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.156 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.157 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.157 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.157 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:40.348 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 971µs
+
+09:25:46.834 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:25:46.834 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web/live/entry_live/edit.ex
+
+09:25:46.834 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 710µs
+
+09:25:46.928 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 819µs
+
+09:25:46.982 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.982 instance_id=19D30CA036A [debug] Node port message: 
+09:25:46.982 [info] Plugins found 0 results in 0.005 ms
+
+
+09:25:46.982 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.983 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.984 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.984 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.984 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.984 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.984 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.984 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.984 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:46.985 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:47.180 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 626µs
+
+09:25:53.991 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:25:54.045 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.045 instance_id=19D30CA036A [debug] Node port message: 
+09:25:54.045 [info] Plugins found 0 results in 0.006 ms
+
+
+09:25:54.045 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.045 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.046 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.047 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.047 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.047 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.047 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.047 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.047 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:25:54.239 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 607µs
+
+09:26:00.413 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:26:00.469 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.469 instance_id=19D30CA036A [debug] Node port message: 
+09:26:00.469 [info] Plugins found 0 results in 0.006 ms
+
+
+09:26:00.469 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.469 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.469 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.470 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.470 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.470 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.470 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.470 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.470 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.470 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.471 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.471 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.471 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.471 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.471 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.471 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.472 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:00.661 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 631µs
+
+09:26:01.308 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 159µs
+
+09:26:08.155 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 121µs
+
+09:26:11.812 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:26:11.812 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/mix.exs
+
+09:26:11.812 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 419µs
+
+09:26:11.818 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:26:11.818 instance_id=19D30CA036A [info] Resolved entity: {:call, Kernel, :defmodule, 2}
+
+09:26:11.869 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 51ms
+
+09:26:11.916 instance_id=19D30CA036A [debug] handled notification client -> server $/cancelRequest in 101µs
+
+09:26:11.919 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:26:11.919 instance_id=19D30CA036A [info] Resolved entity: {:call, Kernel, :defmodule, 2}
+
+09:26:12.066 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeLens in 614µs
+
+09:26:12.106 instance_id=19D30CA036A [debug] handled notification client -> server $/cancelRequest in 135µs
+
+09:26:12.110 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:26:12.110 instance_id=19D30CA036A [info] Resolved entity: {:call, Kernel, :defmodule, 2}
+
+09:26:12.157 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 43ms
+
+09:26:12.222 instance_id=19D30CA036A [debug] handled notification client -> server $/cancelRequest in 73µs
+
+09:26:13.286 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:26:13.340 instance_id=19D30CA036A [debug] Node port message: 
+09:26:13.339 [info] Plugins found 0 results in 0.005 ms
+
+
+09:26:13.340 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.340 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.340 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.341 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.342 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.342 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.342 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.342 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.342 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.342 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.343 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:13.533 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 619µs
+
+09:26:20.232 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:26:20.287 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.287 instance_id=19D30CA036A [debug] Node port message: 
+09:26:20.287 [info] Plugins found 0 results in 0.008 ms
+
+
+09:26:20.287 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.288 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.288 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.288 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.289 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.290 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.290 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.290 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.290 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.290 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:26:20.481 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 932µs
+
+09:26:27.314 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 117µs
+
+09:26:45.977 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 118µs
+
+09:27:13.001 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 200µs
+
+09:28:11.678 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 370µs
+
+09:28:46.842 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 296µs
+
+09:29:11.852 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 78µs
+
+09:32:53.592 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:32:53.592 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/config/runtime.exs
+
+09:32:53.592 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 805µs
+
+09:33:04.762 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:33:04.762 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/config/prod.exs
+
+09:33:04.762 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 752µs
+
+09:33:29.246 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 1ms
+
+09:33:29.298 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.298 instance_id=19D30CA036A [debug] Node port message: 
+09:33:29.298 [info] Plugins found 0 results in 0.005 ms
+
+
+09:33:29.299 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.299 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.299 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.300 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.300 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.300 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.300 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.300 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.300 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.301 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.301 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.301 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.301 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.302 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.302 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.302 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.302 instance_id=19D30CA036A [debug] sent notification server -> client textDocument/publishDiagnostics
+
+09:33:29.498 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 935µs
+
+09:33:50.218 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:33:50.218 instance_id=19D30CA036A [info] Resolved entity: {:variable, :import}
+
+09:33:50.221 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 5ms
+
+09:33:50.264 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 42ms
+
+09:33:50.554 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 35ms
+
+09:34:11.980 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:34:11.979 instance_id=19D30CA036A [info] Resolved entity: {:module, PHX_HOST}
+
+09:34:11.981 instance_id=19D30CA036A [debug] handled request client -> server textDocument/hover in 8ms
+
+09:34:12.721 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:34:12.721 instance_id=19D30CA036A [info] Resolved entity: {:module, PHX_HOST}
+
+09:34:12.860 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 140ms
+
+09:34:13.345 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:34:13.345 instance_id=19D30CA036A [info] Resolved entity: {:variable, :https}
+
+09:34:13.346 instance_id=19D30CA036A [debug] handled request client -> server textDocument/hover in 6ms
+
+09:34:18.306 instance_id=19D30CA036A [debug] handled request client -> server textDocument/hover in 12ms
+
+09:34:18.700 instance_id=19D30CA036A [debug] handled request client -> server textDocument/hover in 7ms
+
+09:36:04.759 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 140µs
+
+09:36:50.054 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:36:50.054 instance_id=19D30CA036A [info] Resolved entity: {:variable, :import}
+
+09:36:50.057 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 4ms
+
+09:36:50.181 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:36:50.181 instance_id=19D30CA036A [info] Resolved entity: {:module, PHX_HOST}
+
+09:36:50.338 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 160ms
+
+09:36:50.387 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 35ms
+
+09:36:50.394 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:36:50.394 instance_id=19D30CA036A [info] Resolved entity: {:module, PHX_HOST}
+
+09:36:50.525 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 132ms
+
+09:37:02.986 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+09:37:02.986 instance_id=19D30CA036A [info] Resolved entity: {:module, PHX_HOST}
+
+09:37:03.129 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 145ms

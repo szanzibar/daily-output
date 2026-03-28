@@ -2,12 +2,11 @@ services:
   sprachjournal:
     build: .
     ports:
-      - "4000:4000"
+      - '46142:4000'
+    env_file:
+      - .env
     environment:
       - DATABASE_PATH=/app/data/sprachjournal.db
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - PHX_HOST=${PHX_HOST:-localhost}
       - PHX_SERVER=true
       - PORT=4000
     volumes:
