@@ -6888,3 +6888,17 @@ Type: :worker
 12:16:01.477 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 838µs
 
 12:19:00.418 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 398µs
+
+13:32:22.176 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+13:32:22.176 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web/components/layouts/root.html.heex
+
+13:32:22.176 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 720µs
+
+13:32:22.180 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 2ms
+
+13:32:22.239 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 55ms
+
+13:32:22.515 instance_id=19D30CA036A [debug] handled request client -> server textDocument/documentSymbol in 37ms
+
+13:32:56.759 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 142µs
