@@ -245,6 +245,52 @@ h1, h2, h3 {
   color: oklch(65% 0.22 50);
 }
 
+/* ── Chat bubbles ── */
+
+.chat-bubble-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-user {
+  align-items: flex-end;
+}
+
+.chat-ai {
+  align-items: flex-start;
+}
+
+.chat-role {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: oklch(50% 0 0);
+  margin-bottom: 0.15rem;
+  padding: 0 0.25rem;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 0.75rem 1rem;
+  border: 3px solid var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.chat-bubble-user {
+  background: oklch(55% 0.22 264);
+  color: white;
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+.chat-bubble-ai {
+  background: oklch(94% 0 0);
+  color: var(--color-ink);
+  box-shadow: 3px 3px 0 var(--color-ink);
+}
+
 /* ── Retro loading animation ── */
 
 .loading-retro {

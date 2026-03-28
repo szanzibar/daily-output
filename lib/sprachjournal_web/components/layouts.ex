@@ -28,6 +28,12 @@ defmodule SprachjournalWeb.Layouts do
               Schreiben
             </.link>
             <.link
+              navigate={~p"/conversations/new"}
+              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-green no-underline"
+            >
+              Gespräch
+            </.link>
+            <.link
               navigate={~p"/settings"}
               class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-yellow no-underline"
             >

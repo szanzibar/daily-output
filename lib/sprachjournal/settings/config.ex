@@ -9,6 +9,7 @@ defmodule Sprachjournal.Settings.Config do
     field :topics, {:array, :string}, default: []
     field :language_level, :string, default: "B2"
     field :prompt_context, :string, default: ""
+    field :min_exchanges, :integer, default: 5
 
     timestamps(type: :utc_datetime)
   end
@@ -21,7 +22,8 @@ defmodule Sprachjournal.Settings.Config do
       :native_language,
       :topics,
       :language_level,
-      :prompt_context
+      :prompt_context,
+      :min_exchanges
     ])
     |> validate_required([:timer_minutes, :target_language, :native_language])
     |> validate_number(:timer_minutes, greater_than: 0, less_than_or_equal_to: 60)
