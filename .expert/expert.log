@@ -6834,3 +6834,5 @@ Type: :worker
 09:37:02.986 instance_id=19D30CA036A [info] Resolved entity: {:module, PHX_HOST}
 
 09:37:03.129 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 145ms
+
+09:45:18.538 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 108µs

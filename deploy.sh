@@ -9,10 +9,7 @@ git pull
 echo "==> Building..."
 docker compose build
 
-echo "==> Migrating database..."
-docker compose run --rm sprachjournal /app/bin/migrate
-
-echo "==> Restarting..."
+echo "==> Restarting (migrations run automatically on start)..."
 docker compose down
 docker compose up -d
 
