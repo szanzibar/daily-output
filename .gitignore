@@ -41,4 +41,6 @@ npm-debug.log
 
 # Environment variables
 .env
-/.expert/**
+
+/.expert/
+.expert/expert.log
