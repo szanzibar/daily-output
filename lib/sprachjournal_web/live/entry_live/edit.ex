@@ -31,7 +31,7 @@ defmodule SprachjournalWeb.EntryLive.Edit do
     entry = socket.assigns.entry
 
     if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, "Write something first!")}
+      {:noreply, put_flash(socket, :error, "Schreib zuerst etwas!")}
     else
       # If entry already has feedback, save as a new version (don't overwrite old feedback)
       # If no feedback yet, it's a draft — true edit is fine
@@ -55,7 +55,7 @@ defmodule SprachjournalWeb.EntryLive.Edit do
            |> push_navigate(to: ~p"/entries/#{saved_entry.id}")}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Could not save.")}
+          {:noreply, put_flash(socket, :error, "Konnte nicht gespeichert werden.")}
       end
     end
   end
@@ -66,7 +66,7 @@ defmodule SprachjournalWeb.EntryLive.Edit do
     entry = socket.assigns.entry
 
     if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, "Write something first!")}
+      {:noreply, put_flash(socket, :error, "Schreib zuerst etwas!")}
     else
       # Create a NEW entry (new version) instead of overwriting the old one
       attrs = %{
@@ -97,7 +97,7 @@ defmodule SprachjournalWeb.EntryLive.Edit do
           {:noreply, assign(socket, entry: new_entry, phase: :feedback, feedback_loading: true)}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Could not save.")}
+          {:noreply, put_flash(socket, :error, "Konnte nicht gespeichert werden.")}
       end
     end
   end
@@ -117,13 +117,13 @@ defmodule SprachjournalWeb.EntryLive.Edit do
     {:noreply,
      assign(socket,
        feedback_loading: false,
-       error: "ANTHROPIC_API_KEY not set. Add it to your .env file, then restart the server."
+       error: "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
      )}
   end
 
   def handle_info({:feedback_loaded, {:error, reason}, _entry}, socket) do
     {:noreply,
-     assign(socket, feedback_loading: false, error: "Could not get feedback: #{inspect(reason)}")}
+     assign(socket, feedback_loading: false, error: "Feedback konnte nicht geladen werden: #{inspect(reason)}")}
   end
 
   @impl true

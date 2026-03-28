@@ -36,11 +36,11 @@ defmodule SprachjournalWeb.JournalComponents do
         autofocus
       >{@body}</textarea>
 
-      <div class="flex items-center justify-between mt-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mt-4">
         <span class="text-xs font-mono text-base-content/60">
           {word_count(@body)} Wörter
         </span>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
           {render_slot(@actions)}
         </div>
       </div>

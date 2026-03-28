@@ -57,7 +57,7 @@ defmodule SprachjournalWeb.EntryLive.New do
      assign(socket,
        prompts: [],
        prompts_loading: false,
-       error: "ANTHROPIC_API_KEY not set. Add it to your .env file, then restart the server."
+       error: "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
      )}
   end
 
@@ -66,7 +66,7 @@ defmodule SprachjournalWeb.EntryLive.New do
      assign(socket,
        prompts: [],
        prompts_loading: false,
-       error: "Could not generate prompts: #{inspect(reason)}. You can still write freestyle!"
+       error: "Prompts konnten nicht generiert werden: #{inspect(reason)}. Du kannst trotzdem Freestyle schreiben!"
      )}
   end
 
@@ -95,7 +95,7 @@ defmodule SprachjournalWeb.EntryLive.New do
     {:noreply,
      assign(socket,
        feedback_loading: false,
-       error: "Could not get feedback: #{inspect(reason)}"
+       error: "Feedback konnte nicht geladen werden: #{inspect(reason)}"
      )}
   end
 
@@ -123,7 +123,7 @@ defmodule SprachjournalWeb.EntryLive.New do
     config = socket.assigns.config
 
     if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, "Write something first!")}
+      {:noreply, put_flash(socket, :error, "Schreib zuerst etwas!")}
     else
       attrs = %{
         body: body,
@@ -138,7 +138,7 @@ defmodule SprachjournalWeb.EntryLive.New do
           request_feedback(socket, entry, body, config)
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Could not save entry.")}
+          {:noreply, put_flash(socket, :error, "Eintrag konnte nicht gespeichert werden.")}
       end
     end
   end
@@ -212,7 +212,7 @@ defmodule SprachjournalWeb.EntryLive.New do
             class="brutal-btn p-4 block-yellow text-left w-full"
           >
             <div class="font-bold text-base">Freestyle</div>
-            <div class="text-xs opacity-70 mt-1 font-mono">Write about whatever you want</div>
+            <div class="text-xs opacity-70 mt-1 font-mono">Schreib worüber du willst</div>
           </button>
         </div>
       </div>
