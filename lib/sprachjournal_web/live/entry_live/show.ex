@@ -46,7 +46,7 @@ defmodule SprachjournalWeb.EntryLive.Show do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-6">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p class="text-xs font-mono uppercase tracking-widest text-base-content/60 mb-1">
             Eintrag
@@ -55,7 +55,7 @@ defmodule SprachjournalWeb.EntryLive.Show do
             {Calendar.strftime(@entry.inserted_at, "%d.%m.%Y")}
           </h1>
         </div>
-        <div class="flex items-center gap-3 text-xs font-mono">
+        <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
           <span :if={@entry.completed_at} class="px-2 py-1 block-green uppercase">Fertig</span>
           <span :if={is_nil(@entry.completed_at)} class="px-2 py-1 block-orange uppercase">
             Entwurf
@@ -65,7 +65,7 @@ defmodule SprachjournalWeb.EntryLive.Show do
       </div>
 
       <%!-- Version navigation --%>
-      <div :if={@total_versions > 1} class="flex items-center gap-3 text-sm font-mono">
+      <div :if={@total_versions > 1} class="flex flex-wrap items-center gap-2 text-sm font-mono">
         <span class="font-bold">v{@version} von {@total_versions}</span>
         <%= for {v, idx} <- Enum.with_index(Enum.reverse(@versions), 1) do %>
           <.link

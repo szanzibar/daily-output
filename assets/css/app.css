@@ -285,10 +285,47 @@ h1, h2, h3 {
   box-shadow: 3px 3px 0 var(--color-ink);
 }
 
+/* User bubble in feedback mode — full width, left border accent */
+.chat-bubble-user-feedback {
+  background: white;
+  color: var(--color-ink);
+  border-left: 6px solid oklch(55% 0.22 264);
+  border-top: 1px solid oklch(88% 0 0);
+  border-bottom: 1px solid oklch(88% 0 0);
+  border-right: 1px solid oklch(88% 0 0);
+  padding: 0.75rem 1rem;
+  max-width: 100%;
+}
+
+/* In feedback mode, rows should be full width */
+.chat-feedback-row {
+  max-width: 100%;
+}
+
 .chat-bubble-ai {
   background: oklch(94% 0 0);
   color: var(--color-ink);
   box-shadow: 3px 3px 0 var(--color-ink);
+}
+
+/* Chat input — auto-expanding textarea */
+.chat-input {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 3px solid var(--color-ink);
+  padding: 0.75rem 1rem;
+  background: white;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  min-height: 2.75rem;
+  max-height: 12rem;
+}
+
+.chat-input:focus {
+  box-shadow: 4px 4px 0 var(--color-ink);
 }
 
 /* ── Retro loading animation ── */

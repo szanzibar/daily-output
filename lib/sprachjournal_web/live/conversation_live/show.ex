@@ -48,7 +48,7 @@ defmodule SprachjournalWeb.ConversationLive.Show do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-6">
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p class="text-xs font-mono uppercase tracking-widest text-base-content/60 mb-1">
             Gespräch
@@ -57,7 +57,7 @@ defmodule SprachjournalWeb.ConversationLive.Show do
             {Calendar.strftime(@conversation.inserted_at, "%d.%m.%Y")}
           </h1>
         </div>
-        <div class="flex items-center gap-3 text-xs font-mono">
+        <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
           <span :if={@conversation.completed_at} class="px-2 py-1 block-green uppercase">Fertig</span>
           <span :if={is_nil(@conversation.completed_at)} class="px-2 py-1 block-orange uppercase">
             Offen
@@ -69,7 +69,7 @@ defmodule SprachjournalWeb.ConversationLive.Show do
       </div>
 
       <%!-- Version nav --%>
-      <div :if={@total_versions > 1} class="flex items-center gap-3 text-sm font-mono">
+      <div :if={@total_versions > 1} class="flex flex-wrap items-center gap-2 text-sm font-mono">
         <span class="font-bold">v{@version} von {@total_versions}</span>
         <%= for {v, idx} <- Enum.with_index(Enum.reverse(@versions), 1) do %>
           <.link
@@ -88,7 +88,13 @@ defmodule SprachjournalWeb.ConversationLive.Show do
       <hr class="brutal-hr" />
 
       <%!-- Actions --%>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <.link
+          navigate={~p"/conversations/#{@conversation.id}/continue"}
+          class="brutal-btn px-4 py-2 block-blue text-sm no-underline"
+        >
+          {if @conversation.feedback, do: "Neue Version", else: "Weiterführen"}
+        </.link>
         <button
           :if={!@confirm_delete}
           phx-click="confirm_delete"
@@ -112,32 +118,20 @@ defmodule SprachjournalWeb.ConversationLive.Show do
         Thema: {@conversation.topic}
       </div>
 
-      <%!-- Conversation --%>
-      <div class="border-4 border-ink p-4">
-        <.chat_history messages={@messages} />
-      </div>
-
-      <%!-- Feedback --%>
+      <%!-- Conversation with feedback (unified) or plain chat --%>
       <div :if={@conversation.feedback}>
         <div
           :if={@conversation.feedback["encouragement"]}
-          class="border-4 border-ink p-5 block-yellow"
+          class="border-4 border-ink p-5 block-yellow mb-6"
         >
           <p class="font-bold text-base">{@conversation.feedback["encouragement"]}</p>
         </div>
 
-        <div class="border-4 border-ink p-4 mt-6">
+        <div class="border-4 border-ink p-4">
           <h2 class="text-lg font-black uppercase mb-4 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-red"></span> Korrekturen
+            <span class="inline-block w-3 h-3 block-red"></span> Gespräch mit Korrekturen
           </h2>
-          <div
-            id="annotated-text"
-            phx-hook="AnnotatedText"
-            class="annotated-text"
-            data-annotated-text={@conversation.feedback["annotated_text"] || ""}
-            data-annotations={Jason.encode!(@conversation.feedback["annotations"] || [])}
-          >
-          </div>
+          <.chat_feedback messages={@messages} feedback={@conversation.feedback} />
         </div>
 
         <div
@@ -154,6 +148,11 @@ defmodule SprachjournalWeb.ConversationLive.Show do
             <span class="text-sm">{item["text"]}</span>
           </div>
         </div>
+      </div>
+
+      <%!-- Plain chat (no feedback yet) --%>
+      <div :if={is_nil(@conversation.feedback)} class="border-4 border-ink p-4">
+        <.chat_history messages={@messages} />
       </div>
 
       <.link

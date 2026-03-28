@@ -20,6 +20,7 @@ defmodule SprachjournalWeb.Router do
       live "/entries/:id/edit", EntryLive.Edit
       live "/conversations/new", ConversationLive.New
       live "/conversations/:id", ConversationLive.Show
+      live "/conversations/:id/continue", ConversationLive.Continue
       live "/settings", SettingsLive
     end
   end
