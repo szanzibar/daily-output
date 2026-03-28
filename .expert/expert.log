@@ -6836,3 +6836,35 @@ Type: :worker
 09:37:03.129 instance_id=19D30CA036A [debug] handled request client -> server textDocument/codeAction in 145ms
 
 09:45:18.538 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 108µs
+
+11:41:11.089 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+11:41:11.089 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web/components/layouts/root.html.heex
+
+11:41:11.089 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 1ms
+
+11:41:11.741 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+11:41:11.741 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web.ex
+
+11:41:11.741 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 1ms
+
+11:41:43.249 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 776µs
+
+11:41:44.571 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 964µs
+
+11:41:58.450 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 703µs
+
+11:44:11.092 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 146µs
+
+11:44:11.746 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didClose in 156µs
+
+11:51:14.998 instance_id=19D30CA036A [debug] sent notification server -> client window/logMessage
+
+11:51:14.998 instance_id=19D30CA036A [info] Opened file:///Users/aoeu/personal/lang-learn-journal/lib/sprachjournal_web/components/layouts/root.html.heex
+
+11:51:14.998 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didOpen in 944µs
+
+11:51:15.099 instance_id=19D30CA036A [debug] handled notification client -> server textDocument/didChange in 708µs
+
+11:51:15.738 instance_id=19D30CA036A [debug] handled notification client -> server workspace/didChangeWatchedFiles in 776µs
