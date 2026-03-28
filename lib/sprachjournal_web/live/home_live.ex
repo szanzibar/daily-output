@@ -50,14 +50,17 @@ defmodule SprachjournalWeb.HomeLive do
 
       <hr class="brutal-hr" />
 
-      <%!-- Today's CTA (no entry yet) --%>
-      <div :if={is_nil(@today_entry)} class="border-4 border-ink p-6 sm:p-8 block-yellow">
+      <%!-- Always show write CTA --%>
+      <div class="border-4 border-ink p-6 sm:p-8 block-yellow">
         <h2 class="text-2xl sm:text-3xl font-black uppercase mb-3">
-          Zeit zu schreiben!
+          {if(@today_entry, do: "Nochmal schreiben!", else: "Zeit zu schreiben!")}
         </h2>
         <p class="text-sm mb-4 opacity-80">
-          Start your daily journal entry. Write in {@settings.target_language || "de"} for {@settings.timer_minutes ||
-            5} minutes.
+          {if @today_entry do
+            "Start a new entry with fresh prompts."
+          else
+            "Start your daily journal entry. Write in #{@settings.target_language || "de"} for #{@settings.timer_minutes || 5} minutes."
+          end}
         </p>
         <.link
           navigate={~p"/entries/new"}
@@ -67,7 +70,7 @@ defmodule SprachjournalWeb.HomeLive do
         </.link>
       </div>
 
-      <%!-- Today's entry (clickable) --%>
+      <%!-- Today's latest entry (clickable) --%>
       <.link
         :if={@today_entry}
         navigate={~p"/entries/#{@today_entry.id}"}

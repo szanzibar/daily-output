@@ -192,10 +192,7 @@ defmodule SprachjournalWeb.EntryLive.New do
 
         <hr class="brutal-hr" />
 
-        <div :if={@prompts_loading} class="py-12 text-center">
-          <div class="text-2xl font-mono animate-pulse">...</div>
-          <p class="text-sm font-mono text-base-content/60 mt-2">Prompts werden geladen</p>
-        </div>
+        <.retro_loader :if={@prompts_loading} message="Prompts werden geladen" />
 
         <p :if={@error} class="text-sm font-mono text-bold-red">{@error}</p>
 
@@ -259,7 +256,7 @@ defmodule SprachjournalWeb.EntryLive.New do
 
       <%!-- PHASE: Feedback --%>
       <div :if={@phase == :feedback}>
-        <.loading :if={@feedback_loading} />
+        <.loading :if={@feedback_loading} title="Feedback" message="Dein Text wird geprüft" />
 
         <.feedback_view
           :if={@feedback && !@feedback_loading}

@@ -14,24 +14,24 @@ defmodule SprachjournalWeb.Layouts do
     ~H"""
     <div class="min-h-screen flex flex-col">
       <header class="border-b-4 border-ink block-blue">
-        <div class="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+        <div class="px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2">
           <a href="/" class="no-underline text-white">
-            <span class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
+            <span class="text-xl sm:text-3xl font-black tracking-tighter uppercase">
               SPRACH<span class="block-yellow text-ink px-1">JOURNAL</span>
             </span>
           </a>
           <nav class="flex items-center gap-1 sm:gap-2">
             <.link
-              navigate={~p"/"}
+              navigate={~p"/entries/new"}
               class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-yellow no-underline"
             >
               Schreiben
             </.link>
             <.link
               navigate={~p"/settings"}
-              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm bg-base-200 no-underline"
+              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-yellow no-underline"
             >
-              <.icon name="hero-cog-6-tooth" class="size-4 inline" /> Settings
+              Settings
             </.link>
           </nav>
         </div>

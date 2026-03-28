@@ -116,16 +116,43 @@ defmodule SprachjournalWeb.JournalComponents do
 
   # ── Loading ─────────────────────────────────────────────
 
+  attr :title, :string, default: nil
+  attr :message, :string, default: "Laden..."
+
   def loading(assigns) do
     ~H"""
     <div class="space-y-6">
-      <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-        Feedback
+      <h1 :if={@title} class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
+        {@title}
       </h1>
-      <hr class="brutal-hr" />
-      <div class="py-12 text-center">
-        <div class="text-2xl font-mono animate-pulse">...</div>
-        <p class="text-sm font-mono text-base-content/60 mt-2">Dein Text wird geprüft</p>
+      <hr :if={@title} class="brutal-hr" />
+      <.retro_loader message={@message} />
+    </div>
+    """
+  end
+
+  attr :message, :string, default: "Laden..."
+
+  def retro_loader(assigns) do
+    ~H"""
+    <div class="py-8 sm:py-12">
+      <div class="loading-retro">
+        <div class="loading-blocks">
+          <span class="loading-block block-red"></span>
+          <span class="loading-block block-blue"></span>
+          <span class="loading-block block-yellow"></span>
+          <span class="loading-block block-green"></span>
+          <span class="loading-block block-pink"></span>
+        </div>
+        <div class="loading-typewriter">
+          <span class="loading-cursor">_</span>
+        </div>
+        <p class="text-sm font-mono text-base-content/60 mt-4 text-center tracking-widest uppercase">
+          {@message}
+        </p>
+        <div class="loading-bar">
+          <div class="loading-bar-fill"></div>
+        </div>
       </div>
     </div>
     """
