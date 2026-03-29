@@ -11,14 +11,13 @@
   themes: false;
 }
 
-/* Single brutalist theme — no light/dark toggle needed */
+/* Light theme */
 @plugin "../vendor/daisyui-theme" {
-  name: "brutalist";
+  name: "brutalist-light";
   default: true;
   prefersdark: false;
   color-scheme: "light";
 
-  /* Core palette: high contrast, unapologetic */
   --color-base-100: oklch(98% 0 0);
   --color-base-200: oklch(94% 0 0);
   --color-base-300: oklch(88% 0 0);
@@ -39,6 +38,44 @@
   --color-warning: oklch(75% 0.18 65);
   --color-warning-content: oklch(15% 0 0);
   --color-error: oklch(55% 0.27 29);
+  --color-error-content: oklch(98% 0 0);
+
+  --radius-selector: 0;
+  --radius-field: 0;
+  --radius-box: 0;
+
+  --border: 3px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* Dark theme — auto-activates via prefers-color-scheme */
+@plugin "../vendor/daisyui-theme" {
+  name: "brutalist-dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: "dark";
+
+  --color-base-100: oklch(18% 0.01 260);
+  --color-base-200: oklch(14% 0.01 260);
+  --color-base-300: oklch(22% 0.01 260);
+  --color-base-content: oklch(92% 0 0);
+
+  --color-primary: oklch(60% 0.27 29);
+  --color-primary-content: oklch(98% 0 0);
+  --color-secondary: oklch(60% 0.22 264);
+  --color-secondary-content: oklch(98% 0 0);
+  --color-accent: oklch(80% 0.18 85);
+  --color-accent-content: oklch(15% 0 0);
+  --color-neutral: oklch(80% 0 0);
+  --color-neutral-content: oklch(15% 0 0);
+  --color-info: oklch(60% 0.22 264);
+  --color-info-content: oklch(98% 0 0);
+  --color-success: oklch(60% 0.20 155);
+  --color-success-content: oklch(98% 0 0);
+  --color-warning: oklch(75% 0.18 65);
+  --color-warning-content: oklch(15% 0 0);
+  --color-error: oklch(60% 0.27 29);
   --color-error-content: oklch(98% 0 0);
 
   --radius-selector: 0;
@@ -83,6 +120,35 @@ body {
   background-color: var(--color-paper);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Dark mode: flip ink/paper and surface colors via CSS variables */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-ink: oklch(92% 0 0);
+    --color-paper: oklch(14% 0.01 260);
+    --color-surface: oklch(20% 0.01 260);
+    --color-surface-raised: oklch(22% 0.01 260);
+    --color-border-subtle: oklch(30% 0.01 260);
+    --color-ann-text: oklch(65% 0.15 264);
+    --color-ann-id: oklch(70% 0.22 264);
+    --color-correct-del: oklch(65% 0.27 29);
+    --color-correct-add: oklch(70% 0.20 155);
+    --color-ghost: oklch(40% 0 0);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-surface: white;
+    --color-surface-raised: oklch(94% 0 0);
+    --color-border-subtle: oklch(88% 0 0);
+    --color-ann-text: oklch(45% 0.15 264);
+    --color-ann-id: oklch(55% 0.22 264);
+    --color-correct-del: oklch(55% 0.27 29);
+    --color-correct-add: oklch(55% 0.20 155);
+    --color-ghost: oklch(80% 0 0);
+  }
 }
 
 /* Giant bold headings — Arial Black / heavy sans */
@@ -163,7 +229,8 @@ h1, h2, h3 {
   line-height: 1.75;
   border: 3px solid var(--color-ink);
   padding: 1.5rem;
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-ink);
   resize: none;
   outline: none;
   width: 100%;
@@ -197,15 +264,15 @@ h1, h2, h3 {
 /* Strikethrough original */
 .correction-deleted {
   text-decoration: line-through;
-  text-decoration-color: oklch(55% 0.27 29);
+  text-decoration-color: var(--color-correct-del);
   text-decoration-thickness: 2.5px;
-  color: oklch(55% 0.27 29);
+  color: var(--color-correct-del);
   opacity: 0.7;
 }
 
 /* Green corrected word */
 .correction-added {
-  color: oklch(55% 0.20 155);
+  color: var(--color-correct-add);
   font-weight: 800;
   margin-left: 0.15em;
 }
@@ -213,7 +280,7 @@ h1, h2, h3 {
 /* Superscript correction number */
 .correction-id {
   font-size: 0.55em;
-  color: oklch(55% 0.22 264);
+  color: var(--color-ann-id);
   font-weight: 900;
   vertical-align: super;
   margin-left: 1px;
@@ -223,7 +290,7 @@ h1, h2, h3 {
 .ann-note {
   font-size: 0.72rem;
   line-height: 1.3;
-  color: oklch(45% 0.15 264);
+  color: var(--color-ann-text);
   font-weight: 600;
   font-style: italic;
   overflow-wrap: break-word;
@@ -233,7 +300,7 @@ h1, h2, h3 {
 .ann-note-id {
   font-style: normal;
   font-weight: 900;
-  color: oklch(55% 0.22 264);
+  color: var(--color-ann-id);
 }
 
 /* Timer display */
@@ -290,12 +357,12 @@ h1, h2, h3 {
 
 /* User bubble in feedback mode — full width, left border accent */
 .chat-bubble-user-feedback {
-  background: white;
+  background: var(--color-surface);
   color: var(--color-ink);
   border-left: 6px solid oklch(55% 0.22 264);
-  border-top: 1px solid oklch(88% 0 0);
-  border-bottom: 1px solid oklch(88% 0 0);
-  border-right: 1px solid oklch(88% 0 0);
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--color-border-subtle);
   padding: 0.75rem 1rem;
   max-width: 100%;
 }
@@ -306,7 +373,7 @@ h1, h2, h3 {
 }
 
 .chat-bubble-ai {
-  background: oklch(94% 0 0);
+  background: var(--color-surface-raised);
   color: var(--color-ink);
   box-shadow: 3px 3px 0 var(--color-ink);
 }
@@ -319,7 +386,8 @@ h1, h2, h3 {
   line-height: 1.5;
   border: 3px solid var(--color-ink);
   padding: 0.75rem 1rem;
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-ink);
   resize: none;
   outline: none;
   overflow: hidden;
@@ -461,7 +529,7 @@ h1, h2, h3 {
 }
 
 .practice-remaining {
-  color: oklch(80% 0 0);
+  color: var(--color-ghost);
   font-weight: 400;
 }
 
