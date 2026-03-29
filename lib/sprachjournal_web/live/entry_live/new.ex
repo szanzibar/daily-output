@@ -86,7 +86,7 @@ defmodule SprachjournalWeb.EntryLive.New do
   def handle_info({:feedback_loaded, {:ok, feedback}, entry}, socket) do
     case Journal.save_feedback(entry, feedback) do
       {:ok, entry} ->
-        {:noreply, assign(socket, feedback: feedback, feedback_loading: false, entry: entry)}
+        {:noreply, push_navigate(socket, to: ~p"/entries/#{entry.id}")}
 
       {:error, _} ->
         {:noreply, assign(socket, feedback: feedback, feedback_loading: false)}

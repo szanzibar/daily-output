@@ -71,7 +71,7 @@ defmodule SprachjournalWeb.EntryLive.Show do
           <.link
             :if={v.id != @entry.id}
             navigate={~p"/entries/#{v.id}"}
-            class="brutal-btn px-2 py-1 bg-base-200 text-xs no-underline"
+            class="brutal-btn px-2 py-1 block-cyan text-xs no-underline"
           >
             v{idx}
           </.link>
@@ -84,17 +84,27 @@ defmodule SprachjournalWeb.EntryLive.Show do
       <hr class="brutal-hr" />
 
       <%!-- Actions --%>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <.link
           navigate={~p"/entries/#{@entry.id}/edit"}
-          class="brutal-btn px-4 py-2 block-blue text-sm no-underline"
+          class="brutal-btn px-4 py-2 block-yellow text-sm no-underline"
         >
           Bearbeiten
+        </.link>
+        <.link
+          :if={@entry.feedback}
+          navigate={~p"/entries/#{@entry.id}/practice"}
+          class={[
+            "brutal-btn px-4 py-2 text-sm no-underline",
+            if(@entry.practiced_at, do: "block-green", else: "block-blue")
+          ]}
+        >
+          {if @entry.practiced_at, do: "✓ Geübt", else: "Üben"}
         </.link>
         <button
           :if={!@confirm_delete}
           phx-click="confirm_delete"
-          class="brutal-btn px-4 py-2 bg-base-200 text-sm"
+          class="brutal-btn px-4 py-2 block-dark text-sm"
         >
           Löschen
         </button>

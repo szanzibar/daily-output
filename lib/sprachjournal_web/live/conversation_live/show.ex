@@ -75,7 +75,7 @@ defmodule SprachjournalWeb.ConversationLive.Show do
           <.link
             :if={v.id != @conversation.id}
             navigate={~p"/conversations/#{v.id}"}
-            class="brutal-btn px-2 py-1 bg-base-200 text-xs no-underline"
+            class="brutal-btn px-2 py-1 block-cyan text-xs no-underline"
           >
             v{idx}
           </.link>
@@ -91,14 +91,24 @@ defmodule SprachjournalWeb.ConversationLive.Show do
       <div class="flex flex-wrap items-center gap-3">
         <.link
           navigate={~p"/conversations/#{@conversation.id}/continue"}
-          class="brutal-btn px-4 py-2 block-blue text-sm no-underline"
+          class="brutal-btn px-4 py-2 block-pink text-sm no-underline"
         >
           {if @conversation.feedback, do: "Neue Version", else: "Weiterführen"}
+        </.link>
+        <.link
+          :if={@conversation.feedback}
+          navigate={~p"/conversations/#{@conversation.id}/practice"}
+          class={[
+            "brutal-btn px-4 py-2 text-sm no-underline",
+            if(@conversation.practiced_at, do: "block-green", else: "block-blue")
+          ]}
+        >
+          {if @conversation.practiced_at, do: "✓ Geübt", else: "Üben"}
         </.link>
         <button
           :if={!@confirm_delete}
           phx-click="confirm_delete"
-          class="brutal-btn px-4 py-2 bg-base-200 text-sm"
+          class="brutal-btn px-4 py-2 block-dark text-sm"
         >
           Löschen
         </button>

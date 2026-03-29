@@ -106,7 +106,7 @@ defmodule SprachjournalWeb.EntryLive.Edit do
   def handle_info({:feedback_loaded, {:ok, feedback}, entry}, socket) do
     case Journal.save_feedback(entry, feedback) do
       {:ok, entry} ->
-        {:noreply, assign(socket, feedback: feedback, feedback_loading: false, entry: entry)}
+        {:noreply, push_navigate(socket, to: ~p"/entries/#{entry.id}")}
 
       {:error, _} ->
         {:noreply, assign(socket, feedback: feedback, feedback_loading: false)}
@@ -148,11 +148,11 @@ defmodule SprachjournalWeb.EntryLive.Edit do
           <:actions>
             <.link
               navigate={~p"/entries/#{@entry.id}"}
-              class="brutal-btn px-4 py-2 bg-base-200 text-sm no-underline"
+              class="brutal-btn px-4 py-2 block-dark text-sm no-underline"
             >
               Abbrechen
             </.link>
-            <button phx-click="save" class="brutal-btn px-4 py-2 bg-base-200 text-sm">
+            <button phx-click="save" class="brutal-btn px-4 py-2 block-cyan text-sm">
               Speichern
             </button>
             <button phx-click="resubmit" class="brutal-btn px-6 py-3 block-green text-lg">

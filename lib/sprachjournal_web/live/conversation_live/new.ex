@@ -94,8 +94,7 @@ defmodule SprachjournalWeb.ConversationLive.New do
 
     case Conversations.save_feedback(conversation, feedback) do
       {:ok, conversation} ->
-        {:noreply,
-         assign(socket, feedback: feedback, feedback_loading: false, conversation: conversation)}
+        {:noreply, push_navigate(socket, to: ~p"/conversations/#{conversation.id}")}
 
       {:error, _} ->
         {:noreply, assign(socket, feedback: feedback, feedback_loading: false)}
@@ -329,11 +328,11 @@ defmodule SprachjournalWeb.ConversationLive.New do
           <textarea
             id="chat-input"
             phx-hook="AutoExpand"
+            phx-mounted={JS.focus()}
             name="message"
             rows="1"
             placeholder="Schreib eine Nachricht..."
             class="chat-input flex-1"
-            autofocus
           >{@input}</textarea>
           <button type="submit" class="brutal-btn px-6 py-3 block-blue text-lg shrink-0">
             &rarr;
