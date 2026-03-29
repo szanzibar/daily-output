@@ -1,23 +1,50 @@
 # Sprachjournal
 
-A daily language learning journal with AI-powered proofreading and feedback. Write in your target language, get instant corrections and learning tips.
+A daily language learning app with AI-powered proofreading, conversation practice, and gamified daily challenges. Write and speak in your target language, get instant inline corrections and learning tips.
 
-Built with Phoenix LiveView, SQLite, and the Anthropic API.
+Built with Phoenix LiveView, SQLite, and the Anthropic API. Swiss brutalist UI design.
 
 ## Features
 
-- **Timed daily journal** — write for a configurable number of minutes in your target language
-- **AI writing prompts** — contextual prompts based on your configured topics
-- **Instant proofreading** — inline corrections (redline style) with explanations
-- **Learning tips** — commentary on grammar patterns, phrasing, and word choice
-- **Entry history** — track your writing over time with a streak counter
-- **PWA** — installable on your phone for quick access
+### Journal Entries
+- Timed daily journal with AI-generated writing prompts
+- Configurable timer (default 5 minutes)
+- Distraction-free monospace editor
+
+### Conversations
+- Role-play conversations with an AI partner
+- AI responds naturally in Swiss Standard German
+- Configurable minimum exchanges before completion
+
+### AI Feedback
+- Inline corrections (college professor style) — strikethrough + green corrections with annotations positioned below
+- JS-powered dynamic line wrapping and annotation placement
+- Commentary section for grammar patterns and suggestions
+- Feedback language switches to German at B2+ level
+
+### Practice Mode
+- Retype corrected text character-by-character
+- Real-time visual feedback (correct = black, wrong = red highlight)
+- Conversation practice jumps between user messages with AI context
+
+### Daily Challenge
+- Two tasks: Eintrag (journal) + Gespräch (conversation)
+- Each task has two stages: written (½) and practiced (✓)
+- Streak counter tracks consecutive fully-completed days
+- Activity history grouped by date with completion indicators
+
+### Other
+- Entry/conversation versioning (multiple per day, soft delete)
+- Auto-discovers latest Claude Sonnet model from API
+- PWA installable on phone
+- Docker deployment with auto-migration on start
 
 ## Setup
 
 ### Prerequisites
 
 - Elixir 1.15+
+- Node.js (for JS tests)
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ### Development
@@ -26,8 +53,9 @@ Built with Phoenix LiveView, SQLite, and the Anthropic API.
 # Install dependencies
 mix setup
 
-# Set your API key
-export ANTHROPIC_API_KEY=sk-ant-...
+# Create .env with your API key
+cp .env.example .env
+# Edit .env with your ANTHROPIC_API_KEY
 
 # Start the server
 mix phx.server
@@ -38,35 +66,68 @@ Visit [localhost:4000](http://localhost:4000).
 ### Docker
 
 ```bash
-# Generate a secret key
-mix phx.gen.secret
+# Create .env
+cp .env.example .env
+# Edit with your ANTHROPIC_API_KEY and SECRET_KEY_BASE (run: mix phx.gen.secret)
 
-# Create .env file
-echo "SECRET_KEY_BASE=<your-generated-secret>" > .env
-echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
-
-# Run
-docker compose --env-file .env up --build
+# Deploy (or use deploy.sh)
+./deploy.sh
 ```
+
+### Testing
+
+```bash
+# Runs 72 Elixir tests + 29 JS tests
+mix test
+```
+
+Tests are colocated with source files (in `lib/`), not in `test/`.
 
 ## Architecture
 
-- **Phoenix LiveView** — all pages are LiveViews, no dead views
-- **Ecto + SQLite** — simple, file-based database
+- **Phoenix LiveView** — all pages are LiveViews
+- **Ecto + SQLite** — file-based database, no Postgres needed
 - **Anthropix** — Elixir client for the Anthropic API
-- **Tailwind + daisyUI** — styling with a custom brutalist theme
+- **Tailwind 4 + daisyUI** — custom brutalist theme
+- **Minimal JS** — only for DOM measurement (annotated text rendering) and textarea hooks
 
 ### Contexts
 
 | Context | Purpose |
 |---|---|
-| `Sprachjournal.Journal` | Entries CRUD, history, streak |
-| `Sprachjournal.Settings` | User preferences (timer, languages, topics) |
-| `Sprachjournal.AI` | Prompt generation and proofreading via Anthropic |
+| `Sprachjournal.Journal` | Entries CRUD, versioning, word count |
+| `Sprachjournal.Conversations` | Conversations + messages, versioning |
+| `Sprachjournal.Settings` | User preferences (timer, languages, topics, level) |
+| `Sprachjournal.AI` | Prompt/topic generation, conversation partner, proofreading |
+| `Sprachjournal.Practice` | Text extraction, char comparison, daily challenge, streak |
+| `Sprachjournal.Cache` | Key-value cache for API model discovery |
+
+### Color System
+
+| Color | Meaning |
+|---|---|
+| Yellow | Entry/Eintrag |
+| Pink | Gespräch/Conversation |
+| Blue | Üben/Practice, send actions |
+| Orange | Settings, half-complete status |
+| Green | Success/complete status |
+| Purple | Secondary actions (+ Neu) |
+| Cyan | Versions, save/draft |
+| Dark | Delete, cancel |
+| Red | Errors, corrections |
 
 ## Configuration
 
-All configuration is done through the settings page in the app. The only external config is `ANTHROPIC_API_KEY` as an environment variable.
+All configuration is done through the settings page:
+- Timer duration, minimum conversation exchanges
+- Target/native language, CEFR level (A1-C2)
+- Topics for AI prompts
+- Custom prompt context
+- Practice mode toggle
+
+The only external config is `ANTHROPIC_API_KEY` in `.env`.
+
+Swiss Standard German is hardcoded in all AI prompts (no ß, Swiss terms).
 
 ## License
 
