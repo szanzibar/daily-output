@@ -9,6 +9,7 @@ defmodule Sprachjournal.Conversations.Conversation do
     field :language, :string, default: "de"
     field :feedback, :map
     field :completed_at, :utc_datetime
+    field :practiced_at, :utc_datetime
     field :deleted_at, :utc_datetime
 
     has_many :messages, Message, preload_order: [asc: :inserted_at]
@@ -18,7 +19,7 @@ defmodule Sprachjournal.Conversations.Conversation do
 
   def changeset(conversation, attrs) do
     conversation
-    |> cast(attrs, [:topic, :language, :feedback, :completed_at, :deleted_at])
+    |> cast(attrs, [:topic, :language, :feedback, :completed_at, :practiced_at, :deleted_at])
     |> validate_required([:language])
   end
 end

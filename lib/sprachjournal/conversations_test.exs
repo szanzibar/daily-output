@@ -6,9 +6,7 @@ defmodule Sprachjournal.ConversationsTest do
 
   defp create_conversation(attrs \\ %{}) do
     {:ok, convo} =
-      Conversations.create_conversation(
-        Map.merge(%{topic: "Test thema", language: "de"}, attrs)
-      )
+      Conversations.create_conversation(Map.merge(%{topic: "Test thema", language: "de"}, attrs))
 
     convo
   end

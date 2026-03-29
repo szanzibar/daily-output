@@ -5,7 +5,7 @@ defmodule Sprachjournal.AI.TopicGenerator do
 
   alias Sprachjournal.AI
 
-  def generate_openers(topics, target_language, native_language) do
+  def generate_openers(topics, _target_language, native_language) do
     topic_list =
       case topics do
         [] -> "Alltag, Arbeit, Hobbys, Essen, Reisen, Wetter"
@@ -13,13 +13,14 @@ defmodule Sprachjournal.AI.TopicGenerator do
       end
 
     system = """
-    Generate exactly 4 natural conversation openers in #{target_language}.
-    These are things a friend might say to start a casual conversation.
+    Generate exactly 4 natural conversation openers in Swiss Standard German (Schweizer Hochdeutsch).
+    These are things a friend in Switzerland might say to start a casual conversation.
+    Never use ß — always use ss. Use Swiss terms naturally.
 
     Topics to draw from: #{topic_list}
 
     Each opener should:
-    - Be a natural question or statement a native speaker would use
+    - Be a natural question or statement a Swiss German speaker would use
     - Be 1-2 sentences max
     - Range from easier to more challenging vocabulary
     - Include a #{native_language} translation

@@ -4,14 +4,16 @@ defmodule SprachjournalWeb.HomeLive do
   alias Sprachjournal.Journal
   alias Sprachjournal.Conversations
   alias Sprachjournal.Settings
+  alias Sprachjournal.Practice
 
   @impl true
   def mount(_params, _session, socket) do
     settings = Settings.get_config()
     today_entry = Journal.get_today_entry()
     today_conversation = Conversations.get_today_conversation()
-    recent_items = build_recent_items()
-    streak = Journal.current_streak()
+    recent_days = build_recent_days(settings.practice_enabled)
+    streak = Practice.current_streak(settings.practice_enabled)
+    challenge = Practice.daily_challenge_status(settings.practice_enabled)
 
     {:ok,
      assign(socket,
@@ -19,12 +21,13 @@ defmodule SprachjournalWeb.HomeLive do
        settings: settings,
        today_entry: today_entry,
        today_conversation: today_conversation,
-       recent_items: recent_items,
-       streak: streak
+       recent_days: recent_days,
+       streak: streak,
+       challenge: challenge
      )}
   end
 
-  defp build_recent_items do
+  defp build_recent_days(practice_enabled) do
     entries =
       Journal.list_recent_entries(14)
       |> Enum.map(fn e ->
@@ -32,7 +35,8 @@ defmodule SprachjournalWeb.HomeLive do
           type: :entry,
           id: e.id,
           preview: if(e.body, do: String.slice(e.body, 0..60), else: "(leer)"),
-          completed: e.completed_at != nil,
+          completed: e.completed_at != nil and e.feedback != nil,
+          practiced: e.practiced_at != nil,
           date: e.inserted_at,
           path: "/entries/#{e.id}",
           label: "Eintrag"
@@ -46,7 +50,8 @@ defmodule SprachjournalWeb.HomeLive do
           type: :conversation,
           id: c.id,
           preview: c.topic || "(Gespräch)",
-          completed: c.completed_at != nil,
+          completed: c.completed_at != nil and c.feedback != nil,
+          practiced: c.practiced_at != nil,
           date: c.inserted_at,
           path: "/conversations/#{c.id}",
           label: "Gespräch"
@@ -55,13 +60,57 @@ defmodule SprachjournalWeb.HomeLive do
 
     (entries ++ conversations)
     |> Enum.sort_by(& &1.date, {:desc, DateTime})
+    |> Enum.group_by(fn item -> DateTime.to_date(item.date) end)
+    |> Enum.map(fn {date, items} ->
+      day_done = day_fully_done?(items, practice_enabled)
+      {date, items, day_done}
+    end)
+    |> Enum.sort_by(fn {date, _, _} -> date end, {:desc, Date})
+    |> Enum.take(14)
+  end
+
+  defp day_fully_done?(items, practice_enabled) do
+    has_entry = Enum.any?(items, &(&1.type == :entry and &1.completed))
+    has_convo = Enum.any?(items, &(&1.type == :conversation and &1.completed))
+
+    if practice_enabled do
+      entry_practiced = Enum.any?(items, &(&1.type == :entry and &1.practiced))
+      convo_practiced = Enum.any?(items, &(&1.type == :conversation and &1.practiced))
+      has_entry and has_convo and entry_practiced and convo_practiced
+    else
+      has_entry and has_convo
+    end
+  end
+
+  defp challenge_icon(:complete), do: "✓"
+  defp challenge_icon(:half), do: "½"
+  defp challenge_icon(:none), do: "○"
+
+  defp challenge_bg(:complete), do: "block-green"
+  defp challenge_bg(:half), do: "block-orange"
+  defp challenge_bg(:none), do: "bg-base-200"
+
+  defp item_status_icon(item) do
+    cond do
+      item.practiced -> "✓"
+      item.completed -> "½"
+      true -> "○"
+    end
+  end
+
+  defp item_status_bg(item) do
+    cond do
+      item.practiced -> "block-green"
+      item.completed -> "block-orange"
+      true -> "bg-base-200"
+    end
   end
 
   @impl true
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-6">
-      <%!-- Today's header block --%>
+      <%!-- Header: date + streak --%>
       <div class="flex flex-col sm:flex-row gap-4 sm:items-end sm:justify-between">
         <div>
           <p class="text-xs font-mono uppercase tracking-widest text-base-content/60 mb-1">
@@ -72,144 +121,164 @@ defmodule SprachjournalWeb.HomeLive do
           </h1>
         </div>
 
-        <div class="flex items-center gap-4">
-          <div :if={@streak > 0} class="text-right">
-            <div class="text-3xl sm:text-4xl font-black streak-active leading-none">
-              {@streak}
-            </div>
-            <div class="text-xs font-mono uppercase tracking-widest">
-              {ngettext("Tag", "Tage", @streak)} Streak
-            </div>
+        <div class="border-4 border-ink p-3 text-center">
+          <div class="text-3xl sm:text-4xl font-black streak-active leading-none">
+            {@streak}
+          </div>
+          <div class="text-xs font-mono uppercase tracking-widest">
+            {ngettext("Tag", "Tage", @streak)} Streak
           </div>
         </div>
       </div>
 
       <hr class="brutal-hr" />
 
-      <%!-- CTAs --%>
-      <div class="grid sm:grid-cols-2 gap-4">
-        <%!-- Journal CTA --%>
-        <div class="border-4 border-ink p-5 sm:p-6 block-yellow">
-          <h2 class="text-xl sm:text-2xl font-black uppercase mb-2">
-            {if(@today_entry, do: "Nochmal schreiben!", else: "Schreiben!")}
-          </h2>
-          <p class="text-sm mb-3 opacity-80">
-            {if(@today_entry,
-              do: "Neuer Eintrag mit frischen Prompts.",
-              else: "Täglicher Journaleintrag."
-            )}
-          </p>
-          <.link
-            navigate={~p"/entries/new"}
-            class="brutal-btn inline-block px-5 py-2 bg-ink text-paper text-sm no-underline"
-          >
-            Los geht's &rarr;
-          </.link>
+      <%!-- === HEUTE === --%>
+      <div class={["border-4 border-ink", if(@challenge.all_done, do: "border-green", else: "")]}>
+        <div :if={@challenge.all_done} class="block-green px-4 py-2 text-center">
+          <span class="font-black uppercase text-sm tracking-widest">Tag abgeschlossen!</span>
         </div>
 
-        <%!-- Conversation CTA --%>
-        <div class="border-4 border-ink p-5 sm:p-6 block-green">
-          <h2 class="text-xl sm:text-2xl font-black uppercase mb-2">
-            Gespräch!
-          </h2>
-          <p class="text-sm mb-3 opacity-80">
-            Rollenspiel mit einem KI-Gesprächspartner.
+        <%!-- Entry row --%>
+        <.link
+          :if={@today_entry}
+          navigate={~p"/entries/#{@today_entry.id}"}
+          class="block border-b-2 border-ink p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class={["text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink", challenge_bg(@challenge.entry)]}>
+                {challenge_icon(@challenge.entry)}
+              </span>
+              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">Eintrag</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+              <span
+                :if={@challenge.entry == :half}
+                class="brutal-btn px-4 py-1.5 block-blue text-xs"
+                onclick={"event.preventDefault(); event.stopPropagation(); window.location.href='/entries/#{@today_entry.id}/practice'"}
+              >
+                Üben &rarr;
+              </span>
+              <span
+                :if={@challenge.entry != :none}
+                class="brutal-btn px-3 py-1 block-purple text-xs"
+                onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/entries/new'"
+              >
+                + Neu
+              </span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-base-content/70 line-clamp-2">{@today_entry.body}</p>
+        </.link>
+        <div :if={is_nil(@today_entry)} class="border-b-2 border-ink p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink bg-base-200">○</span>
+              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">Eintrag</span>
+            </div>
+            <.link navigate={~p"/entries/new"} class="brutal-btn px-4 py-1.5 block-yellow text-xs no-underline">
+              Schreiben &rarr;
+            </.link>
+          </div>
+          <p class="text-sm font-mono text-base-content/40">Noch kein Eintrag heute.</p>
+        </div>
+
+        <%!-- Conversation row --%>
+        <.link
+          :if={@today_conversation}
+          navigate={~p"/conversations/#{@today_conversation.id}"}
+          class="block p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class={["text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink", challenge_bg(@challenge.conversation)]}>
+                {challenge_icon(@challenge.conversation)}
+              </span>
+              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">Gespräch</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+              <span
+                :if={@challenge.conversation == :half && @today_conversation}
+                class="brutal-btn px-4 py-1.5 block-blue text-xs"
+                onclick={"event.preventDefault(); event.stopPropagation(); window.location.href='/conversations/#{@today_conversation.id}/practice'"}
+              >
+                Üben &rarr;
+              </span>
+              <span
+                :if={@challenge.conversation != :none}
+                class="brutal-btn px-3 py-1 block-purple text-xs"
+                onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/conversations/new'"
+              >
+                + Neu
+              </span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-base-content/70 line-clamp-2">
+            {@today_conversation.topic || "(Freestyle)"}
           </p>
-          <.link
-            navigate={~p"/conversations/new"}
-            class="brutal-btn inline-block px-5 py-2 bg-ink text-paper text-sm no-underline"
-          >
-            Starten &rarr;
-          </.link>
+        </.link>
+        <div :if={is_nil(@today_conversation)} class="p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink bg-base-200">○</span>
+              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">Gespräch</span>
+            </div>
+            <.link navigate={~p"/conversations/new"} class="brutal-btn px-4 py-1.5 block-pink text-xs no-underline">
+              Starten &rarr;
+            </.link>
+          </div>
+          <p class="text-sm font-mono text-base-content/40">Noch kein Gespräch heute.</p>
         </div>
       </div>
 
-      <%!-- Today's latest entry (clickable) --%>
-      <.link
-        :if={@today_entry}
-        navigate={~p"/entries/#{@today_entry.id}"}
-        class="block border-4 border-ink p-6 hover:bg-base-200 no-underline text-base-content"
-      >
-        <div class="flex items-start justify-between mb-3">
-          <h2 class="text-xl font-black uppercase">Heute — Eintrag</h2>
-          <div class="flex items-center gap-2">
-            <span
-              :if={@today_entry.completed_at}
-              class="text-xs font-mono px-2 py-1 block-green uppercase"
-            >
-              Fertig
-            </span>
-            <span class="text-xs font-mono text-base-content/60">
-              {Journal.word_count(@today_entry)} Wörter
-            </span>
-          </div>
-        </div>
-        <p class="font-mono text-sm line-clamp-3">{@today_entry.body}</p>
-      </.link>
-
-      <%!-- Today's latest conversation --%>
-      <.link
-        :if={@today_conversation}
-        navigate={~p"/conversations/#{@today_conversation.id}"}
-        class="block border-4 border-ink p-6 hover:bg-base-200 no-underline text-base-content"
-      >
-        <div class="flex items-start justify-between mb-3">
-          <h2 class="text-xl font-black uppercase">Heute — Gespräch</h2>
-          <span
-            :if={@today_conversation.completed_at}
-            class="text-xs font-mono px-2 py-1 block-green uppercase"
-          >
-            Fertig
-          </span>
-          <span
-            :if={is_nil(@today_conversation.completed_at)}
-            class="text-xs font-mono px-2 py-1 block-orange uppercase"
-          >
-            Offen
-          </span>
-        </div>
-        <p class="font-mono text-sm line-clamp-2">{@today_conversation.topic || "(Freestyle)"}</p>
-      </.link>
-
-      <%!-- Recent history (interleaved entries + conversations) --%>
-      <div :if={@recent_items != []}>
-        <h2 class="text-xl font-black uppercase mb-3 flex items-center gap-2">
-          <span class="inline-block w-3 h-3 block-blue"></span> Letzte Aktivität
+      <%!-- === PAST DAYS === --%>
+      <div :if={@recent_days != []}>
+        <h2 class="text-xl font-black uppercase mb-3">
+          Aktivität
         </h2>
 
-        <div class="border-4 border-ink divide-y-2 divide-ink">
-          <.link
-            :for={item <- @recent_items}
-            navigate={item.path}
-            class="flex items-center justify-between px-4 py-3 hover:bg-base-200 no-underline text-base-content"
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <span class={[
-                "inline-block w-2 h-2 shrink-0",
-                if(item.completed, do: "block-green", else: "block-orange")
-              ]} />
-              <span class={[
-                "text-xs font-mono px-1.5 py-0.5 border-2 border-ink shrink-0",
-                if(item.type == :conversation, do: "block-green", else: "block-yellow")
-              ]}>
-                {item.label}
-              </span>
-              <span class="font-mono text-sm truncate">
-                {item.preview}
-              </span>
+        <div class="space-y-3">
+          <%= for {date, items, day_done} <- @recent_days do %>
+            <div class={["border-4 border-ink", if(day_done, do: "border-green", else: "")]}>
+              <div class={["px-4 py-2 border-b-2 border-ink flex items-center justify-between", if(day_done, do: "block-green", else: "bg-base-200")]}>
+                <span class="text-sm font-black uppercase">
+                  {Calendar.strftime(date, "%d.%m.%Y")}
+                </span>
+                <span :if={day_done} class="text-xs font-mono font-bold">✓</span>
+              </div>
+
+              <div class="divide-y divide-ink">
+                <.link
+                  :for={item <- items}
+                  navigate={item.path}
+                  class="flex items-center px-4 py-2.5 hover:bg-base-200 no-underline text-base-content gap-2"
+                >
+                  <span class={[
+                    "text-xs font-mono font-bold px-2 py-0.5 border-2 border-ink shrink-0",
+                    item_status_bg(item)
+                  ]}>
+                    {item_status_icon(item)}
+                  </span>
+                  <span class={[
+                    "text-xs font-mono font-bold px-2 py-0.5 border-2 border-ink shrink-0",
+                    if(item.type == :conversation, do: "block-pink", else: "block-yellow")
+                  ]}>
+                    {item.label}
+                  </span>
+                  <span class="font-mono text-sm truncate">
+                    {item.preview}
+                  </span>
+                </.link>
+              </div>
             </div>
-            <div class="flex items-center gap-3 shrink-0 ml-4">
-              <span class="text-xs font-mono text-base-content/60">
-                {Calendar.strftime(item.date, "%d.%m")}
-              </span>
-            </div>
-          </.link>
+          <% end %>
         </div>
       </div>
 
       <%!-- Empty state --%>
       <div
-        :if={@recent_items == [] and is_nil(@today_entry) and is_nil(@today_conversation)}
+        :if={@recent_days == [] and is_nil(@today_entry) and is_nil(@today_conversation)}
         class="text-center py-12"
       >
         <p class="text-lg font-mono text-base-content/50">

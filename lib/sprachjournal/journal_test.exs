@@ -6,9 +6,7 @@ defmodule Sprachjournal.JournalTest do
 
   defp create_entry(attrs \\ %{}) do
     {:ok, entry} =
-      Journal.create_entry(
-        Map.merge(%{body: "Test eintrag", language: "de"}, attrs)
-      )
+      Journal.create_entry(Map.merge(%{body: "Test eintrag", language: "de"}, attrs))
 
     entry
   end

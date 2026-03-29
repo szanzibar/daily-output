@@ -28,6 +28,10 @@ defmodule Sprachjournal.AI.Proofreader do
 
     system = """
     You are a #{target} teacher proofreading a journal entry written by a #{native} speaker at CEFR level #{level}.
+    The student is learning Swiss Standard German (Schweizer Hochdeutsch). Important:
+    - Never use ß — always use ss (e.g. "dass" not "daß", "Strasse" not "Straße")
+    - Prefer Swiss German standard terms (Velo not Fahrrad, Poulet not Hähnchen, Natel not Handy, Trottoir not Bürgersteig, parkieren not parken, etc.)
+    - Use Swiss conventions for dates, numbers, and spelling where they differ from German German
 
     Calibrate your feedback to #{level} level:
     - Only flag errors that a #{level} student should know better

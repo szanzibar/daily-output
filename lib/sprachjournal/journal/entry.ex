@@ -9,6 +9,7 @@ defmodule Sprachjournal.Journal.Entry do
     field :duration, :integer
     field :feedback, :map
     field :completed_at, :utc_datetime
+    field :practiced_at, :utc_datetime
     field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
@@ -16,7 +17,16 @@ defmodule Sprachjournal.Journal.Entry do
 
   def changeset(entry, attrs) do
     entry
-    |> cast(attrs, [:body, :prompt, :language, :duration, :feedback, :completed_at, :deleted_at])
+    |> cast(attrs, [
+      :body,
+      :prompt,
+      :language,
+      :duration,
+      :feedback,
+      :completed_at,
+      :practiced_at,
+      :deleted_at
+    ])
     |> validate_required([:language])
   end
 end
