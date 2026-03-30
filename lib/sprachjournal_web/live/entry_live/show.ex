@@ -9,6 +9,14 @@ defmodule SprachjournalWeb.EntryLive.Show do
     {version, total} = Journal.version_info(entry)
     versions = Journal.get_versions(entry)
 
+    focus_mastered =
+      if entry.focus_topic_id do
+        topic = Sprachjournal.FocusTopics.get_topic!(entry.focus_topic_id)
+        topic.mastered_at != nil
+      else
+        false
+      end
+
     {:ok,
      assign(socket,
        page_title: "Eintrag — #{Calendar.strftime(entry.inserted_at, "%d.%m.%Y")}",
@@ -16,7 +24,9 @@ defmodule SprachjournalWeb.EntryLive.Show do
        version: version,
        total_versions: total,
        versions: versions,
-       confirm_delete: false
+       confirm_delete: false,
+       focus_pool_texts: Sprachjournal.FocusTopics.active_source_texts(),
+       focus_mastered: focus_mastered
      )}
   end
 
@@ -40,6 +50,49 @@ defmodule SprachjournalWeb.EntryLive.Show do
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Konnte nicht gelöscht werden.")}
     end
+  end
+
+  def handle_event("add_focus_topic", params, socket) do
+    alias Sprachjournal.{FocusTopics, AI}
+    raw_text = params["text"]
+
+    # Summarize the tip into a concise, generic focus point
+    summarized =
+      case AI.summarize_focus_topic(raw_text) do
+        {:ok, text} -> text
+        {:error, _} -> raw_text
+      end
+
+    FocusTopics.create_topic(%{
+      text: summarized,
+      source_text: raw_text,
+      source_type: params["source_type"],
+      source_id: String.to_integer(params["source_id"])
+    })
+
+    {:noreply, assign(socket, focus_pool_texts: FocusTopics.active_source_texts())}
+  end
+
+  def handle_event("master_focus_topic", _params, socket) do
+    alias Sprachjournal.FocusTopics
+    entry = socket.assigns.entry
+
+    if entry.focus_topic_id do
+      topic = FocusTopics.get_topic!(entry.focus_topic_id)
+      {:ok, _} = FocusTopics.master_topic(topic)
+
+      {:noreply,
+       assign(socket,
+         focus_mastered: true,
+         focus_pool_texts: FocusTopics.active_source_texts()
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("override_focus_result", _params, socket) do
+    {:noreply, put_flash(socket, :info, "Überschrieben — zählt als verwendet.")}
   end
 
   @impl true
@@ -91,16 +144,6 @@ defmodule SprachjournalWeb.EntryLive.Show do
         >
           Bearbeiten
         </.link>
-        <.link
-          :if={@entry.feedback}
-          navigate={~p"/entries/#{@entry.id}/practice"}
-          class={[
-            "brutal-btn px-4 py-2 text-sm no-underline",
-            if(@entry.practiced_at, do: "block-green", else: "block-blue")
-          ]}
-        >
-          {if @entry.practiced_at, do: "✓ Geübt", else: "Üben"}
-        </.link>
         <button
           :if={!@confirm_delete}
           phx-click="confirm_delete"
@@ -127,7 +170,14 @@ defmodule SprachjournalWeb.EntryLive.Show do
       </div>
 
       <%!-- Feedback (inline corrections) --%>
-      <.feedback_view :if={@entry.feedback} feedback={@entry.feedback}>
+      <.feedback_view
+        :if={@entry.feedback}
+        feedback={@entry.feedback}
+        source_type="entry"
+        source_id={@entry.id}
+        focus_pool_texts={@focus_pool_texts}
+        focus_mastered={@focus_mastered}
+      >
         <:actions>
           <.link
             navigate={~p"/"}

@@ -9,8 +9,9 @@ defmodule Sprachjournal.Journal.Entry do
     field :duration, :integer
     field :feedback, :map
     field :completed_at, :utc_datetime
-    field :practiced_at, :utc_datetime
     field :deleted_at, :utc_datetime
+
+    belongs_to :focus_topic, Sprachjournal.FocusTopics.FocusTopic
 
     timestamps(type: :utc_datetime)
   end
@@ -24,8 +25,8 @@ defmodule Sprachjournal.Journal.Entry do
       :duration,
       :feedback,
       :completed_at,
-      :practiced_at,
-      :deleted_at
+      :deleted_at,
+      :focus_topic_id
     ])
     |> validate_required([:language])
   end

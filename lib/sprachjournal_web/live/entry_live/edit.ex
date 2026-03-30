@@ -41,7 +41,8 @@ defmodule SprachjournalWeb.EntryLive.Edit do
             body: body,
             prompt: entry.prompt,
             language: entry.language,
-            duration: entry.duration
+            duration: entry.duration,
+            focus_topic_id: entry.focus_topic_id
           })
         else
           Journal.update_entry(entry, %{body: body})
@@ -73,7 +74,8 @@ defmodule SprachjournalWeb.EntryLive.Edit do
         body: body,
         prompt: entry.prompt,
         language: entry.language,
-        duration: entry.duration
+        duration: entry.duration,
+        focus_topic_id: entry.focus_topic_id
       }
 
       case Journal.create_entry(attrs) do
@@ -83,12 +85,18 @@ defmodule SprachjournalWeb.EntryLive.Edit do
           pid = self()
 
           Task.start(fn ->
+            focus_text =
+              if entry.focus_topic_id do
+                Sprachjournal.FocusTopics.get_topic!(entry.focus_topic_id).text
+              end
+
             result =
               AI.proofread(body,
                 target_language: config.target_language || "de",
                 native_language: config.native_language || "en",
                 language_level: config.language_level || "B2",
-                prompt_context: config.prompt_context || ""
+                prompt_context: config.prompt_context || "",
+                focus_topic: focus_text
               )
 
             send(pid, {:feedback_loaded, result, new_entry})

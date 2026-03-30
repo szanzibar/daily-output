@@ -14,7 +14,8 @@ defmodule SprachjournalWeb.ConversationLive.Continue do
         {:ok, new_convo} =
           Conversations.create_conversation(%{
             topic: original.topic,
-            language: original.language
+            language: original.language,
+            focus_topic_id: original.focus_topic_id
           })
 
         # Copy all messages to the new conversation

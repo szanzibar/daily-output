@@ -10,6 +10,14 @@ defmodule SprachjournalWeb.ConversationLive.Show do
     {version, total} = Conversations.version_info(conversation)
     versions = Conversations.get_versions(conversation)
 
+    focus_mastered =
+      if conversation.focus_topic_id do
+        topic = Sprachjournal.FocusTopics.get_topic!(conversation.focus_topic_id)
+        topic.mastered_at != nil
+      else
+        false
+      end
+
     {:ok,
      assign(socket,
        page_title: "Gespräch — #{Calendar.strftime(conversation.inserted_at, "%d.%m.%Y")}",
@@ -18,7 +26,9 @@ defmodule SprachjournalWeb.ConversationLive.Show do
        version: version,
        total_versions: total,
        versions: versions,
-       confirm_delete: false
+       confirm_delete: false,
+       focus_pool_texts: Sprachjournal.FocusTopics.active_source_texts(),
+       focus_mastered: focus_mastered
      )}
   end
 
@@ -42,6 +52,48 @@ defmodule SprachjournalWeb.ConversationLive.Show do
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Konnte nicht gelöscht werden.")}
     end
+  end
+
+  def handle_event("add_focus_topic", params, socket) do
+    alias Sprachjournal.{FocusTopics, AI}
+    raw_text = params["text"]
+
+    summarized =
+      case AI.summarize_focus_topic(raw_text) do
+        {:ok, text} -> text
+        {:error, _} -> raw_text
+      end
+
+    FocusTopics.create_topic(%{
+      text: summarized,
+      source_text: raw_text,
+      source_type: params["source_type"],
+      source_id: String.to_integer(params["source_id"])
+    })
+
+    {:noreply, assign(socket, focus_pool_texts: FocusTopics.active_source_texts())}
+  end
+
+  def handle_event("master_focus_topic", _params, socket) do
+    alias Sprachjournal.FocusTopics
+    convo = socket.assigns.conversation
+
+    if convo.focus_topic_id do
+      topic = FocusTopics.get_topic!(convo.focus_topic_id)
+      {:ok, _} = FocusTopics.master_topic(topic)
+
+      {:noreply,
+       assign(socket,
+         focus_mastered: true,
+         focus_pool_texts: FocusTopics.active_source_texts()
+       )}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("override_focus_result", _params, socket) do
+    {:noreply, put_flash(socket, :info, "Überschrieben — zählt als verwendet.")}
   end
 
   @impl true
@@ -95,16 +147,6 @@ defmodule SprachjournalWeb.ConversationLive.Show do
         >
           {if @conversation.feedback, do: "Neue Version", else: "Weiterführen"}
         </.link>
-        <.link
-          :if={@conversation.feedback}
-          navigate={~p"/conversations/#{@conversation.id}/practice"}
-          class={[
-            "brutal-btn px-4 py-2 text-sm no-underline",
-            if(@conversation.practiced_at, do: "block-green", else: "block-blue")
-          ]}
-        >
-          {if @conversation.practiced_at, do: "✓ Geübt", else: "Üben"}
-        </.link>
         <button
           :if={!@confirm_delete}
           phx-click="confirm_delete"
@@ -144,6 +186,13 @@ defmodule SprachjournalWeb.ConversationLive.Show do
           <.chat_feedback messages={@messages} feedback={@conversation.feedback} />
         </div>
 
+        <%!-- Focus Result --%>
+        <.focus_result_box
+          :if={@conversation.feedback["focus_result"]}
+          result={@conversation.feedback["focus_result"]}
+          focus_mastered={@focus_mastered}
+        />
+
         <div
           :if={(@conversation.feedback["commentary"] || []) != []}
           class="border-4 border-ink p-5 mt-6"
@@ -151,11 +200,29 @@ defmodule SprachjournalWeb.ConversationLive.Show do
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
             <span class="inline-block w-3 h-3 block-blue"></span> Tipps
           </h2>
-          <div :for={item <- @conversation.feedback["commentary"] || []} class="mb-3 last:mb-0">
-            <span class="text-xs font-mono uppercase px-2 py-0.5 border-2 border-ink mr-2">
-              {item["type"]}
-            </span>
-            <span class="text-sm">{item["text"]}</span>
+          <div
+            :for={item <- @conversation.feedback["commentary"] || []}
+            class="mb-3 last:mb-0 flex items-start gap-2"
+          >
+            <div class="flex-1">
+              <span class="text-xs font-mono uppercase px-2 py-0.5 border-2 border-ink mr-2">
+                {item["type"]}
+              </span>
+              <span class="text-sm">{item["text"]}</span>
+            </div>
+            <%= if item["text"] in @focus_pool_texts do %>
+              <span class="brutal-btn px-2 py-0.5 block-green text-xs shrink-0">✓</span>
+            <% else %>
+              <button
+                phx-click="add_focus_topic"
+                phx-value-text={item["text"]}
+                phx-value-source_type="conversation"
+                phx-value-source_id={@conversation.id}
+                class="brutal-btn px-2 py-0.5 block-blue text-xs shrink-0 phx-click-loading:opacity-50 phx-click-loading:animate-pulse"
+              >
+                +
+              </button>
+            <% end %>
           </div>
         </div>
       </div>
