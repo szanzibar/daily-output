@@ -133,18 +133,6 @@ defmodule SprachjournalWeb.SettingsLive do
           </div>
         </div>
 
-        <%!-- Practice Mode --%>
-        <div class="border-4 border-ink p-5">
-          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-green"></span> Übungsmodus
-          </h2>
-          <.input
-            field={@form[:practice_enabled]}
-            type="checkbox"
-            label="Übungsmodus aktivieren (korrigierten Text abtippen)"
-          />
-        </div>
-
         <%!-- Languages --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
@@ -303,6 +291,6 @@ defmodule SprachjournalWeb.SettingsLive do
   end
 
   defp api_key_set? do
-    System.get_env("ANTHROPIC_API_KEY") not in [nil, ""]
+    Application.get_env(:sprachjournal, :anthropic_api_key) not in [nil, ""]
   end
 end

@@ -1,7 +1,7 @@
 defmodule SprachjournalWeb.EntryLive.New do
   use SprachjournalWeb, :live_view
 
-  alias Sprachjournal.{Journal, Settings, AI}
+  alias Sprachjournal.{Journal, Settings, AI, FocusTopics}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -22,7 +22,9 @@ defmodule SprachjournalWeb.EntryLive.New do
        entry: nil,
        feedback: nil,
        feedback_loading: false,
-       error: nil
+       error: nil,
+       focus_topics: [],
+       selected_focus_topic: nil
      )
      |> then(fn socket ->
        if connected?(socket), do: load_prompts(socket), else: socket
@@ -102,18 +104,47 @@ defmodule SprachjournalWeb.EntryLive.New do
   end
 
   @impl true
+  def handle_event("add_focus_topic", _params, socket) do
+    # Feedback redirects to show page, so this is a no-op here
+    {:noreply, socket}
+  end
+
+  def handle_event("master_focus_topic", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("override_focus_result", _params, socket) do
+    {:noreply, socket}
+  end
+
   def handle_event("select_prompt", %{"prompt" => prompt}, socket) do
-    {:noreply,
-     socket
-     |> assign(selected_prompt: prompt, phase: :writing)
-     |> start_timer()}
+    topics = FocusTopics.list_active_topics()
+
+    if topics == [] do
+      {:noreply, socket |> assign(selected_prompt: prompt, phase: :writing) |> start_timer()}
+    else
+      {:noreply,
+       assign(socket, selected_prompt: prompt, phase: :focus_topic, focus_topics: topics)}
+    end
   end
 
   def handle_event("freestyle", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(selected_prompt: nil, phase: :writing)
-     |> start_timer()}
+    topics = FocusTopics.list_active_topics()
+
+    if topics == [] do
+      {:noreply, socket |> assign(selected_prompt: nil, phase: :writing) |> start_timer()}
+    else
+      {:noreply, assign(socket, selected_prompt: nil, phase: :focus_topic, focus_topics: topics)}
+    end
+  end
+
+  def handle_event("select_focus_topic", %{"id" => id}, socket) do
+    topic = FocusTopics.get_topic!(String.to_integer(id))
+    {:noreply, socket |> assign(selected_focus_topic: topic, phase: :writing) |> start_timer()}
+  end
+
+  def handle_event("skip_focus_topic", _params, socket) do
+    {:noreply, socket |> assign(phase: :writing) |> start_timer()}
   end
 
   def handle_event("update_body", %{"body" => body}, socket) do
@@ -127,11 +158,14 @@ defmodule SprachjournalWeb.EntryLive.New do
     if String.trim(body) == "" do
       {:noreply, put_flash(socket, :error, "Schreib zuerst etwas!")}
     else
+      focus_topic = socket.assigns.selected_focus_topic
+
       attrs = %{
         body: body,
         prompt: socket.assigns.selected_prompt,
         language: config.target_language || "de",
-        duration: (config.timer_minutes || 5) * 60 - socket.assigns.timer_seconds
+        duration: (config.timer_minutes || 5) * 60 - socket.assigns.timer_seconds,
+        focus_topic_id: focus_topic && focus_topic.id
       }
 
       case Journal.create_entry(attrs) do
@@ -146,6 +180,8 @@ defmodule SprachjournalWeb.EntryLive.New do
   end
 
   defp request_feedback(socket, entry, body, config) do
+    focus_topic = socket.assigns.selected_focus_topic
+
     socket =
       assign(socket,
         entry: entry,
@@ -161,7 +197,8 @@ defmodule SprachjournalWeb.EntryLive.New do
           target_language: config.target_language || "de",
           native_language: config.native_language || "en",
           language_level: config.language_level || "B2",
-          prompt_context: config.prompt_context || ""
+          prompt_context: config.prompt_context || "",
+          focus_topic: focus_topic && focus_topic.text
         )
 
       send(pid, {:feedback_loaded, result, entry})
@@ -219,8 +256,46 @@ defmodule SprachjournalWeb.EntryLive.New do
         </div>
       </div>
 
+      <%!-- PHASE: Focus Topic Selection --%>
+      <div :if={@phase == :focus_topic} class="space-y-6">
+        <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
+          Fokus wählen
+        </h1>
+
+        <hr class="brutal-hr" />
+
+        <p class="text-sm font-mono text-base-content/60">
+          Wähle ein Thema aus deinem Fokus-Pool, auf das du dich konzentrieren willst.
+        </p>
+
+        <div class="grid gap-3">
+          <button
+            :for={topic <- @focus_topics}
+            phx-click="select_focus_topic"
+            phx-value-id={topic.id}
+            class="brutal-btn text-left p-4 bg-base-100 hover:bg-base-200 w-full"
+          >
+            <div class="text-sm normal-case">{topic.text}</div>
+          </button>
+
+          <button
+            phx-click="skip_focus_topic"
+            class="brutal-btn p-4 bg-base-200 text-left w-full"
+          >
+            <div class="font-bold text-base">Überspringen</div>
+            <div class="text-xs opacity-70 mt-1 font-mono">Ohne Fokus-Thema schreiben</div>
+          </button>
+        </div>
+      </div>
+
       <%!-- PHASE: Writing --%>
       <div :if={@phase == :writing}>
+        <%!-- Focus topic reminder --%>
+        <div :if={@selected_focus_topic} class="border-4 border-ink p-3 block-blue mb-4">
+          <span class="text-xs font-mono uppercase tracking-widest">Fokus:</span>
+          <span class="text-sm ml-2">{@selected_focus_topic.text}</span>
+        </div>
+
         <.editor id="editor-new" body={@body} prompt={@selected_prompt} error={@error}>
           <:header>
             <div :if={@selected_prompt} class="text-sm font-mono text-base-content/60 truncate mr-4">

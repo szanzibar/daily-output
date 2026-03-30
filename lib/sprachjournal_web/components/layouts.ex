@@ -22,16 +22,10 @@ defmodule SprachjournalWeb.Layouts do
           </a>
           <nav class="flex items-center gap-1 sm:gap-2">
             <.link
-              navigate={~p"/entries/new"}
-              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-yellow no-underline"
+              navigate={~p"/fokus"}
+              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-blue no-underline"
             >
-              Eintrag
-            </.link>
-            <.link
-              navigate={~p"/conversations/new"}
-              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-pink no-underline"
-            >
-              Gespräch
+              Fokus
             </.link>
             <.link
               navigate={~p"/settings"}

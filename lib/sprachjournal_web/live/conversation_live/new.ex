@@ -1,7 +1,7 @@
 defmodule SprachjournalWeb.ConversationLive.New do
   use SprachjournalWeb, :live_view
 
-  alias Sprachjournal.{Conversations, Settings, AI}
+  alias Sprachjournal.{Conversations, Settings, AI, FocusTopics}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -20,7 +20,9 @@ defmodule SprachjournalWeb.ConversationLive.New do
        ai_loading: false,
        feedback: nil,
        feedback_loading: false,
-       error: nil
+       error: nil,
+       focus_topics: [],
+       selected_focus_topic: nil
      )
      |> then(fn socket ->
        if connected?(socket), do: load_openers(socket), else: socket
@@ -111,17 +113,59 @@ defmodule SprachjournalWeb.ConversationLive.New do
 
   @impl true
   def handle_event("select_opener", %{"opener" => opener}, socket) do
-    start_conversation(socket, opener, :ai_opens)
+    topics = FocusTopics.list_active_topics()
+
+    if topics == [] do
+      start_conversation(socket, opener, :ai_opens)
+    else
+      {:noreply,
+       assign(socket,
+         phase: :focus_topic,
+         focus_topics: topics,
+         pending_opener: opener,
+         pending_mode: :ai_opens
+       )}
+    end
   end
 
   def handle_event("freestyle", %{"topic" => topic}, socket) do
     topic = String.trim(topic)
+    {opener, mode} = if topic == "", do: {nil, :empty}, else: {topic, :user_opens}
+    topics = FocusTopics.list_active_topics()
 
-    if topic == "" do
-      start_conversation(socket, nil, :empty)
+    if topics == [] do
+      start_conversation(socket, opener, mode)
     else
-      start_conversation(socket, topic, :user_opens)
+      {:noreply,
+       assign(socket,
+         phase: :focus_topic,
+         focus_topics: topics,
+         pending_opener: opener,
+         pending_mode: mode
+       )}
     end
+  end
+
+  def handle_event("select_focus_topic", %{"id" => id}, socket) do
+    topic = FocusTopics.get_topic!(String.to_integer(id))
+    socket = assign(socket, selected_focus_topic: topic)
+    start_conversation(socket, socket.assigns.pending_opener, socket.assigns.pending_mode)
+  end
+
+  def handle_event("skip_focus_topic", _params, socket) do
+    start_conversation(socket, socket.assigns.pending_opener, socket.assigns.pending_mode)
+  end
+
+  def handle_event("add_focus_topic", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("master_focus_topic", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("override_focus_result", _params, socket) do
+    {:noreply, socket}
   end
 
   def handle_event("send", %{"message" => message}, socket) do
@@ -172,7 +216,9 @@ defmodule SprachjournalWeb.ConversationLive.New do
           target_language: config.target_language || "de",
           native_language: config.native_language || "en",
           language_level: config.language_level || "B2",
-          prompt_context: config.prompt_context || ""
+          prompt_context: config.prompt_context || "",
+          focus_topic:
+            socket.assigns.selected_focus_topic && socket.assigns.selected_focus_topic.text
         )
 
       send(pid, {:feedback_loaded, result})
@@ -184,9 +230,12 @@ defmodule SprachjournalWeb.ConversationLive.New do
   defp start_conversation(socket, topic, mode) do
     config = socket.assigns.config
 
+    focus_topic = socket.assigns.selected_focus_topic
+
     case Conversations.create_conversation(%{
            topic: topic,
-           language: config.target_language || "de"
+           language: config.target_language || "de",
+           focus_topic_id: focus_topic && focus_topic.id
          }) do
       {:ok, conversation} ->
         socket = assign(socket, conversation: conversation, phase: :chat, messages: [])
@@ -293,8 +342,45 @@ defmodule SprachjournalWeb.ConversationLive.New do
         </div>
       </div>
 
+      <%!-- PHASE: Focus Topic Selection --%>
+      <div :if={@phase == :focus_topic} class="space-y-6">
+        <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
+          Fokus wählen
+        </h1>
+
+        <hr class="brutal-hr" />
+
+        <p class="text-sm font-mono text-base-content/60">
+          Wähle ein Thema aus deinem Fokus-Pool, auf das du dich konzentrieren willst.
+        </p>
+
+        <div class="grid gap-3">
+          <button
+            :for={topic <- @focus_topics}
+            phx-click="select_focus_topic"
+            phx-value-id={topic.id}
+            class="brutal-btn text-left p-4 bg-base-100 hover:bg-base-200 w-full"
+          >
+            <div class="text-sm normal-case">{topic.text}</div>
+          </button>
+
+          <button
+            phx-click="skip_focus_topic"
+            class="brutal-btn p-4 bg-base-200 text-left w-full"
+          >
+            <div class="font-bold text-base">Überspringen</div>
+            <div class="text-xs opacity-70 mt-1 font-mono">Ohne Fokus-Thema sprechen</div>
+          </button>
+        </div>
+      </div>
+
       <%!-- PHASE: Chat --%>
       <div :if={@phase == :chat} class="space-y-4">
+        <%!-- Focus topic reminder --%>
+        <div :if={@selected_focus_topic} class="border-4 border-ink p-3 block-blue">
+          <span class="text-xs font-mono uppercase tracking-widest">Fokus:</span>
+          <span class="text-sm ml-2">{@selected_focus_topic.text}</span>
+        </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
             Gespräch

@@ -10,10 +10,27 @@ defmodule Sprachjournal.AI.Proofreader do
     native = Keyword.fetch!(opts, :native_language)
     level = Keyword.get(opts, :language_level, "B2")
     context = Keyword.get(opts, :prompt_context, "")
+    focus_topic = Keyword.get(opts, :focus_topic)
 
     context_block =
       if context != "" do
         "\n\nAdditional context about the student:\n#{context}\n"
+      else
+        ""
+      end
+
+    focus_block =
+      if focus_topic && focus_topic != "" do
+        """
+
+        The student chose to focus on this concept for this exercise: "#{focus_topic}"
+
+        In your response JSON, add a "focus_result" field:
+        {"used": true/false, "correct": true/false, "comment": "brief note on how they used or could have used this concept"}
+        - "used": did the student attempt to use this concept at all?
+        - "correct": if used, did they use it correctly?
+        - "comment": brief encouraging feedback about their use of this concept
+        """
       else
         ""
       end
@@ -39,7 +56,7 @@ defmodule Sprachjournal.AI.Proofreader do
     - Focus on patterns that will help them progress from #{level} toward the next level
 
     IMPORTANT: Write ALL feedback text (annotations, commentary, encouragement) in #{feedback_lang}.
-    #{context_block}
+    #{context_block}#{focus_block}
     Respond with ONLY a JSON object:
     {
       "annotated_text": "full text with [[id:original||corrected]] markers on errors",
@@ -98,11 +115,17 @@ defmodule Sprachjournal.AI.Proofreader do
   end
 
   defp normalize_feedback(feedback) do
-    %{
+    base = %{
       "annotated_text" => feedback["annotated_text"] || "",
       "annotations" => feedback["annotations"] || [],
       "commentary" => feedback["commentary"] || [],
       "encouragement" => feedback["encouragement"] || ""
     }
+
+    if feedback["focus_result"] do
+      Map.put(base, "focus_result", feedback["focus_result"])
+    else
+      base
+    end
   end
 end
