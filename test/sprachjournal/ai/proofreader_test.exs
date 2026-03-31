@@ -58,6 +58,13 @@ defmodule Sprachjournal.AI.ProofreaderTest do
       assert feedback["annotated_text"] == "Ich [[1:gehe||ging]] nach Hause."
     end
 
+    test "strips markdown code fences with trailing newline" do
+      wrapped = "```json\n#{@valid_json}\n```\n\n\n"
+
+      assert {:ok, feedback} = Proofreader.parse_feedback(wrapped)
+      assert feedback["annotated_text"] == "Ich [[1:gehe||ging]] nach Hause."
+    end
+
     test "strips markdown code fences with focus_result" do
       json = Jason.encode!(%{
         "annotated_text" => "Test",

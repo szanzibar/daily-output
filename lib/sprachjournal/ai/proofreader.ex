@@ -108,7 +108,7 @@ defmodule Sprachjournal.AI.Proofreader do
   @doc false
   def parse_feedback(text) do
     # Strip markdown code fences if present
-    cleaned = Regex.replace(~r/```json\s*\n?|```\s*$/, text, "")
+    cleaned = Regex.replace(~r/```(?:json)?\s*/, text, "")
 
     case Regex.run(~r/\{[\s\S]*\}/, cleaned) do
       [json_str] ->
