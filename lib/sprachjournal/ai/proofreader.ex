@@ -3,6 +3,8 @@ defmodule Sprachjournal.AI.Proofreader do
   AI-powered proofreading with inline correction markers.
   """
 
+  require Logger
+
   alias Sprachjournal.AI
 
   def proofread(text, opts) do
@@ -123,11 +125,13 @@ defmodule Sprachjournal.AI.Proofreader do
                 {:ok, normalize_feedback(feedback)}
 
               _ ->
+                Logger.error("Proofreader: invalid JSON in AI response:\n#{text}")
                 {:error, :invalid_json}
             end
         end
 
       nil ->
+        Logger.error("Proofreader: no JSON found in AI response:\n#{text}")
         {:error, :no_json_found}
     end
   end
