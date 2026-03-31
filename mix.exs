@@ -83,8 +83,8 @@ defmodule Sprachjournal.MixProject do
       test: [
         "ecto.create --quiet",
         "ecto.migrate --quiet",
+        "cmd node --test assets/js/annotated_text_test.js",
         "test",
-        "cmd node --test assets/js/annotated_text_test.js"
       ],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["compile", "tailwind sprachjournal", "esbuild sprachjournal"],
