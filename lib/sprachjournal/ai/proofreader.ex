@@ -24,12 +24,7 @@ defmodule Sprachjournal.AI.Proofreader do
         """
 
         The student chose to focus on this concept for this exercise: "#{focus_topic}"
-
-        In your response JSON, add a "focus_result" field:
-        {"used": true/false, "correct": true/false, "comment": "brief note on how they used or could have used this concept"}
-        - "used": did the student attempt to use this concept at all?
-        - "correct": if used, did they use it correctly?
-        - "comment": brief encouraging feedback about their use of this concept
+        You MUST include a "focus_result" field in the JSON (see template below).
         """
       else
         ""
@@ -41,6 +36,16 @@ defmodule Sprachjournal.AI.Proofreader do
         target
       else
         native
+      end
+
+    focus_result_template =
+      if focus_topic && focus_topic != "" do
+        """
+        ,
+          "focus_result": {"used": true, "correct": false, "comment": "brief note on how they used or could have used this concept"}
+        """
+      else
+        ""
       end
 
     system = """
@@ -57,12 +62,12 @@ defmodule Sprachjournal.AI.Proofreader do
 
     IMPORTANT: Write ALL feedback text (annotations, commentary, encouragement) in #{feedback_lang}.
     #{context_block}#{focus_block}
-    Respond with ONLY a JSON object:
+    Respond with ONLY a JSON object (no markdown fences, no extra text):
     {
       "annotated_text": "full text with [[id:original||corrected]] markers on errors",
       "annotations": [{"id": 1, "explanation": "very brief fix reason in #{feedback_lang} (5-10 words max)"}],
       "commentary": [{"type": "pattern", "text": "detailed explanation in #{feedback_lang}"}],
-      "encouragement": "brief positive note in #{feedback_lang}"
+      "encouragement": "brief positive note in #{feedback_lang}"#{focus_result_template}
     }
 
     RULES for annotated_text:
@@ -98,15 +103,28 @@ defmodule Sprachjournal.AI.Proofreader do
     end
   end
 
-  defp parse_feedback(text) do
-    case Regex.run(~r/\{[\s\S]*\}/, text) do
+  @doc false
+  def parse_feedback(text) do
+    # Strip markdown code fences if present
+    cleaned = Regex.replace(~r/```json\s*\n?|```\s*$/, text, "")
+
+    case Regex.run(~r/\{[\s\S]*\}/, cleaned) do
       [json_str] ->
         case Jason.decode(json_str) do
           {:ok, feedback} when is_map(feedback) ->
             {:ok, normalize_feedback(feedback)}
 
-          _ ->
-            {:error, :invalid_json}
+          {:error, _} ->
+            # Retry after fixing common LLM JSON mistakes (true/false literals)
+            fixed = String.replace(json_str, "true/false", "false")
+
+            case Jason.decode(fixed) do
+              {:ok, feedback} when is_map(feedback) ->
+                {:ok, normalize_feedback(feedback)}
+
+              _ ->
+                {:error, :invalid_json}
+            end
         end
 
       nil ->
