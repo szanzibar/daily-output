@@ -3,111 +3,94 @@ defmodule Sprachjournal.AI.ProofreaderTest do
 
   alias Sprachjournal.AI.Proofreader
 
-  describe "parse_feedback/1" do
-    @valid_json Jason.encode!(%{
-      "annotated_text" => "Ich [[1:gehe||ging]] nach Hause.",
-      "annotations" => [%{"id" => 1, "explanation" => "Vergangenheitsform nötig"}],
-      "commentary" => [%{"type" => "pattern", "text" => "Achte auf Zeitformen."}],
-      "encouragement" => "Gut gemacht!"
-    })
+  describe "feedback_tool/1" do
+    test "without focus topic, focus_result is not required" do
+      tool = Proofreader.feedback_tool(nil)
 
-    test "parses valid JSON response" do
-      assert {:ok, feedback} = Proofreader.parse_feedback(@valid_json)
-      assert feedback["annotated_text"] == "Ich [[1:gehe||ging]] nach Hause."
-      assert length(feedback["annotations"]) == 1
-      assert feedback["encouragement"] == "Gut gemacht!"
+      assert tool.input_schema["required"] ==
+               ["annotated_text", "annotations", "commentary", "encouragement"]
+
+      refute Map.has_key?(tool.input_schema["properties"], "focus_result")
     end
 
-    test "parses response with focus_result" do
-      json = Jason.encode!(%{
-        "annotated_text" => "Ich bin müde.",
+    test "with focus topic, focus_result is required" do
+      tool = Proofreader.feedback_tool("Nebensatzkonnektoren")
+
+      assert "focus_result" in tool.input_schema["required"]
+      focus_props = tool.input_schema["properties"]["focus_result"]["properties"]
+      assert Map.has_key?(focus_props, "used")
+      assert Map.has_key?(focus_props, "correct")
+      assert Map.has_key?(focus_props, "comment")
+    end
+
+    test "with empty string focus topic, focus_result is not required" do
+      tool = Proofreader.feedback_tool("")
+      refute "focus_result" in tool.input_schema["required"]
+    end
+
+    test "commentary type is constrained to valid values" do
+      tool = Proofreader.feedback_tool(nil)
+      commentary_props = tool.input_schema["properties"]["commentary"]["items"]["properties"]
+      assert commentary_props["type"]["enum"] == ["pattern", "suggestion", "alternative"]
+    end
+  end
+
+  describe "normalize_feedback/1" do
+    test "passes through complete feedback" do
+      input = %{
+        "annotated_text" => "Ich [[1:gehe||ging]] nach Hause.",
+        "annotations" => [%{"id" => 1, "explanation" => "Vergangenheitsform"}],
+        "commentary" => [%{"type" => "pattern", "text" => "Achte auf Zeitformen."}],
+        "encouragement" => "Gut gemacht!"
+      }
+
+      result = Proofreader.normalize_feedback(input)
+      assert result["annotated_text"] == "Ich [[1:gehe||ging]] nach Hause."
+      assert length(result["annotations"]) == 1
+      assert result["encouragement"] == "Gut gemacht!"
+      refute Map.has_key?(result, "focus_result")
+    end
+
+    test "includes focus_result when present" do
+      input = %{
+        "annotated_text" => "Test.",
         "annotations" => [],
         "commentary" => [],
         "encouragement" => "Toll!",
-        "focus_result" => %{"used" => true, "correct" => true, "comment" => "Gut verwendet!"}
-      })
-
-      assert {:ok, feedback} = Proofreader.parse_feedback(json)
-      assert feedback["focus_result"]["used"] == true
-      assert feedback["focus_result"]["correct"] == true
-      assert feedback["focus_result"]["comment"] == "Gut verwendet!"
-    end
-
-    test "handles true/false literals in focus_result" do
-      # This is the actual bug: the LLM outputs literal true/false instead of a boolean
-      bad_json = """
-      {
-        "annotated_text": "Ich bin müde.",
-        "annotations": [],
-        "commentary": [],
-        "encouragement": "Toll!",
-        "focus_result": {"used": true/false, "correct": true/false, "comment": "Konnte nicht beurteilt werden"}
+        "focus_result" => %{"used" => true, "correct" => true, "comment" => "Gut!"}
       }
-      """
 
-      assert {:ok, feedback} = Proofreader.parse_feedback(bad_json)
-      assert feedback["annotated_text"] == "Ich bin müde."
-      assert feedback["focus_result"]["used"] == false
-      assert feedback["focus_result"]["comment"] == "Konnte nicht beurteilt werden"
+      result = Proofreader.normalize_feedback(input)
+      assert result["focus_result"]["used"] == true
+      assert result["focus_result"]["correct"] == true
     end
 
-    test "strips markdown code fences" do
-      wrapped = "```json\n#{@valid_json}\n```"
-
-      assert {:ok, feedback} = Proofreader.parse_feedback(wrapped)
-      assert feedback["annotated_text"] == "Ich [[1:gehe||ging]] nach Hause."
+    test "defaults missing fields" do
+      result = Proofreader.normalize_feedback(%{})
+      assert result["annotated_text"] == ""
+      assert result["annotations"] == []
+      assert result["commentary"] == []
+      assert result["encouragement"] == ""
+      refute Map.has_key?(result, "focus_result")
     end
 
-    test "strips markdown code fences with trailing newline" do
-      wrapped = "```json\n#{@valid_json}\n```\n\n\n"
-
-      assert {:ok, feedback} = Proofreader.parse_feedback(wrapped)
-      assert feedback["annotated_text"] == "Ich [[1:gehe||ging]] nach Hause."
-    end
-
-    test "strips markdown code fences with focus_result" do
-      json = Jason.encode!(%{
-        "annotated_text" => "Test",
+    test "handles German text with quotes" do
+      input = %{
+        "annotated_text" => "Und (wie sagt man \u201Eso far\u201C) geht es gut.",
+        "commentary" => [
+          %{
+            "type" => "pattern",
+            "text" => "\u201Ees ist gut, h\u00F6her singen zu lernen.\u201C braucht ein Komma."
+          }
+        ],
         "annotations" => [],
-        "commentary" => [],
-        "encouragement" => "Gut!",
-        "focus_result" => %{"used" => false, "correct" => false, "comment" => "Nicht verwendet"}
-      })
+        "encouragement" => "Sehr gut!",
+        "focus_result" => %{"used" => true, "correct" => false, "comment" => "Fast!"}
+      }
 
-      wrapped = "```json\n#{json}\n```"
-
-      assert {:ok, feedback} = Proofreader.parse_feedback(wrapped)
-      assert feedback["focus_result"]["used"] == false
-    end
-
-    test "returns error for completely invalid response" do
-      assert {:error, :no_json_found} = Proofreader.parse_feedback("no json here at all")
-    end
-
-    test "returns error for malformed JSON that can't be repaired" do
-      assert {:error, :invalid_json} = Proofreader.parse_feedback("{not: valid, json: at all}")
-    end
-
-    test "normalizes missing fields to defaults" do
-      json = Jason.encode!(%{"annotated_text" => "Hallo"})
-
-      assert {:ok, feedback} = Proofreader.parse_feedback(json)
-      assert feedback["annotated_text"] == "Hallo"
-      assert feedback["annotations"] == []
-      assert feedback["commentary"] == []
-      assert feedback["encouragement"] == ""
-      refute Map.has_key?(feedback, "focus_result")
-    end
-
-    test "extracts JSON when LLM includes surrounding text" do
-      response = """
-      Here is my feedback:
-      {"annotated_text": "Hallo", "annotations": [], "commentary": [], "encouragement": "Gut!"}
-      I hope this helps!
-      """
-
-      assert {:ok, feedback} = Proofreader.parse_feedback(response)
-      assert feedback["annotated_text"] == "Hallo"
+      result = Proofreader.normalize_feedback(input)
+      assert result["focus_result"]["used"] == true
+      assert result["focus_result"]["correct"] == false
     end
   end
 end

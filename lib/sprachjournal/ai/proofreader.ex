@@ -1,6 +1,7 @@
 defmodule Sprachjournal.AI.Proofreader do
   @moduledoc """
   AI-powered proofreading with inline correction markers.
+  Uses tool_use for structured output to avoid JSON parsing issues.
   """
 
   require Logger
@@ -26,7 +27,7 @@ defmodule Sprachjournal.AI.Proofreader do
         """
 
         The student chose to focus on this concept for this exercise: "#{focus_topic}"
-        You MUST include a "focus_result" field in the JSON (see template below).
+        You MUST include a "focus_result" in your response.
         """
       else
         ""
@@ -38,16 +39,6 @@ defmodule Sprachjournal.AI.Proofreader do
         target
       else
         native
-      end
-
-    focus_result_template =
-      if focus_topic && focus_topic != "" do
-        """
-        ,
-          "focus_result": {"used": true, "correct": false, "comment": "brief note on how they used or could have used this concept"}
-        """
-      else
-        ""
       end
 
     system = """
@@ -64,13 +55,7 @@ defmodule Sprachjournal.AI.Proofreader do
 
     IMPORTANT: Write ALL feedback text (annotations, commentary, encouragement) in #{feedback_lang}.
     #{context_block}#{focus_block}
-    Respond with ONLY a JSON object (no markdown fences, no extra text):
-    {
-      "annotated_text": "full text with [[id:original||corrected]] markers on errors",
-      "annotations": [{"id": 1, "explanation": "very brief fix reason in #{feedback_lang} (5-10 words max)"}],
-      "commentary": [{"type": "pattern", "text": "detailed explanation in #{feedback_lang}"}],
-      "encouragement": "brief positive note in #{feedback_lang}"#{focus_result_template}
-    }
+    Use the provide_feedback tool to return your response.
 
     RULES for annotated_text:
     - Reproduce the ENTIRE original text, preserving all original line breaks
@@ -84,7 +69,6 @@ defmodule Sprachjournal.AI.Proofreader do
     - Keep annotation explanations VERY SHORT (5-10 words)
     - Put longer explanations and teaching points in "commentary" instead
     - commentary type can be "pattern", "suggestion", or "alternative"
-    - Respond with ONLY the JSON. No other text.
     """
 
     with {:ok, client} <- AI.client() do
@@ -94,10 +78,19 @@ defmodule Sprachjournal.AI.Proofreader do
              messages: [
                %{role: "user", content: "Please proofread this journal entry:\n\n#{text}"}
              ],
+             tools: [feedback_tool(focus_topic)],
+             tool_choice: %{type: "tool", name: "provide_feedback"},
              max_tokens: 4096
            ) do
-        {:ok, %{"content" => [%{"text" => text} | _]}} ->
-          parse_feedback(text)
+        {:ok, %{"content" => content}} ->
+          case Enum.find(content, &(&1["type"] == "tool_use")) do
+            %{"input" => input} when is_map(input) ->
+              {:ok, normalize_feedback(input)}
+
+            _ ->
+              Logger.error("Proofreader: no tool_use block in response: #{inspect(content)}")
+              {:error, :no_tool_response}
+          end
 
         {:error, reason} ->
           {:error, reason}
@@ -106,37 +99,91 @@ defmodule Sprachjournal.AI.Proofreader do
   end
 
   @doc false
-  def parse_feedback(text) do
-    # Strip markdown code fences if present
-    cleaned = Regex.replace(~r/```(?:json)?\s*/, text, "")
+  def feedback_tool(focus_topic) do
+    base_properties = %{
+      "annotated_text" => %{
+        "type" => "string",
+        "description" =>
+          "Full original text with [[id:original||corrected]] markers on errors"
+      },
+      "annotations" => %{
+        "type" => "array",
+        "items" => %{
+          "type" => "object",
+          "properties" => %{
+            "id" => %{"type" => "integer"},
+            "explanation" => %{
+              "type" => "string",
+              "description" => "Very brief fix reason (5-10 words max)"
+            }
+          },
+          "required" => ["id", "explanation"]
+        }
+      },
+      "commentary" => %{
+        "type" => "array",
+        "items" => %{
+          "type" => "object",
+          "properties" => %{
+            "type" => %{
+              "type" => "string",
+              "enum" => ["pattern", "suggestion", "alternative"]
+            },
+            "text" => %{"type" => "string", "description" => "Detailed explanation"}
+          },
+          "required" => ["type", "text"]
+        }
+      },
+      "encouragement" => %{
+        "type" => "string",
+        "description" => "Brief positive note"
+      }
+    }
 
-    case Regex.run(~r/\{[\s\S]*\}/, cleaned) do
-      [json_str] ->
-        case Jason.decode(json_str) do
-          {:ok, feedback} when is_map(feedback) ->
-            {:ok, normalize_feedback(feedback)}
+    base_required = ["annotated_text", "annotations", "commentary", "encouragement"]
 
-          {:error, _} ->
-            # Retry after fixing common LLM JSON mistakes (true/false literals)
-            fixed = String.replace(json_str, "true/false", "false")
+    {properties, required} =
+      if focus_topic && focus_topic != "" do
+        focus_prop = %{
+          "focus_result" => %{
+            "type" => "object",
+            "properties" => %{
+              "used" => %{
+                "type" => "boolean",
+                "description" => "Did the student attempt to use this concept?"
+              },
+              "correct" => %{
+                "type" => "boolean",
+                "description" => "If used, did they use it correctly?"
+              },
+              "comment" => %{
+                "type" => "string",
+                "description" =>
+                  "Brief encouraging feedback about their use of this concept"
+              }
+            },
+            "required" => ["used", "correct", "comment"]
+          }
+        }
 
-            case Jason.decode(fixed) do
-              {:ok, feedback} when is_map(feedback) ->
-                {:ok, normalize_feedback(feedback)}
+        {Map.merge(base_properties, focus_prop), base_required ++ ["focus_result"]}
+      else
+        {base_properties, base_required}
+      end
 
-              _ ->
-                Logger.error("Proofreader: invalid JSON in AI response:\n#{text}")
-                {:error, :invalid_json}
-            end
-        end
-
-      nil ->
-        Logger.error("Proofreader: no JSON found in AI response:\n#{text}")
-        {:error, :no_json_found}
-    end
+    %{
+      name: "provide_feedback",
+      description: "Provide proofreading feedback on the student's journal entry",
+      input_schema: %{
+        "type" => "object",
+        "properties" => properties,
+        "required" => required
+      }
+    }
   end
 
-  defp normalize_feedback(feedback) do
+  @doc false
+  def normalize_feedback(feedback) do
     base = %{
       "annotated_text" => feedback["annotated_text"] || "",
       "annotations" => feedback["annotations"] || [],
