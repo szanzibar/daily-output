@@ -3,7 +3,14 @@ defmodule DailyOutput.AI do
   AI context wrapping Anthropix for prompt generation and proofreading.
   """
 
-  alias DailyOutput.AI.{PromptGenerator, Proofreader, TopicGenerator, ConversationPartner, FocusSummarizer}
+  alias DailyOutput.AI.{
+    PromptGenerator,
+    Proofreader,
+    TopicGenerator,
+    ConversationPartner,
+    FocusSummarizer
+  }
+
   alias DailyOutput.Cache
 
   @model_cache_key "anthropic_sonnet_model"

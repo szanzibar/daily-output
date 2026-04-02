@@ -1,27 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Background: electric blue -->
+  <!-- Blue background block -->
   <rect width="512" height="512" fill="#2563eb"/>
 
-  <!-- Bold border -->
-  <rect x="8" y="8" width="496" height="496" fill="none" stroke="#000" stroke-width="16"/>
+  <!-- Bold black border -->
+  <rect x="8" y="8" width="496" height="496" fill="none" stroke="#1a1a2e" stroke-width="16"/>
 
-  <!-- "S" letter — big, bold, brutalist -->
-  <text x="80" y="340" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="360" fill="#fff" letter-spacing="-20">S</text>
+  <!-- Yellow accent block — bottom-right quadrant -->
+  <rect x="256" y="256" width="248" height="248" fill="#facc15"/>
+  <rect x="256" y="256" width="248" height="248" fill="none" stroke="#1a1a2e" stroke-width="8"/>
 
-  <!-- Yellow accent block behind "J" -->
-  <rect x="260" y="120" width="200" height="280" fill="#ffd700"/>
-  <rect x="260" y="120" width="200" height="280" fill="none" stroke="#000" stroke-width="8"/>
+  <!-- "D" letter — bold, left side -->
+  <text x="40" y="370" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="380" fill="#f5f5f0" letter-spacing="-25">D</text>
 
-  <!-- "J" letter -->
-  <text x="280" y="340" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="280" fill="#000" letter-spacing="-10">J</text>
+  <!-- "O" letter — bold, right side, overlapping yellow block -->
+  <text x="250" y="370" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="380" fill="#1a1a2e" letter-spacing="-25">O</text>
 
-  <!-- Red correction line — the proofreading motif -->
-  <line x1="60" y1="380" x2="452" y2="380" stroke="#ef4444" stroke-width="12"/>
-  <line x1="60" y1="380" x2="452" y2="380" stroke="#ef4444" stroke-width="4" stroke-dasharray="none"/>
+  <!-- Horizontal rule — brutalist accent line -->
+  <rect x="32" y="400" width="448" height="12" fill="#facc15"/>
+  <rect x="32" y="400" width="448" height="12" fill="none" stroke="#1a1a2e" stroke-width="3"/>
 
-  <!-- Small green correction text -->
-  <text x="80" y="440" font-family="Courier New, monospace" font-weight="700" font-size="48" fill="#22c55e" font-style="italic">schreib.</text>
-
-  <!-- Pencil/edit mark -->
-  <text x="400" y="480" font-family="Arial, sans-serif" font-weight="900" font-size="60" fill="#fff">✎</text>
+  <!-- Small "daily output" micro-text below the line -->
+  <text x="40" y="468" font-family="'Courier New', monospace" font-weight="700" font-size="42" fill="#f5f5f0" letter-spacing="6">DAILY</text>
+  <text x="270" y="468" font-family="'Courier New', monospace" font-weight="700" font-size="42" fill="#1a1a2e" letter-spacing="6">OUTPUT</text>
 </svg>

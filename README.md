@@ -1,43 +1,32 @@
 # DailyOutput
 
-A daily language learning app with AI-powered proofreading, conversation practice, and gamified daily challenges. Write and speak in your target language, get instant inline corrections and learning tips.
+A daily language practice journal with AI feedback. Write and speak in your target language every day, get instant inline corrections and learning tips.
 
-Built with Phoenix LiveView, SQLite, and the Anthropic API. Swiss brutalist UI design.
+Built with Phoenix LiveView, SQLite, and the Anthropic API (Claude). Brutalist UI design.
+
+## Why
+
+The only way to improve at a language is to produce output — writing and speaking — regularly. DailyOutput gives you a daily structure: write a timed journal entry, have an AI conversation, get detailed feedback, and track your streak. The AI adapts to your CEFR level so you only see corrections relevant to what you should know.
 
 ## Features
 
-### Journal Entries
-- Timed daily journal with AI-generated writing prompts
-- Configurable timer (default 5 minutes)
-- Distraction-free monospace editor
+- **Timed writing entries** — AI-generated prompts, configurable timer, distraction-free editor
+- **AI conversations** — Role-play with a language partner who responds naturally
+- **Inline corrections** — College professor style: strikethrough + corrections with annotations
+- **Tips & commentary** — Grammar patterns, suggestions, encouragement
+- **Focus topics** — Save tips from feedback, choose one to practice before each session
+- **Streak tracking** — Daily challenge (1 entry + 1 conversation), streak counter
+- **Versioning** — Edit entries, continue conversations, track all versions
+- **PWA** — Install on your phone, works offline
+- **i18n** — English and German UI, auto-switches based on your level (B1+ = target language)
 
-### Conversations
-- Role-play conversations with an AI partner
-- AI responds naturally in Swiss Standard German
-- Configurable minimum exchanges before completion
+## Supported Languages
 
-### AI Feedback
-- Inline corrections (college professor style) — strikethrough + green corrections with annotations positioned below
-- JS-powered dynamic line wrapping and annotation placement
-- Commentary section for grammar patterns and suggestions
-- Feedback language switches to German at B2+ level
+The app works with any target language for AI feedback. The UI itself is available in:
+- English (default)
+- German
 
-### Practice Mode
-- Retype corrected text character-by-character
-- Real-time visual feedback (correct = black, wrong = red highlight)
-- Conversation practice jumps between user messages with AI context
-
-### Daily Challenge
-- Two tasks: Eintrag (journal) + Gespräch (conversation)
-- Each task has two stages: written (½) and practiced (✓)
-- Streak counter tracks consecutive fully-completed days
-- Activity history grouped by date with completion indicators
-
-### Other
-- Entry/conversation versioning (multiple per day, soft delete)
-- Auto-discovers latest Claude Sonnet model from API
-- PWA installable on phone
-- Docker deployment with auto-migration on start
+The AI prompts for German use Swiss Standard German conventions (no ß).
 
 ## Setup
 
@@ -66,30 +55,45 @@ Visit [localhost:4000](http://localhost:4000).
 ### Docker
 
 ```bash
-# Create .env
 cp .env.example .env
-# Edit with your ANTHROPIC_API_KEY and SECRET_KEY_BASE (run: mix phx.gen.secret)
+# Edit with ANTHROPIC_API_KEY and SECRET_KEY_BASE (generate: mix phx.gen.secret)
 
-# Deploy (or use deploy.sh)
-./deploy.sh
+docker compose up -d
 ```
 
 ### Testing
 
 ```bash
-# Runs 72 Elixir tests + 29 JS tests
 mix test
 ```
 
-Tests are colocated with source files (in `lib/`), not in `test/`.
+Tests are colocated with source files in `lib/`.
+
+## Configuration
+
+All configuration is done through the in-app settings page:
+
+| Setting | Description |
+|---|---|
+| Timer duration | Minutes per writing entry (1-60) |
+| Min. exchanges | Minimum conversation turns before completion |
+| Target language | The language you're learning |
+| Native language | Your first language |
+| CEFR level | A1-C2, calibrates feedback difficulty |
+| Topics | Subjects for AI-generated writing prompts |
+| Prompt context | Custom instructions for the AI |
+| UI language | Auto (target language at B1+), English, or German |
+
+The only environment variable required is `ANTHROPIC_API_KEY` in `.env`.
 
 ## Architecture
 
-- **Phoenix LiveView** — all pages are LiveViews
+- **Phoenix LiveView** — all pages are stateful LiveViews, no REST API
 - **Ecto + SQLite** — file-based database, no Postgres needed
 - **Anthropix** — Elixir client for the Anthropic API
-- **Tailwind 4 + daisyUI** — custom brutalist theme
-- **Minimal JS** — only for DOM measurement (annotated text rendering) and textarea hooks
+- **Tailwind 4** — custom brutalist theme
+- **Gettext** — i18n with English source, German translations
+- **Minimal JS** — only DOM measurement for annotated text and textarea auto-expand
 
 ### Contexts
 
@@ -97,38 +101,20 @@ Tests are colocated with source files (in `lib/`), not in `test/`.
 |---|---|
 | `DailyOutput.Journal` | Entries CRUD, versioning, word count |
 | `DailyOutput.Conversations` | Conversations + messages, versioning |
-| `DailyOutput.Settings` | User preferences (timer, languages, topics, level) |
-| `DailyOutput.AI` | Prompt/topic generation, conversation partner, proofreading |
-| `DailyOutput.Practice` | Text extraction, char comparison, daily challenge, streak |
+| `DailyOutput.Settings` | User preferences (singleton config) |
+| `DailyOutput.FocusTopics` | Focus pool, streaks, daily challenge |
+| `DailyOutput.AI` | Prompt generation, conversation, proofreading |
 | `DailyOutput.Cache` | Key-value cache for API model discovery |
 
-### Color System
+## Contributing
 
-| Color | Meaning |
-|---|---|
-| Yellow | Entry/Eintrag |
-| Pink | Gespräch/Conversation |
-| Blue | Üben/Practice, send actions |
-| Orange | Settings, half-complete status |
-| Green | Success/complete status |
-| Purple | Secondary actions (+ Neu) |
-| Cyan | Versions, save/draft |
-| Dark | Delete, cancel |
-| Red | Errors, corrections |
+Contributions welcome! Some areas that could use help:
 
-## Configuration
-
-All configuration is done through the settings page:
-- Timer duration, minimum conversation exchanges
-- Target/native language, CEFR level (A1-C2)
-- Topics for AI prompts
-- Custom prompt context
-- Practice mode toggle
-
-The only external config is `ANTHROPIC_API_KEY` in `.env`.
-
-Swiss Standard German is hardcoded in all AI prompts (no ß, Swiss terms).
+- Additional UI translations (add a new locale in `priv/gettext/`)
+- More target language support in AI prompts
+- Accessibility improvements
+- Mobile UX refinements
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

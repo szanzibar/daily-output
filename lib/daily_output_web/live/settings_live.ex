@@ -10,7 +10,7 @@ defmodule DailyOutputWeb.SettingsLive do
 
     {:ok,
      assign(socket,
-       page_title: "Einstellungen",
+       page_title: gettext("Settings"),
        config: config,
        form: to_form(changeset),
        topic_input: ""
@@ -32,7 +32,7 @@ defmodule DailyOutputWeb.SettingsLive do
       {:ok, _config} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Einstellungen gespeichert!")
+         |> put_flash(:info, gettext("Settings saved!"))
          |> push_navigate(to: ~p"/")}
 
       {:error, changeset} ->
@@ -102,7 +102,7 @@ defmodule DailyOutputWeb.SettingsLive do
     ~H"""
     <div class="max-w-2xl mx-auto space-y-6">
       <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-        Einstellungen
+        {gettext("Settings")}
       </h1>
 
       <hr class="brutal-hr" />
@@ -111,13 +111,13 @@ defmodule DailyOutputWeb.SettingsLive do
         <%!-- Timer + Exchanges --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-red"></span> Timer & Gespräch
+            <span class="inline-block w-3 h-3 block-red"></span> {gettext("Timer & Conversation")}
           </h2>
           <div class="grid grid-cols-2 gap-4">
             <.input
               field={@form[:timer_minutes]}
               type="number"
-              label="Minuten pro Eintrag"
+              label={gettext("Minutes per entry")}
               min="1"
               max="60"
               class="w-24 input font-mono text-lg border-3 border-ink"
@@ -125,7 +125,7 @@ defmodule DailyOutputWeb.SettingsLive do
             <.input
               field={@form[:min_exchanges]}
               type="number"
-              label="Min. Austausche pro Gespräch"
+              label={gettext("Min. exchanges per conversation")}
               min="1"
               max="50"
               class="w-24 input font-mono text-lg border-3 border-ink"
@@ -136,20 +136,20 @@ defmodule DailyOutputWeb.SettingsLive do
         <%!-- Languages --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-blue"></span> Sprachen
+            <span class="inline-block w-3 h-3 block-blue"></span> {gettext("Languages")}
           </h2>
           <div class="grid grid-cols-2 gap-4">
             <.input
               field={@form[:target_language]}
               type="select"
-              label="Zielsprache"
+              label={gettext("Target language")}
               options={language_options()}
               class="w-full select border-3 border-ink font-mono"
             />
             <.input
               field={@form[:native_language]}
               type="select"
-              label="Muttersprache"
+              label={gettext("Native language")}
               options={language_options()}
               class="w-full select border-3 border-ink font-mono"
             />
@@ -159,15 +159,17 @@ defmodule DailyOutputWeb.SettingsLive do
         <%!-- Language Level --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-green"></span> Niveau
+            <span class="inline-block w-3 h-3 block-green"></span> {gettext("Level")}
           </h2>
           <p class="text-sm text-base-content/60 mb-3">
-            Dein GER-Niveau. Feedback wird kalibriert — nur Fehler, die du auf diesem Niveau kennen solltest. Ab B2 ist das Feedback auf Deutsch.
+            {gettext(
+              "Your CEFR level. Feedback is calibrated — only errors you should know at this level. From B2, feedback is in the target language."
+            )}
           </p>
           <.input
             field={@form[:language_level]}
             type="select"
-            label="Sprachniveau"
+            label={gettext("Language level")}
             options={level_options()}
             class="w-full select border-3 border-ink font-mono"
           />
@@ -176,10 +178,10 @@ defmodule DailyOutputWeb.SettingsLive do
         <%!-- Topics --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-yellow"></span> Themen
+            <span class="inline-block w-3 h-3 block-yellow"></span> {gettext("Topics")}
           </h2>
           <p class="text-sm text-base-content/60 mb-3">
-            Themen für KI-generierte Schreibanlässe. Worüber möchtest du schreiben?
+            {gettext("Topics for AI-generated writing prompts. What would you like to write about?")}
           </p>
 
           <div class="flex gap-2 mb-3">
@@ -189,7 +191,7 @@ defmodule DailyOutputWeb.SettingsLive do
               value={@topic_input}
               phx-keyup="update_topic_input"
               phx-key="Enter"
-              placeholder="z.B. Arbeit, Einkaufen, Nachbarn..."
+              placeholder={gettext("e.g. Work, Shopping, Neighbors...")}
               class="input border-3 border-ink flex-1 font-mono text-sm"
               phx-change="update_topic_input"
             />
@@ -224,23 +226,42 @@ defmodule DailyOutputWeb.SettingsLive do
         <%!-- Prompt Context --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-orange"></span> Prompt-Kontext
+            <span class="inline-block w-3 h-3 block-orange"></span> {gettext("Prompt Context")}
           </h2>
           <p class="text-sm text-base-content/60 mb-3">
-            Zusätzlicher Kontext für die KI. Erzähl ihr von deinen Zielen, Schwächen oder Vorlieben.
+            {gettext(
+              "Additional context for the AI. Tell it about your goals, weaknesses, or preferences."
+            )}
           </p>
           <.input
             field={@form[:prompt_context]}
             type="textarea"
-            label="Zusätzliche Anweisungen für die KI"
+            label={gettext("Additional instructions for the AI")}
             placeholder="z.B. Ich habe Schwierigkeiten mit Dativ/Akkusativ. Ich möchte Konjunktiv II üben."
             rows="4"
             class="w-full textarea border-3 border-ink font-mono text-sm"
           />
         </div>
 
+        <%!-- UI Language --%>
+        <div class="border-4 border-ink p-5">
+          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 block-purple"></span> {gettext("UI Language")}
+          </h2>
+          <p class="text-sm text-base-content/60 mb-3">
+            {gettext("Language for the app interface. Auto uses the target language at B1+ level.")}
+          </p>
+          <.input
+            field={@form[:ui_language]}
+            type="select"
+            label={gettext("Interface language")}
+            options={ui_language_options()}
+            class="w-full select border-3 border-ink font-mono"
+          />
+        </div>
+
         <button type="submit" class="brutal-btn w-full py-4 block-blue text-lg">
-          Speichern
+          {gettext("Save")}
         </button>
       </.form>
 
@@ -251,17 +272,17 @@ defmodule DailyOutputWeb.SettingsLive do
         </h2>
         <div class="flex items-center gap-2">
           <span :if={api_key_set?()} class="text-xs font-mono px-2 py-1 block-green uppercase">
-            Konfiguriert
+            {gettext("Configured")}
           </span>
           <span :if={!api_key_set?()} class="text-xs font-mono px-2 py-1 block-red uppercase">
-            Fehlt
+            {gettext("Missing")}
           </span>
           <span class="text-sm text-base-content/60">
             ANTHROPIC_API_KEY
           </span>
         </div>
         <p :if={!api_key_set?()} class="text-xs text-base-content/60 mt-2 font-mono">
-          Setze die Umgebungsvariable ANTHROPIC_API_KEY in der .env Datei.
+          {gettext("Set the ANTHROPIC_API_KEY environment variable in the .env file.")}
         </p>
       </div>
     </div>
@@ -281,12 +302,20 @@ defmodule DailyOutputWeb.SettingsLive do
 
   defp level_options do
     [
-      {"A1 — Anfänger", "A1"},
-      {"A2 — Grundlegende Kenntnisse", "A2"},
-      {"B1 — Fortgeschrittene Sprachverwendung", "B1"},
-      {"B2 — Selbständige Sprachverwendung", "B2"},
-      {"C1 — Fachkundige Sprachkenntnisse", "C1"},
-      {"C2 — Annähernd muttersprachlich", "C2"}
+      {"A1 — " <> gettext("Beginner"), "A1"},
+      {"A2 — " <> gettext("Elementary"), "A2"},
+      {"B1 — " <> gettext("Intermediate"), "B1"},
+      {"B2 — " <> gettext("Upper Intermediate"), "B2"},
+      {"C1 — " <> gettext("Advanced"), "C1"},
+      {"C2 — " <> gettext("Near Native"), "C2"}
+    ]
+  end
+
+  defp ui_language_options do
+    [
+      {gettext("Auto (based on level)"), "auto"},
+      {"English", "en"},
+      {"Deutsch", "de"}
     ]
   end
 

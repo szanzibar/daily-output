@@ -84,7 +84,7 @@ defmodule DailyOutput.MixProject do
         "ecto.create --quiet",
         "ecto.migrate --quiet",
         "cmd node --test assets/js/annotated_text_test.js",
-        "test",
+        "test"
       ],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       "assets.build": ["compile", "tailwind daily_output", "esbuild daily_output"],

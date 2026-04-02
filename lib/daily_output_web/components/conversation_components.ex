@@ -3,6 +3,7 @@ defmodule DailyOutputWeb.ConversationComponents do
   Chat bubble components for conversations.
   """
   use Phoenix.Component
+  use Gettext, backend: DailyOutputWeb.Gettext
 
   attr :messages, :list, required: true
 
@@ -20,7 +21,7 @@ defmodule DailyOutputWeb.ConversationComponents do
     ~H"""
     <div class={["chat-bubble-row", if(@message.role == "user", do: "chat-user", else: "chat-ai")]}>
       <div class="chat-role">
-        {if @message.role == "user", do: "Du", else: "Partner"}
+        {if @message.role == "user", do: gettext("You"), else: gettext("Partner")}
       </div>
       <div class={[
         "chat-bubble",
@@ -82,12 +83,12 @@ defmodule DailyOutputWeb.ConversationComponents do
       <%= for item <- @items do %>
         <%= if item.type == :ai do %>
           <div class="chat-bubble-row chat-ai">
-            <div class="chat-role">Partner</div>
+            <div class="chat-role">{gettext("Partner")}</div>
             <div class="chat-bubble chat-bubble-ai">{item.body}</div>
           </div>
         <% else %>
           <div class="chat-bubble-row">
-            <div class="chat-role" style="text-align:right">Du</div>
+            <div class="chat-role" style="text-align:right">{gettext("You")}</div>
             <div class="chat-bubble-user-feedback">
               <div
                 id={"annotated-msg-#{item.index}"}

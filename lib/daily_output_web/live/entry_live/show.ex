@@ -19,7 +19,8 @@ defmodule DailyOutputWeb.EntryLive.Show do
 
     {:ok,
      assign(socket,
-       page_title: "Eintrag — #{Calendar.strftime(entry.inserted_at, "%d.%m.%Y")}",
+       page_title:
+         gettext("Entry — %{date}", date: Calendar.strftime(entry.inserted_at, "%d.%m.%Y")),
        entry: entry,
        version: version,
        total_versions: total,
@@ -44,11 +45,11 @@ defmodule DailyOutputWeb.EntryLive.Show do
       {:ok, _entry} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Eintrag gelöscht.")
+         |> put_flash(:info, gettext("Entry deleted."))
          |> push_navigate(to: ~p"/")}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Konnte nicht gelöscht werden.")}
+        {:noreply, put_flash(socket, :error, gettext("Could not delete."))}
     end
   end
 
@@ -92,7 +93,7 @@ defmodule DailyOutputWeb.EntryLive.Show do
   end
 
   def handle_event("override_focus_result", _params, socket) do
-    {:noreply, put_flash(socket, :info, "Überschrieben — zählt als verwendet.")}
+    {:noreply, put_flash(socket, :info, gettext("Overridden — counts as used."))}
   end
 
   @impl true
@@ -102,24 +103,28 @@ defmodule DailyOutputWeb.EntryLive.Show do
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p class="text-xs font-mono uppercase tracking-widest text-base-content/60 mb-1">
-            Eintrag
+            {gettext("Entry")}
           </p>
           <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
             {Calendar.strftime(@entry.inserted_at, "%d.%m.%Y")}
           </h1>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <span :if={@entry.completed_at} class="px-2 py-1 block-green uppercase">Fertig</span>
-          <span :if={is_nil(@entry.completed_at)} class="px-2 py-1 block-orange uppercase">
-            Entwurf
+          <span :if={@entry.completed_at} class="px-2 py-1 block-green uppercase">
+            {gettext("Done")}
           </span>
-          <span class="text-base-content/60">{Journal.word_count(@entry)} Wörter</span>
+          <span :if={is_nil(@entry.completed_at)} class="px-2 py-1 block-orange uppercase">
+            {gettext("Draft")}
+          </span>
+          <span class="text-base-content/60">{Journal.word_count(@entry)} {gettext("words")}</span>
         </div>
       </div>
 
       <%!-- Version navigation --%>
       <div :if={@total_versions > 1} class="flex flex-wrap items-center gap-2 text-sm font-mono">
-        <span class="font-bold">v{@version} von {@total_versions}</span>
+        <span class="font-bold">
+          {gettext("v%{version} of %{total}", version: @version, total: @total_versions)}
+        </span>
         <%= for {v, idx} <- Enum.with_index(Enum.reverse(@versions), 1) do %>
           <.link
             :if={v.id != @entry.id}
@@ -142,22 +147,22 @@ defmodule DailyOutputWeb.EntryLive.Show do
           navigate={~p"/entries/#{@entry.id}/edit"}
           class="brutal-btn px-4 py-2 block-yellow text-sm no-underline"
         >
-          Bearbeiten
+          {gettext("Edit")}
         </.link>
         <button
           :if={!@confirm_delete}
           phx-click="confirm_delete"
           class="brutal-btn px-4 py-2 block-dark text-sm"
         >
-          Löschen
+          {gettext("Delete")}
         </button>
         <div :if={@confirm_delete} class="flex items-center gap-2">
-          <span class="text-xs font-mono text-bold-red">Wirklich löschen?</span>
+          <span class="text-xs font-mono text-bold-red">{gettext("Really delete?")}</span>
           <button phx-click="delete" class="brutal-btn px-3 py-1 block-red text-xs">
-            Ja
+            {gettext("Yes")}
           </button>
           <button phx-click="cancel_delete" class="brutal-btn px-3 py-1 bg-base-200 text-xs">
-            Nein
+            {gettext("No")}
           </button>
         </div>
       </div>
@@ -183,7 +188,7 @@ defmodule DailyOutputWeb.EntryLive.Show do
             navigate={~p"/"}
             class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
           >
-            &larr; Zurück
+            &larr; {gettext("Back")}
           </.link>
         </:actions>
       </.feedback_view>
@@ -192,7 +197,7 @@ defmodule DailyOutputWeb.EntryLive.Show do
       <div :if={is_nil(@entry.feedback)}>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 bg-base-300"></span> Dein Text
+            <span class="inline-block w-3 h-3 bg-base-300"></span> {gettext("Your Text")}
           </h2>
           <p class="font-mono text-sm whitespace-pre-wrap">{@entry.body}</p>
         </div>
@@ -201,7 +206,7 @@ defmodule DailyOutputWeb.EntryLive.Show do
           navigate={~p"/"}
           class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg mt-6"
         >
-          &larr; Zurück
+          &larr; {gettext("Back")}
         </.link>
       </div>
     </div>

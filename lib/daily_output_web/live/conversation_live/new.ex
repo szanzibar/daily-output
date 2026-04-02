@@ -9,7 +9,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
 
     {:ok,
      assign(socket,
-       page_title: "Neues Gespräch",
+       page_title: gettext("New Conversation"),
        config: config,
        phase: :topics,
        openers: [],
@@ -57,7 +57,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
      assign(socket,
        openers: [],
        openers_loading: false,
-       error: "ANTHROPIC_API_KEY nicht gesetzt."
+       error: gettext("ANTHROPIC_API_KEY not set.")
      )}
   end
 
@@ -66,7 +66,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
      assign(socket,
        openers: [],
        openers_loading: false,
-       error: "Gesprächseröffnungen konnten nicht geladen werden: #{inspect(reason)}"
+       error: gettext("Could not load conversation openers: %{reason}", reason: inspect(reason))
      )}
   end
 
@@ -82,13 +82,16 @@ defmodule DailyOutputWeb.ConversationLive.New do
          )}
 
       {:error, _} ->
-        {:noreply,
-         assign(socket, ai_loading: false, error: "Antwort konnte nicht gespeichert werden.")}
+        {:noreply, assign(socket, ai_loading: false, error: gettext("Could not save response."))}
     end
   end
 
   def handle_info({:ai_response, {:error, reason}}, socket) do
-    {:noreply, assign(socket, ai_loading: false, error: "KI-Fehler: #{inspect(reason)}")}
+    {:noreply,
+     assign(socket,
+       ai_loading: false,
+       error: gettext("AI error: %{reason}", reason: inspect(reason))
+     )}
   end
 
   def handle_info({:feedback_loaded, {:ok, feedback}}, socket) do
@@ -107,7 +110,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
     {:noreply,
      assign(socket,
        feedback_loading: false,
-       error: "Feedback konnte nicht geladen werden: #{inspect(reason)}"
+       error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
      )}
   end
 
@@ -183,7 +186,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
           request_ai_response(socket, messages)
 
         {:error, _} ->
-          {:noreply, put_flash(socket, :error, "Nachricht konnte nicht gespeichert werden.")}
+          {:noreply, put_flash(socket, :error, gettext("Could not save message."))}
       end
     end
   end
@@ -268,7 +271,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
         end
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Gespräch konnte nicht erstellt werden.")}
+        {:noreply, put_flash(socket, :error, gettext("Could not create conversation."))}
     end
   end
 
@@ -302,12 +305,12 @@ defmodule DailyOutputWeb.ConversationLive.New do
       <%!-- PHASE: Topic Selection --%>
       <div :if={@phase == :topics} class="space-y-6">
         <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-          Gespräch
+          {gettext("Conversation")}
         </h1>
 
         <hr class="brutal-hr" />
 
-        <.retro_loader :if={@openers_loading} message="Gesprächseröffnungen werden geladen" />
+        <.retro_loader :if={@openers_loading} message={gettext("Loading conversation openers")} />
 
         <p :if={@error} class="text-sm font-mono text-bold-red">{@error}</p>
 
@@ -323,9 +326,9 @@ defmodule DailyOutputWeb.ConversationLive.New do
           </button>
 
           <form phx-submit="freestyle" class="brutal-btn p-4 block-yellow text-left w-full">
-            <div class="font-bold text-base">Freestyle</div>
+            <div class="font-bold text-base">{gettext("Freestyle")}</div>
             <div class="text-xs opacity-70 mb-2 font-mono">
-              Schreib den ersten Satz — dein Partner antwortet darauf
+              {gettext("Write the first sentence — your partner will respond")}
             </div>
             <div class="flex gap-2">
               <input
@@ -335,7 +338,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
                 class="input border-3 border-ink flex-1 font-mono text-sm"
               />
               <button type="submit" class="brutal-btn px-4 py-2 bg-ink text-paper text-sm">
-                Los
+                {gettext("Go")}
               </button>
             </div>
           </form>
@@ -345,13 +348,13 @@ defmodule DailyOutputWeb.ConversationLive.New do
       <%!-- PHASE: Focus Topic Selection --%>
       <div :if={@phase == :focus_topic} class="space-y-6">
         <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-          Fokus wählen
+          {gettext("Choose Focus")}
         </h1>
 
         <hr class="brutal-hr" />
 
         <p class="text-sm font-mono text-base-content/60">
-          Wähle ein Thema aus deinem Fokus-Pool, auf das du dich konzentrieren willst.
+          {gettext("Choose a topic from your focus pool to concentrate on.")}
         </p>
 
         <div class="grid gap-3">
@@ -368,8 +371,10 @@ defmodule DailyOutputWeb.ConversationLive.New do
             phx-click="skip_focus_topic"
             class="brutal-btn p-4 bg-base-200 text-left w-full"
           >
-            <div class="font-bold text-base">Überspringen</div>
-            <div class="text-xs opacity-70 mt-1 font-mono">Ohne Fokus-Thema sprechen</div>
+            <div class="font-bold text-base">{gettext("Skip")}</div>
+            <div class="text-xs opacity-70 mt-1 font-mono">
+              {gettext("Speak without a focus topic")}
+            </div>
           </button>
         </div>
       </div>
@@ -378,23 +383,26 @@ defmodule DailyOutputWeb.ConversationLive.New do
       <div :if={@phase == :chat} class="space-y-4">
         <%!-- Focus topic reminder --%>
         <div :if={@selected_focus_topic} class="border-4 border-ink p-3 block-blue">
-          <span class="text-xs font-mono uppercase tracking-widest">Fokus:</span>
+          <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
           <span class="text-sm ml-2">{@selected_focus_topic.text}</span>
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
-            Gespräch
+            {gettext("Conversation")}
           </h1>
           <div class="flex items-center gap-3">
             <span class="text-xs font-mono text-base-content/60">
-              {user_count(@messages)}/{@config.min_exchanges || 5} Austausche
+              {gettext("%{count}/%{min} exchanges",
+                count: user_count(@messages),
+                min: @config.min_exchanges || 5
+              )}
             </span>
             <button
               :if={user_count(@messages) >= (@config.min_exchanges || 5)}
               phx-click="complete"
               class="brutal-btn px-4 py-2 block-green text-sm"
             >
-              Fertig &check;
+              {gettext("Done")} &check;
             </button>
           </div>
         </div>
@@ -404,7 +412,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
         <.chat_history messages={@messages} />
 
         <div :if={@ai_loading} class="chat-bubble-row chat-ai">
-          <div class="chat-role">Partner</div>
+          <div class="chat-role">{gettext("Partner")}</div>
           <div class="chat-bubble chat-bubble-ai">
             <span class="animate-pulse font-mono">...</span>
           </div>
@@ -417,7 +425,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
             phx-mounted={JS.focus()}
             name="message"
             rows="1"
-            placeholder="Schreib eine Nachricht..."
+            placeholder={gettext("Write a message...")}
             class="chat-input flex-1"
           >{@input}</textarea>
           <button type="submit" class="brutal-btn px-6 py-3 block-blue text-lg shrink-0">
@@ -430,11 +438,15 @@ defmodule DailyOutputWeb.ConversationLive.New do
 
       <%!-- PHASE: Feedback --%>
       <div :if={@phase == :feedback}>
-        <.loading :if={@feedback_loading} title="Feedback" message="Dein Gespräch wird geprüft" />
+        <.loading
+          :if={@feedback_loading}
+          title={gettext("Feedback")}
+          message={gettext("Your conversation is being reviewed")}
+        />
 
         <div :if={@feedback && !@feedback_loading} class="space-y-6">
           <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-            Feedback
+            {gettext("Feedback")}
           </h1>
           <hr class="brutal-hr" />
 
@@ -447,7 +459,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
           <%!-- Commentary / Tipps --%>
           <div :if={(@feedback["commentary"] || []) != []} class="border-4 border-ink p-5">
             <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-              <span class="inline-block w-3 h-3 block-blue"></span> Tipps
+              <span class="inline-block w-3 h-3 block-blue"></span> {gettext("Tips")}
             </h2>
             <div :for={item <- @feedback["commentary"] || []} class="mb-3 last:mb-0">
               <span class="text-xs font-mono uppercase px-2 py-0.5 border-2 border-ink mr-2">
@@ -461,12 +473,14 @@ defmodule DailyOutputWeb.ConversationLive.New do
             navigate={~p"/"}
             class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
           >
-            Zurück
+            {gettext("Back")}
           </.link>
         </div>
 
         <div :if={@error && !@feedback_loading && !@feedback} class="space-y-6">
-          <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">Feedback</h1>
+          <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
+            {gettext("Feedback")}
+          </h1>
           <hr class="brutal-hr" />
           <div class="border-4 border-ink p-5 block-red">
             <p class="font-mono text-sm">{@error}</p>
@@ -475,7 +489,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
             navigate={~p"/"}
             class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
           >
-            Zurück
+            {gettext("Back")}
           </.link>
         </div>
       </div>

@@ -9,7 +9,7 @@ defmodule DailyOutputWeb.EntryLive.New do
 
     {:ok,
      assign(socket,
-       page_title: "Neuer Eintrag",
+       page_title: gettext("New Entry"),
        config: config,
        phase: :prompts,
        prompts: [],
@@ -60,7 +60,7 @@ defmodule DailyOutputWeb.EntryLive.New do
        prompts: [],
        prompts_loading: false,
        error:
-         "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
+         gettext("ANTHROPIC_API_KEY not set. Add it to the .env file and restart the server.")
      )}
   end
 
@@ -70,7 +70,9 @@ defmodule DailyOutputWeb.EntryLive.New do
        prompts: [],
        prompts_loading: false,
        error:
-         "Prompts konnten nicht generiert werden: #{inspect(reason)}. Du kannst trotzdem Freestyle schreiben!"
+         gettext("Could not generate prompts: %{reason}. You can still write freestyle!",
+           reason: inspect(reason)
+         )
      )}
   end
 
@@ -99,7 +101,7 @@ defmodule DailyOutputWeb.EntryLive.New do
     {:noreply,
      assign(socket,
        feedback_loading: false,
-       error: "Feedback konnte nicht geladen werden: #{inspect(reason)}"
+       error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
      )}
   end
 
@@ -156,7 +158,7 @@ defmodule DailyOutputWeb.EntryLive.New do
     config = socket.assigns.config
 
     if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, "Schreib zuerst etwas!")}
+      {:noreply, put_flash(socket, :error, gettext("Write something first!"))}
     else
       focus_topic = socket.assigns.selected_focus_topic
 
@@ -174,7 +176,7 @@ defmodule DailyOutputWeb.EntryLive.New do
           request_feedback(socket, entry, body, config)
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Eintrag konnte nicht gespeichert werden.")}
+          {:noreply, put_flash(socket, :error, gettext("Could not save entry."))}
       end
     end
   end
@@ -226,12 +228,12 @@ defmodule DailyOutputWeb.EntryLive.New do
       <%!-- PHASE: Prompt Selection --%>
       <div :if={@phase == :prompts} class="space-y-6">
         <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-          Worüber schreibst du?
+          {gettext("What will you write about?")}
         </h1>
 
         <hr class="brutal-hr" />
 
-        <.retro_loader :if={@prompts_loading} message="Prompts werden geladen" />
+        <.retro_loader :if={@prompts_loading} message={gettext("Loading prompts")} />
 
         <p :if={@error} class="text-sm font-mono text-bold-red">{@error}</p>
 
@@ -250,8 +252,10 @@ defmodule DailyOutputWeb.EntryLive.New do
             phx-click="freestyle"
             class="brutal-btn p-4 block-yellow text-left w-full"
           >
-            <div class="font-bold text-base">Freestyle</div>
-            <div class="text-xs opacity-70 mt-1 font-mono">Schreib worüber du willst</div>
+            <div class="font-bold text-base">{gettext("Freestyle")}</div>
+            <div class="text-xs opacity-70 mt-1 font-mono">
+              {gettext("Write about whatever you want")}
+            </div>
           </button>
         </div>
       </div>
@@ -259,13 +263,13 @@ defmodule DailyOutputWeb.EntryLive.New do
       <%!-- PHASE: Focus Topic Selection --%>
       <div :if={@phase == :focus_topic} class="space-y-6">
         <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-          Fokus wählen
+          {gettext("Choose Focus")}
         </h1>
 
         <hr class="brutal-hr" />
 
         <p class="text-sm font-mono text-base-content/60">
-          Wähle ein Thema aus deinem Fokus-Pool, auf das du dich konzentrieren willst.
+          {gettext("Choose a topic from your focus pool to concentrate on.")}
         </p>
 
         <div class="grid gap-3">
@@ -282,8 +286,10 @@ defmodule DailyOutputWeb.EntryLive.New do
             phx-click="skip_focus_topic"
             class="brutal-btn p-4 bg-base-200 text-left w-full"
           >
-            <div class="font-bold text-base">Überspringen</div>
-            <div class="text-xs opacity-70 mt-1 font-mono">Ohne Fokus-Thema schreiben</div>
+            <div class="font-bold text-base">{gettext("Skip")}</div>
+            <div class="text-xs opacity-70 mt-1 font-mono">
+              {gettext("Write without a focus topic")}
+            </div>
           </button>
         </div>
       </div>
@@ -292,7 +298,7 @@ defmodule DailyOutputWeb.EntryLive.New do
       <div :if={@phase == :writing}>
         <%!-- Focus topic reminder --%>
         <div :if={@selected_focus_topic} class="border-4 border-ink p-3 block-blue mb-4">
-          <span class="text-xs font-mono uppercase tracking-widest">Fokus:</span>
+          <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
           <span class="text-sm ml-2">{@selected_focus_topic.text}</span>
         </div>
 
@@ -302,7 +308,7 @@ defmodule DailyOutputWeb.EntryLive.New do
               {@selected_prompt}
             </div>
             <div :if={!@selected_prompt} class="text-sm font-mono text-base-content/60">
-              Freestyle
+              {gettext("Freestyle")}
             </div>
 
             <div class={[
@@ -321,19 +327,23 @@ defmodule DailyOutputWeb.EntryLive.New do
                 if(@timer_expired, do: "block-green", else: "bg-base-200")
               ]}
             >
-              Fertig &check;
+              {gettext("Done")} &check;
             </button>
           </:actions>
         </.editor>
 
         <div :if={@timer_expired} class="block-red px-4 py-2 text-sm font-mono text-center mt-4">
-          Zeit ist um! Du kannst weiterschreiben oder den Eintrag abschliessen.
+          {gettext("Time's up! You can keep writing or submit your entry.")}
         </div>
       </div>
 
       <%!-- PHASE: Feedback --%>
       <div :if={@phase == :feedback}>
-        <.loading :if={@feedback_loading} title="Feedback" message="Dein Text wird geprüft" />
+        <.loading
+          :if={@feedback_loading}
+          title={gettext("Feedback")}
+          message={gettext("Your text is being reviewed")}
+        />
 
         <.feedback_view
           :if={@feedback && !@feedback_loading}
@@ -342,7 +352,7 @@ defmodule DailyOutputWeb.EntryLive.New do
         >
           <:actions>
             <.link navigate={~p"/"} class="brutal-btn px-6 py-3 block-yellow no-underline text-lg">
-              Zurück
+              {gettext("Back")}
             </.link>
           </:actions>
         </.feedback_view>
@@ -350,7 +360,7 @@ defmodule DailyOutputWeb.EntryLive.New do
         <%!-- Error state: loading finished but no feedback (AI call failed) --%>
         <div :if={@error && !@feedback_loading && !@feedback} class="space-y-6">
           <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-            Feedback
+            {gettext("Feedback")}
           </h1>
           <hr class="brutal-hr" />
           <div class="border-4 border-ink p-5 block-red">
@@ -360,7 +370,7 @@ defmodule DailyOutputWeb.EntryLive.New do
             navigate={~p"/"}
             class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
           >
-            Zurück
+            {gettext("Back")}
           </.link>
         </div>
       </div>

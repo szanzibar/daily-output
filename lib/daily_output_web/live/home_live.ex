@@ -34,11 +34,11 @@ defmodule DailyOutputWeb.HomeLive do
         %{
           type: :entry,
           id: e.id,
-          preview: if(e.body, do: String.slice(e.body, 0..60), else: "(leer)"),
+          preview: if(e.body, do: String.slice(e.body, 0..60), else: gettext("(empty)")),
           completed: e.completed_at != nil and e.feedback != nil,
           date: e.inserted_at,
           path: "/entries/#{e.id}",
-          label: "Eintrag"
+          label: gettext("Entry")
         }
       end)
 
@@ -48,11 +48,11 @@ defmodule DailyOutputWeb.HomeLive do
         %{
           type: :conversation,
           id: c.id,
-          preview: c.topic || "(Gespräch)",
+          preview: c.topic || gettext("(Conversation)"),
           completed: c.completed_at != nil and c.feedback != nil,
           date: c.inserted_at,
           path: "/conversations/#{c.id}",
-          label: "Gespräch"
+          label: gettext("Conversation")
         }
       end)
 
@@ -96,7 +96,7 @@ defmodule DailyOutputWeb.HomeLive do
             {@streak}
           </div>
           <div class="text-xs font-mono uppercase tracking-widest">
-            {ngettext("Tag", "Tage", @streak)} Streak
+            {ngettext("day", "days", @streak)} Streak
           </div>
         </div>
       </div>
@@ -106,7 +106,7 @@ defmodule DailyOutputWeb.HomeLive do
       <%!-- === HEUTE === --%>
       <div class={["border-4 border-ink", if(@challenge.all_done, do: "border-green", else: "")]}>
         <div :if={@challenge.all_done} class="block-green px-4 py-2 text-center">
-          <span class="font-black uppercase text-sm tracking-widest">Tag abgeschlossen!</span>
+          <span class="font-black uppercase text-sm tracking-widest">{gettext("Day complete!")}</span>
         </div>
 
         <%!-- Entry row --%>
@@ -124,7 +124,7 @@ defmodule DailyOutputWeb.HomeLive do
                 {challenge_icon(@challenge.entry)}
               </span>
               <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">
-                Eintrag
+                {gettext("Entry")}
               </span>
             </div>
             <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
@@ -133,7 +133,7 @@ defmodule DailyOutputWeb.HomeLive do
                 class="brutal-btn px-3 py-1 block-purple text-xs"
                 onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/entries/new'"
               >
-                + Neu
+                {gettext("+ New")}
               </span>
             </div>
           </div>
@@ -146,17 +146,17 @@ defmodule DailyOutputWeb.HomeLive do
                 ○
               </span>
               <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">
-                Eintrag
+                {gettext("Entry")}
               </span>
             </div>
             <.link
               navigate={~p"/entries/new"}
               class="brutal-btn px-4 py-1.5 block-yellow text-xs no-underline"
             >
-              Schreiben &rarr;
+              {gettext("Write")} &rarr;
             </.link>
           </div>
-          <p class="text-sm font-mono text-base-content/40">Noch kein Eintrag heute.</p>
+          <p class="text-sm font-mono text-base-content/40">{gettext("No entry yet today.")}</p>
         </div>
 
         <%!-- Conversation row --%>
@@ -174,7 +174,7 @@ defmodule DailyOutputWeb.HomeLive do
                 {challenge_icon(@challenge.conversation)}
               </span>
               <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">
-                Gespräch
+                {gettext("Conversation")}
               </span>
             </div>
             <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
@@ -183,7 +183,7 @@ defmodule DailyOutputWeb.HomeLive do
                 class="brutal-btn px-3 py-1 block-purple text-xs"
                 onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/conversations/new'"
               >
-                + Neu
+                {gettext("+ New")}
               </span>
             </div>
           </div>
@@ -198,24 +198,26 @@ defmodule DailyOutputWeb.HomeLive do
                 ○
               </span>
               <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">
-                Gespräch
+                {gettext("Conversation")}
               </span>
             </div>
             <.link
               navigate={~p"/conversations/new"}
               class="brutal-btn px-4 py-1.5 block-pink text-xs no-underline"
             >
-              Starten &rarr;
+              {gettext("Start")} &rarr;
             </.link>
           </div>
-          <p class="text-sm font-mono text-base-content/40">Noch kein Gespräch heute.</p>
+          <p class="text-sm font-mono text-base-content/40">
+            {gettext("No conversation yet today.")}
+          </p>
         </div>
       </div>
 
       <%!-- === PAST DAYS === --%>
       <div :if={@recent_days != []}>
         <h2 class="text-xl font-black uppercase mb-3">
-          Aktivität
+          {gettext("Activity")}
         </h2>
 
         <div class="space-y-3">
@@ -265,7 +267,7 @@ defmodule DailyOutputWeb.HomeLive do
         class="text-center py-12"
       >
         <p class="text-lg font-mono text-base-content/50">
-          Noch keine Einträge. Fang heute an!
+          {gettext("No entries yet. Start today!")}
         </p>
       </div>
     </div>

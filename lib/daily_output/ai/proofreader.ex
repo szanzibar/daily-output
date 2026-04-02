@@ -103,8 +103,7 @@ defmodule DailyOutput.AI.Proofreader do
     base_properties = %{
       "annotated_text" => %{
         "type" => "string",
-        "description" =>
-          "Full original text with [[id:original||corrected]] markers on errors"
+        "description" => "Full original text with [[id:original||corrected]] markers on errors"
       },
       "annotations" => %{
         "type" => "array",
@@ -158,8 +157,7 @@ defmodule DailyOutput.AI.Proofreader do
               },
               "comment" => %{
                 "type" => "string",
-                "description" =>
-                  "Brief encouraging feedback about their use of this concept"
+                "description" => "Brief encouraging feedback about their use of this concept"
               }
             },
             "required" => ["used", "correct", "comment"]

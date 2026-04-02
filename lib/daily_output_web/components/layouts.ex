@@ -17,21 +17,27 @@ defmodule DailyOutputWeb.Layouts do
         <div class="px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2">
           <a href="/" class="no-underline text-white">
             <span class="text-xl sm:text-3xl font-black tracking-tighter uppercase">
-              SPRACH<span class="block-yellow text-ink px-1">JOURNAL</span>
+              DAILY<span class="block-yellow text-ink px-1">OUTPUT</span>
             </span>
           </a>
           <nav class="flex items-center gap-1 sm:gap-2">
             <.link
-              navigate={~p"/fokus"}
+              navigate={~p"/focus"}
               class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-blue no-underline"
             >
-              Fokus
+              {gettext("Focus")}
             </.link>
             <.link
               navigate={~p"/settings"}
               class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-orange no-underline"
             >
-              Settings
+              {gettext("Settings")}
+            </.link>
+            <.link
+              navigate={~p"/about"}
+              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-green no-underline"
+            >
+              {gettext("About")}
             </.link>
           </nav>
         </div>
@@ -48,7 +54,7 @@ defmodule DailyOutputWeb.Layouts do
       <footer class="border-t-4 border-ink px-4 sm:px-6 lg:px-8 py-3 bg-ink text-paper">
         <div class="flex items-center justify-between text-xs font-mono uppercase tracking-wider">
           <span>DailyOutput</span>
-          <span>Schreib jeden Tag.</span>
+          <span>{gettext("Write every day.")}</span>
         </div>
       </footer>
     </div>

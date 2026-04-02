@@ -2,7 +2,6 @@ import Config
 
 # Load .env file if it exists (dev/local convenience)
 if config_env() != :test do
-
   Dotenvy.source!([".env", System.get_env()])
 
   config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string)

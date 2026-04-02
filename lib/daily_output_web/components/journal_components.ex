@@ -3,6 +3,7 @@ defmodule DailyOutputWeb.JournalComponents do
   Shared components for journal entry writing and feedback display.
   """
   use Phoenix.Component
+  use Gettext, backend: DailyOutputWeb.Gettext
 
   # ── Editor ──────────────────────────────────────────────
 
@@ -32,13 +33,13 @@ defmodule DailyOutputWeb.JournalComponents do
         phx-hook="AutoSave"
         phx-update="ignore"
         class="journal-editor"
-        placeholder="Schreib los..."
+        placeholder={gettext("Start writing...")}
         autofocus
       >{@body}</textarea>
 
       <div class="flex flex-wrap items-center justify-between gap-2 mt-4">
         <span class="text-xs font-mono text-base-content/60">
-          {word_count(@body)} Wörter
+          {word_count(@body)} {gettext("words")}
         </span>
         <div class="flex flex-wrap items-center gap-2">
           {render_slot(@actions)}
@@ -70,7 +71,7 @@ defmodule DailyOutputWeb.JournalComponents do
     ~H"""
     <div class="space-y-6">
       <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-        Feedback
+        {gettext("Feedback")}
       </h1>
 
       <hr class="brutal-hr" />
@@ -83,7 +84,7 @@ defmodule DailyOutputWeb.JournalComponents do
       <%!-- Annotated text — rendered by JS hook for precise measurement --%>
       <div class="border-4 border-ink p-4">
         <h2 class="text-lg font-black uppercase mb-4 flex items-center gap-2">
-          <span class="inline-block w-3 h-3 block-red"></span> Korrekturen
+          <span class="inline-block w-3 h-3 block-red"></span> {gettext("Corrections")}
         </h2>
 
         <div
@@ -106,7 +107,7 @@ defmodule DailyOutputWeb.JournalComponents do
       <%!-- Commentary / Tipps with "+" to add to focus pool --%>
       <div :if={@feedback["commentary"] != []} class="border-4 border-ink p-5">
         <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-          <span class="inline-block w-3 h-3 block-blue"></span> Tipps
+          <span class="inline-block w-3 h-3 block-blue"></span> {gettext("Tips")}
         </h2>
         <div
           :for={item <- @feedback["commentary"] || []}
@@ -163,16 +164,16 @@ defmodule DailyOutputWeb.JournalComponents do
       end
     ]}>
       <h2 class="text-lg font-black uppercase mb-2 flex items-center gap-2">
-        Fokus-Ergebnis
+        {gettext("Focus Result")}
       </h2>
       <p class="text-sm font-bold mb-2">
         <%= cond do %>
           <% @result["used"] && @result["correct"] -> %>
-            Richtig verwendet!
+            {gettext("Used correctly!")}
           <% @result["used"] -> %>
-            Versucht — weiter üben!
+            {gettext("Attempted — keep practicing!")}
           <% true -> %>
-            Nicht verwendet.
+            {gettext("Not used.")}
         <% end %>
       </p>
       <p :if={@result["comment"]} class="text-sm">{@result["comment"]}</p>
@@ -180,14 +181,14 @@ defmodule DailyOutputWeb.JournalComponents do
         <%= if @result["used"] && @result["correct"] do %>
           <%= if @focus_mastered do %>
             <span class="brutal-btn px-4 py-1.5 block-green text-xs">
-              ✓ Gemeistert
+              ✓ {gettext("Mastered")}
             </span>
           <% else %>
             <button
               phx-click="master_focus_topic"
               class="brutal-btn px-4 py-1.5 bg-ink text-paper text-xs"
             >
-              Gemeistert — aus Pool entfernen
+              {gettext("Mastered — remove from pool")}
             </button>
           <% end %>
         <% end %>
@@ -196,7 +197,7 @@ defmodule DailyOutputWeb.JournalComponents do
           phx-click="override_focus_result"
           class="brutal-btn px-4 py-1.5 block-dark text-xs"
         >
-          Ich habe es doch verwendet
+          {gettext("I did use it")}
         </button>
       </div>
     </div>
@@ -206,7 +207,7 @@ defmodule DailyOutputWeb.JournalComponents do
   # ── Loading ─────────────────────────────────────────────
 
   attr :title, :string, default: nil
-  attr :message, :string, default: "Laden..."
+  attr :message, :string, default: "Loading..."
 
   def loading(assigns) do
     ~H"""
@@ -220,7 +221,7 @@ defmodule DailyOutputWeb.JournalComponents do
     """
   end
 
-  attr :message, :string, default: "Laden..."
+  attr :message, :string, default: "Loading..."
 
   def retro_loader(assigns) do
     ~H"""
