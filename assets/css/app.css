@@ -1,9 +1,9 @@
-/* Sprachjournal — Swiss Brutalist Theme */
+/* DailyOutput — Brutalist Theme */
 
 @import "tailwindcss" source(none);
 @source "../css";
 @source "../js";
-@source "../../lib/sprachjournal_web";
+@source "../../lib/daily_output_web";
 
 @plugin "../vendor/heroicons";
 
