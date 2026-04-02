@@ -184,8 +184,8 @@ defmodule DailyOutput.AI.Proofreader do
   def normalize_feedback(feedback) do
     base = %{
       "annotated_text" => feedback["annotated_text"] || "",
-      "annotations" => feedback["annotations"] || [],
-      "commentary" => feedback["commentary"] || [],
+      "annotations" => decode_if_string(feedback["annotations"]) || [],
+      "commentary" => decode_if_string(feedback["commentary"]) || [],
       "encouragement" => feedback["encouragement"] || ""
     }
 
@@ -195,4 +195,13 @@ defmodule DailyOutput.AI.Proofreader do
       base
     end
   end
+
+  defp decode_if_string(val) when is_binary(val) do
+    case Jason.decode(val) do
+      {:ok, decoded} -> decoded
+      _ -> val
+    end
+  end
+
+  defp decode_if_string(val), do: val
 end
