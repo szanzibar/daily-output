@@ -1,4 +1,4 @@
-import { parseMarkers, tokenize, tokenCharWidth, wrapLines, escapeHtml, buildHtml } from "./annotated_text.js"
+import { parseMarkers, tokenize, wrapLines, escapeHtml, buildHtml } from "./annotated_text.js"
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 
@@ -108,22 +108,6 @@ describe("tokenize", () => {
   })
 })
 
-// ── tokenCharWidth ──────────────────────────────────────
-
-describe("tokenCharWidth", () => {
-  it("returns text length for text tokens", () => {
-    assert.equal(tokenCharWidth({ type: "text", text: "hello" }), 5)
-  })
-
-  it("returns combined width for corrections", () => {
-    assert.equal(tokenCharWidth({ type: "correction", original: "ab", corrected: "cd" }), 6)
-  })
-
-  it("returns 0 for newlines", () => {
-    assert.equal(tokenCharWidth({ type: "newline" }), 0)
-  })
-})
-
 // ── wrapLines ───────────────────────────────────────────
 
 describe("wrapLines", () => {
@@ -150,13 +134,14 @@ describe("wrapLines", () => {
     assert.equal(lines[1].corrections.length, 1)
   })
 
-  it("tracks charOffset for corrections", () => {
+  it("tracks correction IDs per line", () => {
     const tokens = [
       { type: "text", text: "hello " },
-      { type: "correction", id: 1, original: "a", corrected: "b", explanation: "" }
+      { type: "correction", id: 1, original: "a", corrected: "b", explanation: "fix" }
     ]
     const lines = wrapLines(tokens, 80)
-    assert.equal(lines[0].corrections[0].charOffset, 6)
+    assert.equal(lines[0].corrections[0].id, 1)
+    assert.equal(lines[0].corrections[0].explanation, "fix")
   })
 })
 
@@ -189,7 +174,7 @@ describe("buildHtml", () => {
   it("renders corrections with strikethrough and added spans", () => {
     const lines = [{
       segments: [{ type: "correction", id: 1, original: "bad", corrected: "good" }],
-      corrections: [{ id: 1, explanation: "fix it", charOffset: 0, charWidth: 7 }]
+      corrections: [{ id: 1, explanation: "fix it" }]
     }]
     const html = buildHtml(lines)
     assert.ok(html.includes("correction-deleted"))
@@ -201,7 +186,7 @@ describe("buildHtml", () => {
   it("renders annotation notes with data attributes for positioning", () => {
     const lines = [{
       segments: [{ type: "text", text: "test " }, { type: "correction", id: 1, original: "a", corrected: "b" }],
-      corrections: [{ id: 1, explanation: "reason", charOffset: 5, charWidth: 4 }]
+      corrections: [{ id: 1, explanation: "reason" }]
     }]
     const html = buildHtml(lines)
     assert.ok(html.includes("ann-note"))
@@ -213,7 +198,7 @@ describe("buildHtml", () => {
   it("handles empty original (insertion)", () => {
     const lines = [{
       segments: [{ type: "correction", id: 1, original: "", corrected: "new" }],
-      corrections: [{ id: 1, explanation: "added", charOffset: 0, charWidth: 5 }]
+      corrections: [{ id: 1, explanation: "added" }]
     }]
     const html = buildHtml(lines)
     assert.ok(!html.includes("correction-deleted"))
