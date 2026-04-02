@@ -10,8 +10,5 @@ services:
       - PHX_SERVER=true
       - PORT=4000
     volumes:
-      - daily_output_data:/app/data
+      - ./data:/app/data
     restart: unless-stopped
-
-volumes:
-  daily_output_data:
