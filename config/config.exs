@@ -7,25 +7,25 @@
 # General application configuration
 import Config
 
-config :sprachjournal,
-  ecto_repos: [Sprachjournal.Repo],
+config :daily_output,
+  ecto_repos: [DailyOutput.Repo],
   generators: [timestamp_type: :utc_datetime]
 
 # Configure the endpoint
-config :sprachjournal, SprachjournalWeb.Endpoint,
+config :daily_output, DailyOutputWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
-    formats: [html: SprachjournalWeb.ErrorHTML, json: SprachjournalWeb.ErrorJSON],
+    formats: [html: DailyOutputWeb.ErrorHTML, json: DailyOutputWeb.ErrorJSON],
     layout: false
   ],
-  pubsub_server: Sprachjournal.PubSub,
+  pubsub_server: DailyOutput.PubSub,
   live_view: [signing_salt: "cnBQHVaE"]
 
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
-  sprachjournal: [
+  daily_output: [
     args:
       ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
@@ -35,7 +35,7 @@ config :esbuild,
 # Configure tailwind (the version is required)
 config :tailwind,
   version: "4.1.12",
-  sprachjournal: [
+  daily_output: [
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css

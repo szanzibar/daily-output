@@ -1,4 +1,4 @@
-# Sprachjournal
+# DailyOutput
 
 A daily language learning app with AI-powered proofreading, conversation practice, and gamified daily challenges. Write and speak in your target language, get instant inline corrections and learning tips.
 
@@ -95,12 +95,12 @@ Tests are colocated with source files (in `lib/`), not in `test/`.
 
 | Context | Purpose |
 |---|---|
-| `Sprachjournal.Journal` | Entries CRUD, versioning, word count |
-| `Sprachjournal.Conversations` | Conversations + messages, versioning |
-| `Sprachjournal.Settings` | User preferences (timer, languages, topics, level) |
-| `Sprachjournal.AI` | Prompt/topic generation, conversation partner, proofreading |
-| `Sprachjournal.Practice` | Text extraction, char comparison, daily challenge, streak |
-| `Sprachjournal.Cache` | Key-value cache for API model discovery |
+| `DailyOutput.Journal` | Entries CRUD, versioning, word count |
+| `DailyOutput.Conversations` | Conversations + messages, versioning |
+| `DailyOutput.Settings` | User preferences (timer, languages, topics, level) |
+| `DailyOutput.AI` | Prompt/topic generation, conversation partner, proofreading |
+| `DailyOutput.Practice` | Text extraction, char comparison, daily challenge, streak |
+| `DailyOutput.Cache` | Key-value cache for API model discovery |
 
 ### Color System
 

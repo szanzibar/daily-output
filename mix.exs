@@ -1,9 +1,9 @@
-defmodule Sprachjournal.MixProject do
+defmodule DailyOutput.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :sprachjournal,
+      app: :daily_output,
       version: "0.1.0",
       elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -21,7 +21,7 @@ defmodule Sprachjournal.MixProject do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Sprachjournal.Application, []},
+      mod: {DailyOutput.Application, []},
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -87,10 +87,10 @@ defmodule Sprachjournal.MixProject do
         "test",
       ],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind sprachjournal", "esbuild sprachjournal"],
+      "assets.build": ["compile", "tailwind daily_output", "esbuild daily_output"],
       "assets.deploy": [
-        "tailwind sprachjournal --minify",
-        "esbuild sprachjournal --minify",
+        "tailwind daily_output --minify",
+        "esbuild daily_output --minify",
         "phx.digest"
       ],
       precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]

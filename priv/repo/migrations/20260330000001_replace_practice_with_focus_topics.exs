@@ -1,4 +1,4 @@
-defmodule Sprachjournal.Repo.Migrations.ReplacePracticeWithFocusTopics do
+defmodule DailyOutput.Repo.Migrations.ReplacePracticeWithFocusTopics do
   use Ecto.Migration
 
   def change do

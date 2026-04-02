@@ -1,4 +1,4 @@
-defmodule Sprachjournal.Repo.Migrations.CreateSettings do
+defmodule DailyOutput.Repo.Migrations.CreateSettings do
   use Ecto.Migration
 
   def change do
