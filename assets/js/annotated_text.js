@@ -142,7 +142,7 @@ export function escapeHtml(str) {
  * Build the full HTML for annotated text lines.
  * charW = pixel width of one monospace character, maxChars = chars per line.
  */
-export function buildHtml(lines, charW, maxChars) {
+export function buildHtml(lines) {
   let html = '';
 
   for (const line of lines) {
@@ -153,7 +153,7 @@ export function buildHtml(lines, charW, maxChars) {
       if (seg.type === 'text') {
         html += escapeHtml(seg.text);
       } else {
-        html += `<span class="correction-inline">`;
+        html += `<span class="correction-inline" data-correction-id="${seg.id}">`;
         if (seg.original) {
           html += `<span class="correction-deleted">${escapeHtml(seg.original)}</span>`;
         }
@@ -168,11 +168,7 @@ export function buildHtml(lines, charW, maxChars) {
     html += `</div>`;
 
     for (const c of line.corrections) {
-      const startCh = c.charOffset;
-      const containerPx = maxChars * charW;
-      const marginPx = Math.round(Math.min(startCh, maxChars * 0.5) * charW);
-      const maxWidthPx = Math.round(containerPx - marginPx);
-      html += `<div class="ann-note" style="margin-left:${marginPx}px;max-width:${maxWidthPx}px">`;
+      html += `<div class="ann-note" data-note-for="${c.id}">`;
       html += `<span class="ann-note-id">${c.id}</span> `;
       html += `${escapeHtml(c.explanation)}`;
       html += `</div>`;
@@ -182,4 +178,31 @@ export function buildHtml(lines, charW, maxChars) {
   }
 
   return html;
+}
+
+/**
+ * After buildHtml is inserted into the DOM, measure actual correction positions
+ * and set margin-left on each annotation note to align with its correction.
+ */
+export function positionNotes(container) {
+  for (const note of container.querySelectorAll('.ann-note')) {
+    const id = note.dataset.noteFor;
+    const line = note.closest('.ann-line');
+    const textLine = line.querySelector('.ann-text-line');
+    const correction = line.querySelector(`.correction-inline[data-correction-id="${id}"]`);
+
+    if (!correction || !textLine) continue;
+
+    const lineLeft = textLine.getBoundingClientRect().left;
+    const corrLeft = correction.getBoundingClientRect().left;
+    const containerW = textLine.clientWidth;
+    const offsetPx = Math.round(corrLeft - lineLeft);
+
+    // Cap at 50% of container width so notes don't get pushed too far right
+    const marginPx = Math.min(offsetPx, Math.round(containerW * 0.5));
+    const maxWidthPx = containerW - marginPx;
+
+    note.style.marginLeft = `${marginPx}px`;
+    note.style.maxWidth = `${maxWidthPx}px`;
+  }
 }
