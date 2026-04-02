@@ -20,6 +20,13 @@ The only way to improve at a language is to produce output — writing and speak
 - **PWA** — Install on your phone, works offline
 - **i18n** — English and German UI, auto-switches based on your level (B1+ = target language)
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Conversation prompts](priv/static/images/screenshots/conversation-prompts.png) | ![Conversation](priv/static/images/screenshots/conversation.png) |
+| ![Corrections](priv/static/images/screenshots/conversation-corrections.png) | ![About](priv/static/images/screenshots/about.png) |
+
 ## Supported Languages
 
 The app works with any target language for AI feedback. The UI itself is available in:
