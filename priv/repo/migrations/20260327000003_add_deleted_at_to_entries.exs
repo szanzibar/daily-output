@@ -1,4 +1,4 @@
-defmodule Sprachjournal.Repo.Migrations.AddDeletedAtToEntries do
+defmodule DailyOutput.Repo.Migrations.AddDeletedAtToEntries do
   use Ecto.Migration
 
   def change do

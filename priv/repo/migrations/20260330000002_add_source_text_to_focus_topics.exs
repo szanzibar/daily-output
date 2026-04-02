@@ -1,4 +1,4 @@
-defmodule Sprachjournal.Repo.Migrations.AddSourceTextToFocusTopics do
+defmodule DailyOutput.Repo.Migrations.AddSourceTextToFocusTopics do
   use Ecto.Migration
 
   def change do

@@ -1,4 +1,4 @@
-defmodule Sprachjournal.Repo.Migrations.AddPracticeFields do
+defmodule DailyOutput.Repo.Migrations.AddPracticeFields do
   use Ecto.Migration
 
   def change do

@@ -1,17 +1,17 @@
 services:
-  sprachjournal:
+  daily_output:
     build: .
     ports:
       - '46142:4000'
     env_file:
       - .env
     environment:
-      - DATABASE_PATH=/app/data/sprachjournal.db
+      - DATABASE_PATH=/app/data/daily_output.db
       - PHX_SERVER=true
       - PORT=4000
     volumes:
-      - sprachjournal_data:/app/data
+      - daily_output_data:/app/data
     restart: unless-stopped
 
 volumes:
-  sprachjournal_data:
+  daily_output_data:

@@ -1,6 +1,6 @@
 {
-  "name": "Sprachjournal",
-  "short_name": "Sprachjournal",
+  "name": "DailyOutput",
+  "short_name": "DailyOutput",
   "description": "Tägliches Sprachlern-Journal mit KI-Feedback",
   "start_url": "/",
   "display": "standalone",

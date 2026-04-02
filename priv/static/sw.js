@@ -1,5 +1,5 @@
-// Sprachjournal Service Worker — network-first with offline fallback
-const CACHE_NAME = "sprachjournal-v2";
+// DailyOutput Service Worker — network-first with offline fallback
+const CACHE_NAME = "daily_output-v2";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

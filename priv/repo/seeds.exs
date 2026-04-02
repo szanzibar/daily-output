@@ -1,5 +1,5 @@
 # Ensure default settings exist
-alias Sprachjournal.Settings
+alias DailyOutput.Settings
 
 case Settings.ensure_config() do
   {:ok, _config} -> IO.puts("Settings: OK")

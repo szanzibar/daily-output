@@ -1,8 +1,8 @@
 import Config
 
 # Configure your database
-config :sprachjournal, Sprachjournal.Repo,
-  database: Path.expand("../sprachjournal_dev.db", __DIR__),
+config :daily_output, DailyOutput.Repo,
+  database: Path.expand("../daily_output_dev.db", __DIR__),
   pool_size: 5,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true
@@ -13,7 +13,7 @@ config :sprachjournal, Sprachjournal.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we can use it
 # to bundle .js and .css sources.
-config :sprachjournal, SprachjournalWeb.Endpoint,
+config :daily_output, DailyOutputWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}],
@@ -22,8 +22,8 @@ config :sprachjournal, SprachjournalWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "PUVPCLaKizOoQMnPqy0MroR69f/Txji8nbNt523/Ov8/S9bW0iVuQ6cscuOz1+/s",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:sprachjournal, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:sprachjournal, ~w(--watch)]}
+    esbuild: {Esbuild, :install_and_run, [:daily_output, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:daily_output, ~w(--watch)]}
   ]
 
 # ## SSL Support
@@ -50,7 +50,7 @@ config :sprachjournal, SprachjournalWeb.Endpoint,
 # different ports.
 
 # Reload browser tabs when matching files change.
-config :sprachjournal, SprachjournalWeb.Endpoint,
+config :daily_output, DailyOutputWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
     patterns: [
@@ -59,13 +59,13 @@ config :sprachjournal, SprachjournalWeb.Endpoint,
       # Gettext translations
       ~r"priv/gettext/.*\.po$"E,
       # Router, Controllers, LiveViews and LiveComponents
-      ~r"lib/sprachjournal_web/router\.ex$"E,
-      ~r"lib/sprachjournal_web/(controllers|live|components)/.*\.(ex|heex)$"E
+      ~r"lib/daily_output_web/router\.ex$"E,
+      ~r"lib/daily_output_web/(controllers|live|components)/.*\.(ex|heex)$"E
     ]
   ]
 
 # Enable dev routes for dashboard and mailbox
-config :sprachjournal, dev_routes: true
+config :daily_output, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"

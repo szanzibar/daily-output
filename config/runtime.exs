@@ -5,7 +5,7 @@ if config_env() != :test do
 
   Dotenvy.source!([".env", System.get_env()])
 
-  config :sprachjournal, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string)
+  config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string)
 end
 
 # config/runtime.exs is executed for all environments, including
@@ -20,15 +20,15 @@ end
 # If you use `mix release`, you need to explicitly enable the server
 # by passing the PHX_SERVER=true when you start it:
 #
-#     PHX_SERVER=true bin/sprachjournal start
+#     PHX_SERVER=true bin/daily_output start
 #
 # Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
 # script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
-  config :sprachjournal, SprachjournalWeb.Endpoint, server: true
+  config :daily_output, DailyOutputWeb.Endpoint, server: true
 end
 
-config :sprachjournal, SprachjournalWeb.Endpoint,
+config :daily_output, DailyOutputWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
@@ -36,10 +36,10 @@ if config_env() == :prod do
     System.get_env("DATABASE_PATH") ||
       raise """
       environment variable DATABASE_PATH is missing.
-      For example: /etc/sprachjournal/sprachjournal.db
+      For example: /etc/daily_output/daily_output.db
       """
 
-  config :sprachjournal, Sprachjournal.Repo,
+  config :daily_output, DailyOutput.Repo,
     database: database_path,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
 
@@ -57,9 +57,9 @@ if config_env() == :prod do
 
   host = System.get_env("PHX_HOST") || "example.com"
 
-  config :sprachjournal, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :daily_output, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  config :sprachjournal, SprachjournalWeb.Endpoint,
+  config :daily_output, DailyOutputWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
@@ -72,7 +72,7 @@ if config_env() == :prod do
   # To get SSL working, you will need to add the `https` key
   # to your endpoint configuration:
   #
-  #     config :sprachjournal, SprachjournalWeb.Endpoint,
+  #     config :daily_output, DailyOutputWeb.Endpoint,
   #       https: [
   #         ...,
   #         port: 443,
@@ -94,7 +94,7 @@ if config_env() == :prod do
   # We also recommend setting `force_ssl` in your config/prod.exs,
   # ensuring no data is ever sent via http, always redirecting to https:
   #
-  #     config :sprachjournal, SprachjournalWeb.Endpoint,
+  #     config :daily_output, DailyOutputWeb.Endpoint,
   #       force_ssl: [hsts: true]
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.

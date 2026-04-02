@@ -1,7 +1,7 @@
 import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
-import {hooks as colocatedHooks} from "phoenix-colocated/sprachjournal"
+import {hooks as colocatedHooks} from "phoenix-colocated/daily_output"
 import topbar from "../vendor/topbar"
 import {parseMarkers, tokenize, wrapLines, buildHtml} from "./annotated_text"
 
