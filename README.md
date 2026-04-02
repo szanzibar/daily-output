@@ -81,14 +81,39 @@ image to GitHub Container Registry (`ghcr.io`).
 Published image path:
 
 ```text
-ghcr.io/<owner>/<repo>
+ghcr.io/szanzibar/daily-output
 ```
 
 To pull and run:
 
 ```bash
-docker pull ghcr.io/<owner>/<repo>:latest
-docker run --rm -p 4000:4000 ghcr.io/<owner>/<repo>:latest
+docker pull ghcr.io/szanzibar/daily-output:latest
+docker run --rm -p 4000:4000 ghcr.io/szanzibar/daily-output:latest
+```
+
+Simple compose example using the GHCR image:
+
+```yaml
+services:
+  daily_output:
+    image: ghcr.io/szanzibar/daily-output:latest
+    ports:
+      - "46142:4000"
+    environment:
+      ANTHROPIC_API_KEY: "your_api_key"
+      SECRET_KEY_BASE: "generate_with_mix_phx.gen.secret"
+      DATABASE_PATH: "/app/data/daily_output.db"
+      PHX_SERVER: "true"
+      PORT: "4000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+Then run:
+
+```bash
+docker compose up -d
 ```
 
 ### Testing
