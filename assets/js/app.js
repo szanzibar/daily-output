@@ -3,7 +3,7 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/daily_output"
 import topbar from "../vendor/topbar"
-import {parseMarkers, tokenize, wrapLines, buildHtml} from "./annotated_text"
+import {parseMarkers, tokenize, wrapLines, buildHtml, positionNotes} from "./annotated_text"
 
 // Hooks for LiveView
 const Hooks = {
@@ -64,9 +64,10 @@ const Hooks = {
       const containerW = this.el.clientWidth - 32
       const maxChars = Math.max(30, Math.floor(containerW / charW))
 
-      // Wrap and render (pure logic)
+      // Wrap, render, then measure actual DOM positions for annotation alignment
       const lines = wrapLines(tokens, maxChars)
-      this.el.innerHTML = buildHtml(lines, charW, maxChars)
+      this.el.innerHTML = buildHtml(lines)
+      positionNotes(this.el)
     }
   }
 }

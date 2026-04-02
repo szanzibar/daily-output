@@ -181,7 +181,7 @@ describe("escapeHtml", () => {
 describe("buildHtml", () => {
   it("renders plain text lines", () => {
     const lines = [{ segments: [{ type: "text", text: "hello" }], corrections: [] }]
-    const html = buildHtml(lines, 8, 80)
+    const html = buildHtml(lines)
     assert.ok(html.includes("hello"))
     assert.ok(html.includes("ann-text-line"))
   })
@@ -191,22 +191,23 @@ describe("buildHtml", () => {
       segments: [{ type: "correction", id: 1, original: "bad", corrected: "good" }],
       corrections: [{ id: 1, explanation: "fix it", charOffset: 0, charWidth: 7 }]
     }]
-    const html = buildHtml(lines, 8, 80)
+    const html = buildHtml(lines)
     assert.ok(html.includes("correction-deleted"))
     assert.ok(html.includes("correction-added"))
     assert.ok(html.includes("bad"))
     assert.ok(html.includes("good"))
   })
 
-  it("renders annotation notes with margin", () => {
+  it("renders annotation notes with data attributes for positioning", () => {
     const lines = [{
       segments: [{ type: "text", text: "test " }, { type: "correction", id: 1, original: "a", corrected: "b" }],
       corrections: [{ id: 1, explanation: "reason", charOffset: 5, charWidth: 4 }]
     }]
-    const html = buildHtml(lines, 8, 80)
+    const html = buildHtml(lines)
     assert.ok(html.includes("ann-note"))
     assert.ok(html.includes("reason"))
-    assert.ok(html.includes("margin-left"))
+    assert.ok(html.includes('data-note-for="1"'))
+    assert.ok(html.includes('data-correction-id="1"'))
   })
 
   it("handles empty original (insertion)", () => {
@@ -214,7 +215,7 @@ describe("buildHtml", () => {
       segments: [{ type: "correction", id: 1, original: "", corrected: "new" }],
       corrections: [{ id: 1, explanation: "added", charOffset: 0, charWidth: 5 }]
     }]
-    const html = buildHtml(lines, 8, 80)
+    const html = buildHtml(lines)
     assert.ok(!html.includes("correction-deleted"))
     assert.ok(html.includes("correction-added"))
     assert.ok(html.includes("new"))
