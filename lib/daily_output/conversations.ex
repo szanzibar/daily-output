@@ -5,6 +5,7 @@ defmodule DailyOutput.Conversations do
 
   import Ecto.Query
   alias DailyOutput.Repo
+  alias DailyOutput.AI.Proofreader
   alias DailyOutput.Conversations.{Conversation, Message}
 
   defp not_deleted(query) do
@@ -12,10 +13,13 @@ defmodule DailyOutput.Conversations do
   end
 
   def get_conversation!(id) do
-    Conversation
-    |> not_deleted()
-    |> Repo.get!(id)
-    |> Repo.preload(:messages)
+    conversation =
+      Conversation
+      |> not_deleted()
+      |> Repo.get!(id)
+      |> Repo.preload(:messages)
+
+    %{conversation | feedback: Proofreader.normalize_feedback(conversation.feedback)}
   end
 
   def create_conversation(attrs) do
