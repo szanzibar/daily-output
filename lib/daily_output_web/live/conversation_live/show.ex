@@ -20,7 +20,10 @@ defmodule DailyOutputWeb.ConversationLive.Show do
 
     {:ok,
      assign(socket,
-       page_title: "Gespräch — #{Calendar.strftime(conversation.inserted_at, "%d.%m.%Y")}",
+       page_title:
+         gettext("Conversation — %{date}",
+           date: Calendar.strftime(conversation.inserted_at, "%d.%m.%Y")
+         ),
        conversation: conversation,
        messages: messages,
        version: version,
@@ -46,11 +49,11 @@ defmodule DailyOutputWeb.ConversationLive.Show do
       {:ok, _} ->
         {:noreply,
          socket
-         |> put_flash(:info, "Gespräch gelöscht.")
+         |> put_flash(:info, gettext("Conversation deleted."))
          |> push_navigate(to: ~p"/")}
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Konnte nicht gelöscht werden.")}
+        {:noreply, put_flash(socket, :error, gettext("Could not delete."))}
     end
   end
 
@@ -93,7 +96,7 @@ defmodule DailyOutputWeb.ConversationLive.Show do
   end
 
   def handle_event("override_focus_result", _params, socket) do
-    {:noreply, put_flash(socket, :info, "Überschrieben — zählt als verwendet.")}
+    {:noreply, put_flash(socket, :info, gettext("Overridden — counts as used."))}
   end
 
   @impl true
@@ -103,26 +106,30 @@ defmodule DailyOutputWeb.ConversationLive.Show do
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p class="text-xs font-mono uppercase tracking-widest text-base-content/60 mb-1">
-            Gespräch
+            {gettext("Conversation")}
           </p>
           <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
             {Calendar.strftime(@conversation.inserted_at, "%d.%m.%Y")}
           </h1>
         </div>
         <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
-          <span :if={@conversation.completed_at} class="px-2 py-1 block-green uppercase">Fertig</span>
+          <span :if={@conversation.completed_at} class="px-2 py-1 block-green uppercase">
+            {gettext("Done")}
+          </span>
           <span :if={is_nil(@conversation.completed_at)} class="px-2 py-1 block-orange uppercase">
-            Offen
+            {gettext("Open")}
           </span>
           <span class="text-base-content/60">
-            {Enum.count(@messages, &(&1.role == "user"))} Austausche
+            {gettext("%{count} exchanges", count: Enum.count(@messages, &(&1.role == "user")))}
           </span>
         </div>
       </div>
 
       <%!-- Version nav --%>
       <div :if={@total_versions > 1} class="flex flex-wrap items-center gap-2 text-sm font-mono">
-        <span class="font-bold">v{@version} von {@total_versions}</span>
+        <span class="font-bold">
+          {gettext("v%{version} of %{total}", version: @version, total: @total_versions)}
+        </span>
         <%= for {v, idx} <- Enum.with_index(Enum.reverse(@versions), 1) do %>
           <.link
             :if={v.id != @conversation.id}
@@ -145,20 +152,22 @@ defmodule DailyOutputWeb.ConversationLive.Show do
           navigate={~p"/conversations/#{@conversation.id}/continue"}
           class="brutal-btn px-4 py-2 block-pink text-sm no-underline"
         >
-          {if @conversation.feedback, do: "Neue Version", else: "Weiterführen"}
+          {if @conversation.feedback, do: gettext("New Version"), else: gettext("Continue")}
         </.link>
         <button
           :if={!@confirm_delete}
           phx-click="confirm_delete"
           class="brutal-btn px-4 py-2 block-dark text-sm"
         >
-          Löschen
+          {gettext("Delete")}
         </button>
         <div :if={@confirm_delete} class="flex items-center gap-2">
-          <span class="text-xs font-mono text-bold-red">Wirklich löschen?</span>
-          <button phx-click="delete" class="brutal-btn px-3 py-1 block-red text-xs">Ja</button>
+          <span class="text-xs font-mono text-bold-red">{gettext("Really delete?")}</span>
+          <button phx-click="delete" class="brutal-btn px-3 py-1 block-red text-xs">
+            {gettext("Yes")}
+          </button>
           <button phx-click="cancel_delete" class="brutal-btn px-3 py-1 bg-base-200 text-xs">
-            Nein
+            {gettext("No")}
           </button>
         </div>
       </div>
@@ -167,7 +176,7 @@ defmodule DailyOutputWeb.ConversationLive.Show do
         :if={@conversation.topic}
         class="text-sm font-mono text-base-content/60 border-l-4 border-ink pl-3"
       >
-        Thema: {@conversation.topic}
+        {gettext("Topic:")} {@conversation.topic}
       </div>
 
       <%!-- Conversation with feedback (unified) or plain chat --%>
@@ -181,7 +190,9 @@ defmodule DailyOutputWeb.ConversationLive.Show do
 
         <div class="border-4 border-ink p-4">
           <h2 class="text-lg font-black uppercase mb-4 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-red"></span> Gespräch mit Korrekturen
+            <span class="inline-block w-3 h-3 block-red"></span> {gettext(
+              "Conversation with Corrections"
+            )}
           </h2>
           <.chat_feedback messages={@messages} feedback={@conversation.feedback} />
         </div>
@@ -198,7 +209,7 @@ defmodule DailyOutputWeb.ConversationLive.Show do
           class="border-4 border-ink p-5 mt-6"
         >
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-blue"></span> Tipps
+            <span class="inline-block w-3 h-3 block-blue"></span> {gettext("Tips")}
           </h2>
           <div
             :for={item <- @conversation.feedback["commentary"] || []}
@@ -236,7 +247,7 @@ defmodule DailyOutputWeb.ConversationLive.Show do
         navigate={~p"/"}
         class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
       >
-        &larr; Zurück
+        &larr; {gettext("Back")}
       </.link>
     </div>
     """

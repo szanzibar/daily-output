@@ -10,6 +10,7 @@ defmodule DailyOutput.Settings.Config do
     field :language_level, :string, default: "B2"
     field :prompt_context, :string, default: ""
     field :min_exchanges, :integer, default: 5
+    field :ui_language, :string, default: "auto"
 
     timestamps(type: :utc_datetime)
   end
@@ -23,9 +24,11 @@ defmodule DailyOutput.Settings.Config do
       :topics,
       :language_level,
       :prompt_context,
-      :min_exchanges
+      :min_exchanges,
+      :ui_language
     ])
     |> validate_required([:timer_minutes, :target_language, :native_language])
     |> validate_number(:timer_minutes, greater_than: 0, less_than_or_equal_to: 60)
+    |> validate_inclusion(:ui_language, ~w(auto en de))
   end
 end

@@ -13,7 +13,9 @@ defmodule DailyOutputWeb.Router do
   scope "/", DailyOutputWeb do
     pipe_through :browser
 
-    live_session :default, layout: {DailyOutputWeb.Layouts, :app} do
+    live_session :default,
+      layout: {DailyOutputWeb.Layouts, :app},
+      on_mount: {DailyOutputWeb.Locale, :set_locale} do
       live "/", HomeLive
       live "/entries/new", EntryLive.New
       live "/entries/:id", EntryLive.Show
@@ -21,8 +23,9 @@ defmodule DailyOutputWeb.Router do
       live "/conversations/new", ConversationLive.New
       live "/conversations/:id", ConversationLive.Show
       live "/conversations/:id/continue", ConversationLive.Continue
-      live "/fokus", FocusTopicsLive
+      live "/focus", FocusTopicsLive
       live "/settings", SettingsLive
+      live "/about", AboutLive
     end
   end
 end

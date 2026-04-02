@@ -10,7 +10,7 @@ defmodule DailyOutputWeb.FocusTopicsLive do
 
     {:ok,
      assign(socket,
-       page_title: "Fokus-Pool",
+       page_title: gettext("Focus Pool"),
        active_topics: active,
        mastered_topics: mastered,
        show_mastered: false
@@ -45,14 +45,15 @@ defmodule DailyOutputWeb.FocusTopicsLive do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-6">
       <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-        Fokus-Pool
+        {gettext("Focus Pool")}
       </h1>
 
       <hr class="brutal-hr" />
 
       <p class="text-sm font-mono text-base-content/60">
-        Themen aus den Tipps, auf die du dich beim Schreiben und Sprechen konzentrieren willst.
-        Wähle vor jedem Eintrag oder Gespräch ein Fokus-Thema.
+        {gettext(
+          "Topics from your feedback tips to focus on while writing and speaking. Choose a focus topic before each entry or conversation."
+        )}
       </p>
 
       <%!-- Active topics --%>
@@ -70,7 +71,7 @@ defmodule DailyOutputWeb.FocusTopicsLive do
               phx-value-id={topic.id}
               class="brutal-btn px-3 py-1 block-green text-xs"
             >
-              Gemeistert
+              {gettext("Mastered")}
             </button>
             <button
               phx-click="delete_topic"
@@ -85,7 +86,7 @@ defmodule DailyOutputWeb.FocusTopicsLive do
 
       <div :if={@active_topics == []} class="border-4 border-ink p-6 text-center">
         <p class="text-sm font-mono text-base-content/50">
-          Noch keine Fokus-Themen. Füge Tipps aus deinem Feedback hinzu!
+          {gettext("No focus topics yet. Add tips from your feedback!")}
         </p>
       </div>
 
@@ -95,7 +96,9 @@ defmodule DailyOutputWeb.FocusTopicsLive do
           phx-click="toggle_mastered"
           class="text-sm font-mono text-base-content/50 hover:text-base-content cursor-pointer"
         >
-          {if @show_mastered, do: "▼", else: "▶"} {@mastered_topics |> length()} gemeisterte Themen
+          {if @show_mastered, do: "▼", else: "▶"} {gettext("%{count} mastered topics",
+            count: length(@mastered_topics)
+          )}
         </button>
 
         <div :if={@show_mastered} class="border-4 border-ink divide-y divide-ink mt-2 opacity-60">
@@ -103,7 +106,9 @@ defmodule DailyOutputWeb.FocusTopicsLive do
             <div class="flex-1">
               <p class="text-sm line-through">{topic.text}</p>
               <p class="text-xs font-mono text-base-content/40 mt-1">
-                Gemeistert am {Calendar.strftime(topic.mastered_at, "%d.%m.%Y")}
+                {gettext("Mastered on %{date}",
+                  date: Calendar.strftime(topic.mastered_at, "%d.%m.%Y")
+                )}
               </p>
             </div>
             <button
@@ -121,7 +126,7 @@ defmodule DailyOutputWeb.FocusTopicsLive do
         navigate={~p"/"}
         class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
       >
-        &larr; Zurück
+        &larr; {gettext("Back")}
       </.link>
     </div>
     """

@@ -7,7 +7,12 @@ defmodule DailyOutput.FocusTopicsTest do
     {:ok, topic} =
       FocusTopics.create_topic(
         Map.merge(
-          %{text: "Test topic", source_text: "Original tip text", source_type: "entry", source_id: 1},
+          %{
+            text: "Test topic",
+            source_text: "Original tip text",
+            source_type: "entry",
+            source_id: 1
+          },
           attrs
         )
       )

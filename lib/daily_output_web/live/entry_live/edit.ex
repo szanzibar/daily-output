@@ -10,7 +10,8 @@ defmodule DailyOutputWeb.EntryLive.Edit do
 
     {:ok,
      assign(socket,
-       page_title: "Bearbeiten — #{Calendar.strftime(entry.inserted_at, "%d.%m.%Y")}",
+       page_title:
+         gettext("Edit — %{date}", date: Calendar.strftime(entry.inserted_at, "%d.%m.%Y")),
        config: config,
        entry: entry,
        body: entry.body || "",
@@ -31,7 +32,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     entry = socket.assigns.entry
 
     if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, "Schreib zuerst etwas!")}
+      {:noreply, put_flash(socket, :error, gettext("Write something first!"))}
     else
       # If entry already has feedback, save as a new version (don't overwrite old feedback)
       # If no feedback yet, it's a draft — true edit is fine
@@ -52,11 +53,11 @@ defmodule DailyOutputWeb.EntryLive.Edit do
         {:ok, saved_entry} ->
           {:noreply,
            socket
-           |> put_flash(:info, "Gespeichert.")
+           |> put_flash(:info, gettext("Saved."))
            |> push_navigate(to: ~p"/entries/#{saved_entry.id}")}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Konnte nicht gespeichert werden.")}
+          {:noreply, put_flash(socket, :error, gettext("Could not save."))}
       end
     end
   end
@@ -67,7 +68,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     entry = socket.assigns.entry
 
     if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, "Schreib zuerst etwas!")}
+      {:noreply, put_flash(socket, :error, gettext("Write something first!"))}
     else
       # Create a NEW entry (new version) instead of overwriting the old one
       attrs = %{
@@ -105,7 +106,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
           {:noreply, assign(socket, entry: new_entry, phase: :feedback, feedback_loading: true)}
 
         {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, "Konnte nicht gespeichert werden.")}
+          {:noreply, put_flash(socket, :error, gettext("Could not save."))}
       end
     end
   end
@@ -126,7 +127,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
      assign(socket,
        feedback_loading: false,
        error:
-         "ANTHROPIC_API_KEY nicht gesetzt. In der .env Datei eintragen und Server neu starten."
+         gettext("ANTHROPIC_API_KEY not set. Add it to the .env file and restart the server.")
      )}
   end
 
@@ -134,7 +135,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     {:noreply,
      assign(socket,
        feedback_loading: false,
-       error: "Feedback konnte nicht geladen werden: #{inspect(reason)}"
+       error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
      )}
   end
 
@@ -147,7 +148,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
         <.editor id={"editor-#{@entry.id}"} body={@body} prompt={@entry.prompt} error={@error}>
           <:header>
             <h1 class="text-3xl sm:text-4xl font-black tracking-tighter uppercase">
-              Bearbeiten
+              {gettext("Edit")}
             </h1>
             <span class="text-sm font-mono text-base-content/60">
               {Calendar.strftime(@entry.inserted_at, "%d.%m.%Y")}
@@ -158,13 +159,13 @@ defmodule DailyOutputWeb.EntryLive.Edit do
               navigate={~p"/entries/#{@entry.id}"}
               class="brutal-btn px-4 py-2 block-dark text-sm no-underline"
             >
-              Abbrechen
+              {gettext("Cancel")}
             </.link>
             <button phx-click="save" class="brutal-btn px-4 py-2 block-cyan text-sm">
-              Speichern
+              {gettext("Save")}
             </button>
             <button phx-click="resubmit" class="brutal-btn px-6 py-3 block-green text-lg">
-              Neues Feedback &check;
+              {gettext("New Feedback")} &check;
             </button>
           </:actions>
         </.editor>
@@ -172,7 +173,11 @@ defmodule DailyOutputWeb.EntryLive.Edit do
 
       <%!-- PHASE: Feedback --%>
       <div :if={@phase == :feedback}>
-        <.loading :if={@feedback_loading} title="Feedback" message="Dein Text wird geprüft" />
+        <.loading
+          :if={@feedback_loading}
+          title={gettext("Feedback")}
+          message={gettext("Your text is being reviewed")}
+        />
 
         <.feedback_view
           :if={@feedback && !@feedback_loading}
@@ -184,14 +189,14 @@ defmodule DailyOutputWeb.EntryLive.Edit do
               navigate={~p"/entries/#{@entry.id}"}
               class="brutal-btn px-6 py-3 block-yellow no-underline text-lg"
             >
-              Zurück zum Eintrag
+              {gettext("Back to entry")}
             </.link>
           </:actions>
         </.feedback_view>
 
         <div :if={@error && !@feedback_loading && !@feedback} class="space-y-6">
           <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-            Feedback
+            {gettext("Feedback")}
           </h1>
           <hr class="brutal-hr" />
           <div class="border-4 border-ink p-5 block-red">
@@ -201,7 +206,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
             navigate={~p"/entries/#{@entry.id}"}
             class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
           >
-            Zurück zum Eintrag
+            {gettext("Back to entry")}
           </.link>
         </div>
       </div>
