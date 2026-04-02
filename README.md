@@ -68,6 +68,29 @@ cp .env.example .env
 docker compose up -d
 ```
 
+### Container Publishing (GHCR)
+
+This repository includes a GitHub Actions workflow at
+`.github/workflows/publish-container.yml` that builds and publishes the container
+image to GitHub Container Registry (`ghcr.io`).
+
+- Push to `main`: publishes branch + `sha` tags and updates `latest`
+- Push a tag like `v1.2.3`: publishes corresponding version tags
+- Pull requests: build only (no push)
+
+Published image path:
+
+```text
+ghcr.io/<owner>/<repo>
+```
+
+To pull and run:
+
+```bash
+docker pull ghcr.io/<owner>/<repo>:latest
+docker run --rm -p 4000:4000 ghcr.io/<owner>/<repo>:latest
+```
+
 ### Testing
 
 ```bash
