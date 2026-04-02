@@ -85,47 +85,24 @@ defmodule DailyOutput.FocusTopics do
   """
   def daily_challenge_status do
     {today_start, today_end} = today_range()
-    has_pool = has_active_topics?()
 
     entry_complete =
-      if has_pool do
-        Repo.exists?(
-          from(e in Entry,
-            where:
-              is_nil(e.deleted_at) and not is_nil(e.feedback) and
-                not is_nil(e.focus_topic_id) and
-                e.inserted_at >= ^today_start and e.inserted_at < ^today_end
-          )
+      Repo.exists?(
+        from(e in Entry,
+          where:
+            is_nil(e.deleted_at) and not is_nil(e.feedback) and
+              e.inserted_at >= ^today_start and e.inserted_at < ^today_end
         )
-      else
-        Repo.exists?(
-          from(e in Entry,
-            where:
-              is_nil(e.deleted_at) and not is_nil(e.feedback) and
-                e.inserted_at >= ^today_start and e.inserted_at < ^today_end
-          )
-        )
-      end
+      )
 
     conversation_complete =
-      if has_pool do
-        Repo.exists?(
-          from(c in Conversation,
-            where:
-              is_nil(c.deleted_at) and not is_nil(c.feedback) and
-                not is_nil(c.focus_topic_id) and
-                c.inserted_at >= ^today_start and c.inserted_at < ^today_end
-          )
+      Repo.exists?(
+        from(c in Conversation,
+          where:
+            is_nil(c.deleted_at) and not is_nil(c.feedback) and
+              c.inserted_at >= ^today_start and c.inserted_at < ^today_end
         )
-      else
-        Repo.exists?(
-          from(c in Conversation,
-            where:
-              is_nil(c.deleted_at) and not is_nil(c.feedback) and
-                c.inserted_at >= ^today_start and c.inserted_at < ^today_end
-          )
-        )
-      end
+      )
 
     %{
       entry: if(entry_complete, do: :complete, else: :none),
