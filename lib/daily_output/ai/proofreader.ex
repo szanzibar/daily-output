@@ -56,6 +56,8 @@ defmodule DailyOutput.AI.Proofreader do
     IMPORTANT: Write ALL feedback text (annotations, commentary, encouragement) in #{feedback_lang}.
     #{context_block}#{focus_block}
     Use the provide_feedback tool to return your response.
+    IMPORTANT: The "annotations" and "commentary" fields MUST be JSON arrays, NOT strings.
+    Return them as structured arrays of objects, never as a stringified JSON string.
 
     RULES for annotated_text:
     - Reproduce the ENTIRE original text, preserving all original line breaks
@@ -203,10 +205,81 @@ defmodule DailyOutput.AI.Proofreader do
 
   defp decode_if_string(val) when is_binary(val) do
     case Jason.decode(val) do
-      {:ok, decoded} -> decoded
-      _ -> val
+      {:ok, decoded} ->
+        decoded
+
+      {:error, _} ->
+        # The model sometimes returns arrays as strings with unescaped quotes
+        # inside text values (e.g. German „App" where " is U+0022).
+        # Jason can't parse these, so we split by object boundaries and
+        # extract key-value pairs manually.
+        lenient_parse_json_array(val)
     end
   end
 
   defp decode_if_string(val), do: val
+
+  defp lenient_parse_json_array(str) do
+    trimmed = str |> String.trim() |> String.trim_leading("[") |> String.trim_trailing("]")
+
+    if String.trim(trimmed) == "" do
+      []
+    else
+      trimmed
+      |> String.split(~r/\}\s*,\s*\{/)
+      |> Enum.map(&lenient_parse_object/1)
+      |> Enum.filter(&(map_size(&1) > 0))
+    end
+  end
+
+  defp lenient_parse_object(chunk) do
+    chunk = chunk |> String.trim() |> String.trim_leading("{") |> String.trim_trailing("}")
+
+    # Find all "key": positions
+    key_positions =
+      Regex.scan(~r/"(\w+)"\s*:\s*/, chunk, return: :index)
+      |> Enum.map(fn [{full_start, full_len}, {key_start, key_len}] ->
+        key = String.slice(chunk, key_start, key_len)
+        value_start = full_start + full_len
+        {key, value_start}
+      end)
+
+    key_positions
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {{key, val_start}, idx}, acc ->
+      # Value extends until the next key's pattern or end of chunk
+      next_key_start =
+        case Enum.at(key_positions, idx + 1) do
+          {_, next_start} ->
+            # Back up past the comma and whitespace before the next key
+            chunk |> String.slice(0, next_start) |> String.replace(~r/,\s*"[^"]*"\s*:\s*\z/, "") |> String.length()
+          nil -> String.length(chunk)
+        end
+
+      raw_value = String.slice(chunk, val_start, next_key_start - val_start) |> String.trim()
+
+      value =
+        cond do
+          # Number
+          Regex.match?(~r/\A\d+\z/, raw_value) ->
+            String.to_integer(raw_value)
+
+          # Boolean
+          raw_value == "true" -> true
+          raw_value == "false" -> false
+
+          # String — strip surrounding quotes and clean up residual escapes
+          String.starts_with?(raw_value, "\"") ->
+            raw_value
+            |> String.trim_leading("\"")
+            |> String.trim_trailing("\"")
+            |> String.replace("\\\"", "\"")
+
+          true ->
+            raw_value
+        end
+
+      Map.put(acc, key, value)
+    end)
+  end
 end
