@@ -81,9 +81,9 @@ export function tokenize(segments) {
 }
 
 /**
- * Character width of a token as rendered.
+ * Character width of a token for line-wrap decisions.
  */
-export function tokenCharWidth(tok) {
+function tokenCharWidth(tok) {
   if (tok.type === 'newline') return 0;
   if (tok.type === 'correction') return tok.original.length + tok.corrected.length + 2;
   return tok.text.length;
@@ -91,7 +91,7 @@ export function tokenCharWidth(tok) {
 
 /**
  * Word-wrap tokens into lines of at most maxChars characters.
- * Each line has: segments[], corrections[] (with charOffset/charWidth), charPos.
+ * Each line has: segments[] and corrections[] (IDs only — positioning is done via DOM measurement).
  */
 export function wrapLines(tokens, maxChars) {
   const lines = [];
@@ -115,12 +115,7 @@ export function wrapLines(tokens, maxChars) {
     }
 
     if (tok.type === 'correction') {
-      curLine.corrections.push({
-        id: tok.id,
-        explanation: tok.explanation,
-        charOffset: curLine.charPos,
-        charWidth: tokLen,
-      });
+      curLine.corrections.push({ id: tok.id, explanation: tok.explanation });
     }
 
     curLine.segments.push(tok);
@@ -198,8 +193,10 @@ export function positionNotes(container) {
     const containerW = textLine.clientWidth;
     const offsetPx = Math.round(corrLeft - lineLeft);
 
-    // Cap at 50% of container width so notes don't get pushed too far right
-    const marginPx = Math.min(offsetPx, Math.round(containerW * 0.5));
+    // Ensure note has at least 200px (or full container if narrow) for readability
+    const minNoteWidth = Math.min(200, containerW);
+    const maxMargin = containerW - minNoteWidth;
+    const marginPx = Math.min(offsetPx, maxMargin);
     const maxWidthPx = containerW - marginPx;
 
     note.style.marginLeft = `${marginPx}px`;
