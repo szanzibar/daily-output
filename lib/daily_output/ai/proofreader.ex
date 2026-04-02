@@ -180,7 +180,12 @@ defmodule DailyOutput.AI.Proofreader do
     }
   end
 
-  @doc false
+  @doc """
+  Normalizes feedback fields, decoding any JSON strings that should be lists.
+  Called both when saving new feedback and when loading from the database.
+  """
+  def normalize_feedback(nil), do: nil
+
   def normalize_feedback(feedback) do
     base = %{
       "annotated_text" => feedback["annotated_text"] || "",

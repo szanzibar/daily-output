@@ -6,6 +6,7 @@ defmodule DailyOutput.Journal do
 
   import Ecto.Query
   alias DailyOutput.Repo
+  alias DailyOutput.AI.Proofreader
   alias DailyOutput.Journal.Entry
 
   defp not_deleted(query) do
@@ -46,9 +47,12 @@ defmodule DailyOutput.Journal do
   end
 
   def get_entry!(id) do
-    Entry
-    |> not_deleted()
-    |> Repo.get!(id)
+    entry =
+      Entry
+      |> not_deleted()
+      |> Repo.get!(id)
+
+    %{entry | feedback: Proofreader.normalize_feedback(entry.feedback)}
   end
 
   @doc "Returns the latest non-deleted entry for today."
