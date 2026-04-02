@@ -1,1 +1,1 @@
-call "%~dp0\sprachjournal" eval Sprachjournal.Release.migrate
+call "%~dp0\daily_output" eval DailyOutput.Release.migrate

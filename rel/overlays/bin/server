@@ -4,6 +4,6 @@ set -eu
 cd -P -- "$(dirname -- "$0")"
 
 # Run migrations before starting
-./sprachjournal eval Sprachjournal.Release.migrate
+./daily_output eval DailyOutput.Release.migrate
 
-PHX_SERVER=true exec ./sprachjournal start
+PHX_SERVER=true exec ./daily_output start
