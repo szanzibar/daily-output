@@ -39,7 +39,7 @@ defmodule DailyOutputWeb.HomeLive do
           preview: if(e.body, do: String.slice(e.body, 0..60), else: gettext("(empty)")),
           completed: completed,
           date: e.inserted_at,
-          path: if(completed, do: "/entries/#{e.id}", else: "/entries/#{e.id}/edit"),
+          path: if(e.feedback, do: "/entries/#{e.id}", else: "/entries/#{e.id}/edit"),
           label: gettext("Entry")
         }
       end)
@@ -56,7 +56,7 @@ defmodule DailyOutputWeb.HomeLive do
           completed: completed,
           date: c.inserted_at,
           path:
-            if(completed, do: "/conversations/#{c.id}", else: "/conversations/#{c.id}/continue"),
+            if(c.feedback, do: "/conversations/#{c.id}", else: "/conversations/#{c.id}/continue"),
           label: gettext("Conversation")
         }
       end)
@@ -118,9 +118,9 @@ defmodule DailyOutputWeb.HomeLive do
         <.link
           :if={@today_entry}
           navigate={
-            if(is_nil(@today_entry.feedback),
-              do: ~p"/entries/#{@today_entry.id}/edit",
-              else: ~p"/entries/#{@today_entry.id}"
+            if(!is_nil(@today_entry.feedback),
+              do: ~p"/entries/#{@today_entry.id}",
+              else: ~p"/entries/#{@today_entry.id}/edit"
             )
           }
           class="block border-b-2 border-ink p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
@@ -173,9 +173,9 @@ defmodule DailyOutputWeb.HomeLive do
         <.link
           :if={@today_conversation}
           navigate={
-            if(is_nil(@today_conversation.feedback),
-              do: ~p"/conversations/#{@today_conversation.id}/continue",
-              else: ~p"/conversations/#{@today_conversation.id}"
+            if(!is_nil(@today_conversation.feedback),
+              do: ~p"/conversations/#{@today_conversation.id}",
+              else: ~p"/conversations/#{@today_conversation.id}/continue"
             )
           }
           class="block p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"

@@ -80,8 +80,8 @@ defmodule DailyOutput.FocusTopics do
 
   @doc """
   Check today's daily challenge status.
-  Entry/conversation complete = has feedback AND (has focus_topic OR pool was empty at time of creation).
-  For simplicity: complete = has feedback AND has focus_topic_id, OR has feedback AND no active topics exist.
+  Entry/conversation complete = has feedback AND completed_at is set.
+  This allows entries with feedback but unmet focus requirements to remain drafts.
   """
   def daily_challenge_status do
     {today_start, today_end} = today_range()
@@ -90,7 +90,7 @@ defmodule DailyOutput.FocusTopics do
       Repo.exists?(
         from(e in Entry,
           where:
-            is_nil(e.deleted_at) and not is_nil(e.feedback) and
+            is_nil(e.deleted_at) and not is_nil(e.feedback) and not is_nil(e.completed_at) and
               e.inserted_at >= ^today_start and e.inserted_at < ^today_end
         )
       )
@@ -99,7 +99,7 @@ defmodule DailyOutput.FocusTopics do
       Repo.exists?(
         from(c in Conversation,
           where:
-            is_nil(c.deleted_at) and not is_nil(c.feedback) and
+            is_nil(c.deleted_at) and not is_nil(c.feedback) and not is_nil(c.completed_at) and
               c.inserted_at >= ^today_start and c.inserted_at < ^today_end
         )
       )
@@ -120,7 +120,7 @@ defmodule DailyOutput.FocusTopics do
       Repo.exists?(
         from(e in Entry,
           where:
-            is_nil(e.deleted_at) and not is_nil(e.feedback) and
+            is_nil(e.deleted_at) and not is_nil(e.feedback) and not is_nil(e.completed_at) and
               e.inserted_at >= ^day_start and e.inserted_at < ^day_end
         )
       )
@@ -129,7 +129,7 @@ defmodule DailyOutput.FocusTopics do
       Repo.exists?(
         from(c in Conversation,
           where:
-            is_nil(c.deleted_at) and not is_nil(c.feedback) and
+            is_nil(c.deleted_at) and not is_nil(c.feedback) and not is_nil(c.completed_at) and
               c.inserted_at >= ^day_start and c.inserted_at < ^day_end
         )
       )

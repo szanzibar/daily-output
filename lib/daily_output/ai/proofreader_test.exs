@@ -144,5 +144,38 @@ defmodule DailyOutput.AI.ProofreaderTest do
       assert result["focus_result"]["used"] == true
       assert result["focus_result"]["correct"] == false
     end
+
+    test "decodes focus_result when it is a JSON string" do
+      input = %{
+        "annotated_text" => "Test",
+        "annotations" => [],
+        "commentary" => [],
+        "encouragement" => "Gut!",
+        "focus_result" => ~s({"used": false, "correct": true, "comment": "Bitte weiter ueben."})
+      }
+
+      result = Proofreader.normalize_feedback(input)
+
+      assert result["focus_result"]["used"] == false
+      assert result["focus_result"]["correct"] == true
+      assert result["focus_result"]["comment"] == "Bitte weiter ueben."
+    end
+
+    test "handles malformed focus_result string safely" do
+      input = %{
+        "annotated_text" => "Test",
+        "annotations" => [],
+        "commentary" => [],
+        "encouragement" => "Gut!",
+        "focus_result" =>
+          ~s({"used": false, "correct": false, "comment": "Versuche zum Beispiel: \"Ich besuche meine Freundin\"."}])
+      }
+
+      result = Proofreader.normalize_feedback(input)
+
+      assert result["focus_result"]["used"] == false
+      assert result["focus_result"]["correct"] == false
+      assert result["focus_result"]["comment"] =~ "Ich besuche meine Freundin"
+    end
   end
 end

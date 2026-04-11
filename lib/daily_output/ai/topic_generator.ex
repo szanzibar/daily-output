@@ -4,23 +4,40 @@ defmodule DailyOutput.AI.TopicGenerator do
   """
 
   alias DailyOutput.AI
+  alias DailyOutput.AI.LanguageProfile
 
-  def generate_openers(topics, _target_language, native_language) do
+  def generate_openers(topics, target_language, native_language) do
     topic_list =
       case topics do
         [] -> "Alltag, Arbeit, Hobbys, Essen, Reisen, Wetter"
         list -> Enum.join(list, ", ")
       end
 
+    profile = LanguageProfile.resolve(target_language)
+
+    locale_line =
+      if profile.locale_context do
+        "These are things a friend #{profile.locale_context} might say to start a casual conversation."
+      else
+        "These are things a friend might say to start a casual conversation."
+      end
+
+    conventions_block =
+      if profile.conventions == [] do
+        ""
+      else
+        LanguageProfile.conventions_block(profile) <> "\n"
+      end
+
     system = """
-    Generate exactly 4 natural conversation openers in Swiss Standard German (Schweizer Hochdeutsch).
-    These are things a friend in Switzerland might say to start a casual conversation.
-    Never use ß — always use ss. Use Swiss terms naturally.
+    Generate exactly 4 natural conversation openers in #{profile.prompt_name}.
+    #{locale_line}
+    #{conventions_block}
 
     Topics to draw from: #{topic_list}
 
     Each opener should:
-    - Be a natural question or statement a Swiss German speaker would use
+    - Be a natural question or statement a native #{profile.prompt_name} speaker would use
     - Be 1-2 sentences max
     - Range from easier to more challenging vocabulary
     - Include a #{native_language} translation

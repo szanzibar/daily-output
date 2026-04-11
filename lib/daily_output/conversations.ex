@@ -49,8 +49,10 @@ defmodule DailyOutput.Conversations do
   end
 
   def save_feedback(%Conversation{} = conversation, feedback) do
+    normalized_feedback = Proofreader.normalize_feedback(feedback)
+
     conversation
-    |> Conversation.changeset(%{feedback: feedback})
+    |> Conversation.changeset(%{feedback: normalized_feedback})
     |> Repo.update()
   end
 

@@ -102,11 +102,43 @@ defmodule DailyOutput.FocusTopicsTest do
       assert status.all_done == false
     end
 
-    test "entry with feedback is complete when no focus topics exist" do
+    test "entry with feedback and completed_at is complete" do
       {:ok, entry} = DailyOutput.Journal.create_entry(%{body: "test", language: "de"})
-      DailyOutput.Journal.save_feedback(entry, %{"annotated_text" => "test"})
+      {:ok, entry} = DailyOutput.Journal.save_feedback(entry, %{"annotated_text" => "test"})
+      DailyOutput.Journal.complete_entry(entry)
       status = FocusTopics.daily_challenge_status()
       assert status.entry == :complete
+    end
+
+    test "entry with feedback but without completed_at is not complete" do
+      {:ok, entry} = DailyOutput.Journal.create_entry(%{body: "test", language: "de"})
+      DailyOutput.Journal.save_feedback(entry, %{"annotated_text" => "test"})
+
+      status = FocusTopics.daily_challenge_status()
+      assert status.entry == :none
+    end
+
+    test "conversation with feedback but without completed_at is not complete" do
+      {:ok, conversation} =
+        DailyOutput.Conversations.create_conversation(%{topic: "test", language: "de"})
+
+      DailyOutput.Conversations.save_feedback(conversation, %{"annotated_text" => "test"})
+
+      status = FocusTopics.daily_challenge_status()
+      assert status.conversation == :none
+    end
+
+    test "conversation with feedback and completed_at is complete" do
+      {:ok, conversation} =
+        DailyOutput.Conversations.create_conversation(%{topic: "test", language: "de"})
+
+      {:ok, conversation} =
+        DailyOutput.Conversations.save_feedback(conversation, %{"annotated_text" => "test"})
+
+      DailyOutput.Conversations.complete_conversation(conversation)
+
+      status = FocusTopics.daily_challenge_status()
+      assert status.conversation == :complete
     end
   end
 

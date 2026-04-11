@@ -4,12 +4,34 @@ defmodule DailyOutput.AI.ConversationPartner do
   """
 
   alias DailyOutput.AI
+  alias DailyOutput.AI.LanguageProfile
 
   def respond(messages, opts) do
-    _target = Keyword.fetch!(opts, :target_language)
+    target = Keyword.fetch!(opts, :target_language)
     native = Keyword.fetch!(opts, :native_language)
     level = Keyword.get(opts, :language_level, "B2")
     context = Keyword.get(opts, :prompt_context, "")
+    profile = LanguageProfile.resolve(target)
+
+    rules =
+      [
+        "Respond in #{profile.prompt_name} only"
+      ] ++
+        profile.conventions ++
+        [
+          "Keep responses natural and conversational (2-3 sentences)",
+          "Match the complexity to #{level} level — don't oversimplify, but be clear",
+          "If they ask how to say something (\"Wie sagt man X?\"), answer naturally",
+          "If they ask about grammar or vocabulary, give a brief helpful answer",
+          "Otherwise do NOT correct their errors — just respond naturally",
+          "Ask follow-up questions to keep the conversation going",
+          "Be warm and friendly, like a real conversation partner"
+        ]
+
+    rules_block =
+      rules
+      |> Enum.map(&"- #{&1}")
+      |> Enum.join("\n")
 
     context_block =
       if context != "" do
@@ -19,20 +41,11 @@ defmodule DailyOutput.AI.ConversationPartner do
       end
 
     system = """
-    You are a friendly native Swiss German speaker (Schweizer Hochdeutsch) having a casual conversation.
-    The person you're talking to is a #{native} speaker at CEFR level #{level}.
+    You are a friendly native #{profile.prompt_name} speaker having a casual conversation.
+    The person you're talking to is a #{native} speaker learning #{profile.prompt_name}, currently at CEFR level #{level}.
     #{context_block}
     Rules:
-    - Respond in Swiss Standard German (Schweizer Hochdeutsch) only
-    - Never use ß — always use ss
-    - Use Swiss terms naturally (Velo, Poulet, Natel, Trottoir, parkieren, etc.)
-    - Keep responses natural and conversational (2-3 sentences)
-    - Match the complexity to #{level} level — don't oversimplify, but be clear
-    - If they ask how to say something ("Wie sagt man X?"), answer naturally
-    - If they ask about grammar or vocabulary, give a brief helpful answer
-    - Otherwise do NOT correct their errors — just respond naturally
-    - Ask follow-up questions to keep the conversation going
-    - Be warm and friendly, like a real conversation partner
+    #{rules_block}
     """
 
     api_messages =
