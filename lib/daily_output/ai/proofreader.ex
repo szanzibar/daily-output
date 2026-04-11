@@ -74,8 +74,7 @@ defmodule DailyOutput.AI.Proofreader do
     """
 
     with {:ok, client} <- AI.client() do
-      case Anthropix.chat(client,
-             model: AI.model(),
+      case AI.chat(client,
              system: system,
              messages: [
                %{role: "user", content: "Please proofread this journal entry:\n\n#{text}"}
@@ -252,8 +251,13 @@ defmodule DailyOutput.AI.Proofreader do
         case Enum.at(key_positions, idx + 1) do
           {_, next_start} ->
             # Back up past the comma and whitespace before the next key
-            chunk |> String.slice(0, next_start) |> String.replace(~r/,\s*"[^"]*"\s*:\s*\z/, "") |> String.length()
-          nil -> String.length(chunk)
+            chunk
+            |> String.slice(0, next_start)
+            |> String.replace(~r/,\s*"[^"]*"\s*:\s*\z/, "")
+            |> String.length()
+
+          nil ->
+            String.length(chunk)
         end
 
       raw_value = String.slice(chunk, val_start, next_key_start - val_start) |> String.trim()
@@ -265,8 +269,11 @@ defmodule DailyOutput.AI.Proofreader do
             String.to_integer(raw_value)
 
           # Boolean
-          raw_value == "true" -> true
-          raw_value == "false" -> false
+          raw_value == "true" ->
+            true
+
+          raw_value == "false" ->
+            false
 
           # String — strip surrounding quotes and clean up residual escapes
           String.starts_with?(raw_value, "\"") ->

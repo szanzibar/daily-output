@@ -1,30 +1,73 @@
 defmodule DailyOutputWeb.EntryLive.Edit do
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.{Journal, Settings, AI}
+  alias DailyOutput.{Journal, Settings, AI, FocusTopics}
+
+  @default_timer_minutes 5
+  @heuristic_words_per_minute 20
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     entry = Journal.get_entry!(id)
     config = Settings.get_config()
+    focus_topic_text = focus_topic_text(entry)
+    timer_required_seconds = (config.timer_minutes || @default_timer_minutes) * 60
+    timer_enabled = is_nil(entry.feedback) and is_nil(entry.completed_at)
 
-    {:ok,
-     assign(socket,
-       page_title:
-         gettext("Edit — %{date}", date: Calendar.strftime(entry.inserted_at, "%d.%m.%Y")),
-       config: config,
-       entry: entry,
-       body: entry.body || "",
-       phase: :writing,
-       feedback: nil,
-       feedback_loading: false,
-       error: nil
-     )}
+    timer_seconds =
+      if timer_enabled do
+        timer_seconds_from_body(entry.body || "", timer_required_seconds)
+      else
+        0
+      end
+
+    socket =
+      assign(socket,
+        page_title:
+          gettext("Edit — %{date}", date: Calendar.strftime(entry.inserted_at, "%d.%m.%Y")),
+        config: config,
+        entry: entry,
+        focus_topic_text: focus_topic_text,
+        body: entry.body || "",
+        phase: :writing,
+        feedback: nil,
+        feedback_loading: false,
+        error: nil,
+        timer_enabled: timer_enabled,
+        timer_seconds: timer_seconds,
+        timer_expired: timer_seconds == 0
+      )
+
+    socket =
+      if connected?(socket) and socket.assigns.timer_enabled and socket.assigns.timer_seconds > 0 do
+        Process.send_after(self(), :tick, 1000)
+        socket
+      else
+        socket
+      end
+
+    {:ok, socket}
   end
 
   @impl true
   def handle_event("update_body", %{"body" => body}, socket) do
-    {:noreply, assign(socket, body: body)}
+    entry = socket.assigns.entry
+
+    if entry.feedback do
+      {:noreply, assign(socket, body: body)}
+    else
+      case Journal.update_entry(entry, %{body: body}) do
+        {:ok, updated_entry} ->
+          {:noreply,
+           assign(socket,
+             body: body,
+             entry: updated_entry
+           )}
+
+        {:error, _changeset} ->
+          {:noreply, assign(socket, body: body)}
+      end
+    end
   end
 
   def handle_event("save", _params, socket) do
@@ -38,13 +81,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
       # If no feedback yet, it's a draft — true edit is fine
       result =
         if entry.feedback do
-          Journal.create_entry(%{
-            body: body,
-            prompt: entry.prompt,
-            language: entry.language,
-            duration: entry.duration,
-            focus_topic_id: entry.focus_topic_id
-          })
+          Journal.create_entry(version_attrs(entry, body))
         else
           Journal.update_entry(entry, %{body: body})
         end
@@ -70,48 +107,107 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     if String.trim(body) == "" do
       {:noreply, put_flash(socket, :error, gettext("Write something first!"))}
     else
-      # Create a NEW entry (new version) instead of overwriting the old one
-      attrs = %{
-        body: body,
-        prompt: entry.prompt,
-        language: entry.language,
-        duration: entry.duration,
-        focus_topic_id: entry.focus_topic_id
-      }
-
-      case Journal.create_entry(attrs) do
-        {:ok, new_entry} ->
-          new_entry = Journal.complete_entry(new_entry) |> elem(1)
-
-          pid = self()
-
-          Task.start(fn ->
-            focus_text =
-              if entry.focus_topic_id do
-                DailyOutput.FocusTopics.get_topic!(entry.focus_topic_id).text
-              end
-
-            result =
-              AI.proofread(body,
-                target_language: config.target_language || "de",
-                native_language: config.native_language || "en",
-                language_level: config.language_level || "B2",
-                prompt_context: config.prompt_context || "",
-                focus_topic: focus_text
-              )
-
-            send(pid, {:feedback_loaded, result, new_entry})
-          end)
-
-          {:noreply, assign(socket, entry: new_entry, phase: :feedback, feedback_loading: true)}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not save."))}
+      if socket.assigns.timer_enabled and socket.assigns.timer_seconds > 0 do
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Keep writing for %{time} to unlock Done.",
+             time: format_time(socket.assigns.timer_seconds)
+           )
+         )}
+      else
+        with {:ok, entry_for_feedback} <-
+               (if entry.feedback do
+                  Journal.create_entry(version_attrs(entry, body))
+                else
+                  Journal.update_entry(entry, %{body: body})
+                end),
+             {:ok, completed_entry} <- Journal.complete_entry(entry_for_feedback) do
+          request_feedback(socket, completed_entry, body, config)
+        else
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, gettext("Could not save."))}
+        end
       end
     end
   end
 
+  defp timer_seconds_from_body(body, required_seconds) do
+    words = body |> String.split(~r/\s+/, trim: true) |> length()
+    heuristic_elapsed_seconds = div(words * 60, @heuristic_words_per_minute)
+
+    max(required_seconds - heuristic_elapsed_seconds, 0)
+  end
+
+  defp format_time(seconds) do
+    minutes = div(seconds, 60)
+    secs = rem(seconds, 60)
+
+    "#{String.pad_leading(Integer.to_string(minutes), 2, "0")}:#{String.pad_leading(Integer.to_string(secs), 2, "0")}"
+  end
+
+  defp version_attrs(entry, body) do
+    %{
+      body: body,
+      prompt: entry.prompt,
+      language: entry.language,
+      duration: entry.duration,
+      focus_topic_id: entry.focus_topic_id
+    }
+  end
+
+  defp request_feedback(socket, entry, body, config) do
+    socket =
+      assign(socket,
+        entry: entry,
+        focus_topic_text: focus_topic_text(entry),
+        phase: :feedback,
+        timer_enabled: false,
+        timer_seconds: 0,
+        timer_expired: true,
+        feedback_loading: true
+      )
+
+    pid = self()
+
+    Task.start(fn ->
+      result =
+        AI.proofread(body,
+          target_language: config.target_language || "de",
+          native_language: config.native_language || "en",
+          language_level: config.language_level || "B2",
+          prompt_context: config.prompt_context || "",
+          focus_topic: focus_topic_text(entry)
+        )
+
+      send(pid, {:feedback_loaded, result, entry})
+    end)
+
+    {:noreply, socket}
+  end
+
+  defp focus_topic_text(entry) do
+    if entry.focus_topic_id do
+      FocusTopics.get_topic!(entry.focus_topic_id).text
+    end
+  end
+
   @impl true
+  def handle_info(:tick, socket) do
+    if socket.assigns.timer_enabled and socket.assigns.timer_seconds > 0 do
+      remaining = max(socket.assigns.timer_seconds - 1, 0)
+
+      if remaining > 0 do
+        Process.send_after(self(), :tick, 1000)
+      end
+
+      {:noreply, assign(socket, timer_seconds: remaining, timer_expired: remaining == 0)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:feedback_loaded, {:ok, feedback}, entry}, socket) do
     case Journal.save_feedback(entry, feedback) do
       {:ok, entry} ->
@@ -145,14 +241,32 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     <div class="max-w-4xl mx-auto">
       <%!-- PHASE: Writing/Editing --%>
       <div :if={@phase == :writing}>
+        <div :if={@focus_topic_text} class="border-4 border-ink p-3 block-blue mb-4">
+          <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
+          <span class="text-sm ml-2">{@focus_topic_text}</span>
+        </div>
+
         <.editor id={"editor-#{@entry.id}"} body={@body} prompt={@entry.prompt} error={@error}>
           <:header>
-            <h1 class="text-3xl sm:text-4xl font-black tracking-tighter uppercase">
-              {gettext("Edit")}
-            </h1>
-            <span class="text-sm font-mono text-base-content/60">
-              {Calendar.strftime(@entry.inserted_at, "%d.%m.%Y")}
-            </span>
+            <div class="flex items-center gap-3">
+              <h1 class="text-3xl sm:text-4xl font-black tracking-tighter uppercase">
+                {gettext("Edit")}
+              </h1>
+              <span class="text-sm font-mono text-base-content/60">
+                {Calendar.strftime(@entry.inserted_at, "%d.%m.%Y")}
+              </span>
+            </div>
+
+            <div
+              :if={@timer_enabled}
+              class={[
+                "timer-display text-2xl sm:text-3xl shrink-0",
+                @timer_expired && "text-ink",
+                !@timer_expired && "text-bold-red"
+              ]}
+            >
+              {format_time(@timer_seconds)}
+            </div>
           </:header>
           <:actions>
             <.link
@@ -162,10 +276,25 @@ defmodule DailyOutputWeb.EntryLive.Edit do
               {gettext("Cancel")}
             </.link>
             <button phx-click="save" class="brutal-btn px-4 py-2 block-cyan text-sm">
-              {gettext("Save")}
+              {if @entry.feedback, do: gettext("Save"), else: gettext("Save Draft")}
             </button>
-            <button phx-click="resubmit" class="brutal-btn px-6 py-3 block-green text-lg">
-              {gettext("New Feedback")} &check;
+            <button
+              phx-click="resubmit"
+              disabled={@timer_enabled and !@timer_expired}
+              class={[
+                "brutal-btn px-6 py-3 text-lg",
+                if(@timer_enabled and !@timer_expired,
+                  do: "bg-base-200 opacity-60 cursor-not-allowed",
+                  else: "block-green"
+                )
+              ]}
+            >
+              <%= cond do %>
+                <% @entry.feedback -> %>
+                  {gettext("New Feedback")} &check;
+                <% true -> %>
+                  {gettext("Done")} &check;
+              <% end %>
             </button>
           </:actions>
         </.editor>

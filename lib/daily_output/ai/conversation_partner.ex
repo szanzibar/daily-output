@@ -41,8 +41,7 @@ defmodule DailyOutput.AI.ConversationPartner do
       end)
 
     with {:ok, client} <- AI.client() do
-      case Anthropix.chat(client,
-             model: AI.model(),
+      case AI.chat(client,
              system: system,
              messages: api_messages,
              max_tokens: 512

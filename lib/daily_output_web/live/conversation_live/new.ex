@@ -14,15 +14,10 @@ defmodule DailyOutputWeb.ConversationLive.New do
        phase: :topics,
        openers: [],
        openers_loading: true,
-       conversation: nil,
-       messages: [],
-       input: "",
-       ai_loading: false,
-       feedback: nil,
-       feedback_loading: false,
        error: nil,
        focus_topics: [],
-       selected_focus_topic: nil
+       pending_opener: nil,
+       pending_mode: :empty
      )
      |> then(fn socket ->
        if connected?(socket), do: load_openers(socket), else: socket
@@ -70,56 +65,12 @@ defmodule DailyOutputWeb.ConversationLive.New do
      )}
   end
 
-  def handle_info({:ai_response, {:ok, text}}, socket) do
-    conversation = socket.assigns.conversation
-
-    case Conversations.add_message(conversation, %{role: "assistant", body: text}) do
-      {:ok, msg} ->
-        {:noreply,
-         assign(socket,
-           messages: socket.assigns.messages ++ [msg],
-           ai_loading: false
-         )}
-
-      {:error, _} ->
-        {:noreply, assign(socket, ai_loading: false, error: gettext("Could not save response."))}
-    end
-  end
-
-  def handle_info({:ai_response, {:error, reason}}, socket) do
-    {:noreply,
-     assign(socket,
-       ai_loading: false,
-       error: gettext("AI error: %{reason}", reason: inspect(reason))
-     )}
-  end
-
-  def handle_info({:feedback_loaded, {:ok, feedback}}, socket) do
-    conversation = socket.assigns.conversation
-
-    case Conversations.save_feedback(conversation, feedback) do
-      {:ok, conversation} ->
-        {:noreply, push_navigate(socket, to: ~p"/conversations/#{conversation.id}")}
-
-      {:error, _} ->
-        {:noreply, assign(socket, feedback: feedback, feedback_loading: false)}
-    end
-  end
-
-  def handle_info({:feedback_loaded, {:error, reason}}, socket) do
-    {:noreply,
-     assign(socket,
-       feedback_loading: false,
-       error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
-     )}
-  end
-
   @impl true
   def handle_event("select_opener", %{"opener" => opener}, socket) do
     topics = FocusTopics.list_active_topics()
 
     if topics == [] do
-      start_conversation(socket, opener, :ai_opens)
+      start_conversation(socket, opener, :ai_opens, nil)
     else
       {:noreply,
        assign(socket,
@@ -137,7 +88,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
     topics = FocusTopics.list_active_topics()
 
     if topics == [] do
-      start_conversation(socket, opener, mode)
+      start_conversation(socket, opener, mode, nil)
     else
       {:noreply,
        assign(socket,
@@ -151,152 +102,54 @@ defmodule DailyOutputWeb.ConversationLive.New do
 
   def handle_event("select_focus_topic", %{"id" => id}, socket) do
     topic = FocusTopics.get_topic!(String.to_integer(id))
-    socket = assign(socket, selected_focus_topic: topic)
-    start_conversation(socket, socket.assigns.pending_opener, socket.assigns.pending_mode)
+    start_conversation(socket, socket.assigns.pending_opener, socket.assigns.pending_mode, topic)
   end
 
   def handle_event("skip_focus_topic", _params, socket) do
-    start_conversation(socket, socket.assigns.pending_opener, socket.assigns.pending_mode)
+    start_conversation(socket, socket.assigns.pending_opener, socket.assigns.pending_mode, nil)
   end
 
-  def handle_event("add_focus_topic", _params, socket) do
-    {:noreply, socket}
-  end
+  defp start_conversation(socket, topic, mode, focus_topic) do
+    config = socket.assigns.config
 
-  def handle_event("master_focus_topic", _params, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("override_focus_result", _params, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("send", %{"message" => message}, socket) do
-    message = String.trim(message)
-
-    if message == "" do
-      {:noreply, socket}
+    with {:ok, conversation} <-
+           Conversations.create_conversation(%{
+             topic: topic,
+             language: config.target_language || "de",
+             focus_topic_id: focus_topic && focus_topic.id
+           }),
+         :ok <- seed_initial_messages(conversation, topic, mode) do
+      {:noreply, push_navigate(socket, to: ~p"/conversations/#{conversation.id}/continue")}
     else
-      conversation = socket.assigns.conversation
-
-      case Conversations.add_message(conversation, %{role: "user", body: message}) do
-        {:ok, msg} ->
-          messages = socket.assigns.messages ++ [msg]
-          socket = assign(socket, messages: messages, input: "", ai_loading: true)
-          request_ai_response(socket, messages)
-
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not save message."))}
-      end
-    end
-  end
-
-  def handle_event("update_input", %{"message" => value}, socket) do
-    {:noreply, assign(socket, input: value)}
-  end
-
-  def handle_event("complete", _params, socket) do
-    conversation = socket.assigns.conversation
-    config = socket.assigns.config
-    messages = socket.assigns.messages
-
-    {:ok, conversation} = Conversations.complete_conversation(conversation)
-
-    # Join user messages with a separator so we can split them back after proofreading
-    user_text =
-      messages
-      |> Enum.filter(&(&1.role == "user"))
-      |> Enum.map(& &1.body)
-      |> Enum.join("\n---MSG_BREAK---\n")
-
-    socket = assign(socket, conversation: conversation, phase: :feedback, feedback_loading: true)
-
-    pid = self()
-
-    Task.start(fn ->
-      result =
-        AI.proofread(user_text,
-          target_language: config.target_language || "de",
-          native_language: config.native_language || "en",
-          language_level: config.language_level || "B2",
-          prompt_context: config.prompt_context || "",
-          focus_topic:
-            socket.assigns.selected_focus_topic && socket.assigns.selected_focus_topic.text
-        )
-
-      send(pid, {:feedback_loaded, result})
-    end)
-
-    {:noreply, socket}
-  end
-
-  defp start_conversation(socket, topic, mode) do
-    config = socket.assigns.config
-
-    focus_topic = socket.assigns.selected_focus_topic
-
-    case Conversations.create_conversation(%{
-           topic: topic,
-           language: config.target_language || "de",
-           focus_topic_id: focus_topic && focus_topic.id
-         }) do
-      {:ok, conversation} ->
-        socket = assign(socket, conversation: conversation, phase: :chat, messages: [])
-
-        case mode do
-          :ai_opens ->
-            # AI opens with the selected opener
-            case Conversations.add_message(conversation, %{role: "assistant", body: topic}) do
-              {:ok, msg} ->
-                {:noreply, assign(socket, messages: [msg])}
-
-              {:error, _} ->
-                {:noreply, socket}
-            end
-
-          :user_opens ->
-            # User's freestyle text is their first message, AI responds
-            case Conversations.add_message(conversation, %{role: "user", body: topic}) do
-              {:ok, msg} ->
-                messages = [msg]
-                socket = assign(socket, messages: messages, ai_loading: true)
-                request_ai_response(socket, messages)
-
-              {:error, _} ->
-                {:noreply, socket}
-            end
-
-          :empty ->
-            {:noreply, socket}
-        end
-
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not create conversation."))}
+        {:noreply, put_flash(socket, :error, gettext("Could not start conversation."))}
     end
   end
 
-  defp request_ai_response(socket, messages) do
-    config = socket.assigns.config
-    pid = self()
+  defp seed_initial_messages(_conversation, topic, :ai_opens)
+       when not is_binary(topic) or topic == "",
+       do: :ok
 
-    Task.start(fn ->
-      result =
-        AI.conversation_respond(messages,
-          target_language: config.target_language || "de",
-          native_language: config.native_language || "en",
-          language_level: config.language_level || "B2",
-          prompt_context: config.prompt_context || ""
-        )
-
-      send(pid, {:ai_response, result})
-    end)
-
-    {:noreply, socket}
+  defp seed_initial_messages(conversation, topic, :ai_opens) do
+    case Conversations.add_message(conversation, %{role: "assistant", body: topic}) do
+      {:ok, _msg} -> :ok
+      {:error, _} -> {:error, :failed_to_seed}
+    end
   end
 
-  defp user_count(messages) do
-    Enum.count(messages, &(&1.role == "user"))
+  defp seed_initial_messages(_conversation, topic, :user_opens)
+       when not is_binary(topic) or topic == "",
+       do: :ok
+
+  defp seed_initial_messages(conversation, topic, :user_opens) do
+    case Conversations.add_message(conversation, %{role: "user", body: topic}) do
+      {:ok, _msg} -> :ok
+      {:error, _} -> {:error, :failed_to_seed}
+    end
   end
+
+  defp seed_initial_messages(_conversation, _topic, :empty), do: :ok
+  defp seed_initial_messages(_conversation, _topic, _mode), do: :ok
 
   @impl true
   def render(assigns) do
@@ -376,121 +229,6 @@ defmodule DailyOutputWeb.ConversationLive.New do
               {gettext("Speak without a focus topic")}
             </div>
           </button>
-        </div>
-      </div>
-
-      <%!-- PHASE: Chat --%>
-      <div :if={@phase == :chat} class="space-y-4">
-        <%!-- Focus topic reminder --%>
-        <div :if={@selected_focus_topic} class="border-4 border-ink p-3 block-blue">
-          <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
-          <span class="text-sm ml-2">{@selected_focus_topic.text}</span>
-        </div>
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
-            {gettext("Conversation")}
-          </h1>
-          <div class="flex items-center gap-3">
-            <span class="text-xs font-mono text-base-content/60">
-              {gettext("%{count}/%{min} exchanges",
-                count: user_count(@messages),
-                min: @config.min_exchanges || 5
-              )}
-            </span>
-            <button
-              :if={user_count(@messages) >= (@config.min_exchanges || 5)}
-              phx-click="complete"
-              class="brutal-btn px-4 py-2 block-green text-sm"
-            >
-              {gettext("Done")} &check;
-            </button>
-          </div>
-        </div>
-
-        <hr class="brutal-hr" />
-
-        <.chat_history messages={@messages} />
-
-        <div :if={@ai_loading} class="chat-bubble-row chat-ai">
-          <div class="chat-role">{gettext("Partner")}</div>
-          <div class="chat-bubble chat-bubble-ai">
-            <span class="animate-pulse font-mono">...</span>
-          </div>
-        </div>
-
-        <form :if={!@ai_loading} phx-submit="send" class="flex items-end gap-2">
-          <textarea
-            id="chat-input"
-            phx-hook="AutoExpand"
-            phx-mounted={JS.focus()}
-            name="message"
-            rows="1"
-            placeholder={gettext("Write a message...")}
-            class="chat-input flex-1"
-          >{@input}</textarea>
-          <button type="submit" class="brutal-btn px-6 py-3 block-blue text-lg shrink-0">
-            &rarr;
-          </button>
-        </form>
-
-        <p :if={@error} class="text-sm font-mono text-bold-red">{@error}</p>
-      </div>
-
-      <%!-- PHASE: Feedback --%>
-      <div :if={@phase == :feedback}>
-        <.loading
-          :if={@feedback_loading}
-          title={gettext("Feedback")}
-          message={gettext("Your conversation is being reviewed")}
-        />
-
-        <div :if={@feedback && !@feedback_loading} class="space-y-6">
-          <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-            {gettext("Feedback")}
-          </h1>
-          <hr class="brutal-hr" />
-
-          <div :if={@feedback["encouragement"]} class="border-4 border-ink p-5 block-yellow">
-            <p class="font-bold text-base">{@feedback["encouragement"]}</p>
-          </div>
-
-          <.chat_feedback messages={@messages} feedback={@feedback} />
-
-          <%!-- Commentary / Tipps --%>
-          <div :if={(@feedback["commentary"] || []) != []} class="border-4 border-ink p-5">
-            <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-              <span class="inline-block w-3 h-3 block-blue"></span> {gettext("Tips")}
-            </h2>
-            <div :for={item <- @feedback["commentary"] || []} class="mb-3 last:mb-0">
-              <span class="text-xs font-mono uppercase px-2 py-0.5 border-2 border-ink mr-2">
-                {item["type"]}
-              </span>
-              <span class="text-sm">{item["text"]}</span>
-            </div>
-          </div>
-
-          <.link
-            navigate={~p"/"}
-            class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
-          >
-            {gettext("Back")}
-          </.link>
-        </div>
-
-        <div :if={@error && !@feedback_loading && !@feedback} class="space-y-6">
-          <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-            {gettext("Feedback")}
-          </h1>
-          <hr class="brutal-hr" />
-          <div class="border-4 border-ink p-5 block-red">
-            <p class="font-mono text-sm">{@error}</p>
-          </div>
-          <.link
-            navigate={~p"/"}
-            class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
-          >
-            {gettext("Back")}
-          </.link>
         </div>
       </div>
     </div>

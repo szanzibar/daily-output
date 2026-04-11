@@ -31,13 +31,15 @@ defmodule DailyOutputWeb.HomeLive do
     entries =
       Journal.list_recent_entries(14)
       |> Enum.map(fn e ->
+        completed = e.completed_at != nil and e.feedback != nil
+
         %{
           type: :entry,
           id: e.id,
           preview: if(e.body, do: String.slice(e.body, 0..60), else: gettext("(empty)")),
-          completed: e.completed_at != nil and e.feedback != nil,
+          completed: completed,
           date: e.inserted_at,
-          path: "/entries/#{e.id}",
+          path: if(completed, do: "/entries/#{e.id}", else: "/entries/#{e.id}/edit"),
           label: gettext("Entry")
         }
       end)
@@ -45,13 +47,16 @@ defmodule DailyOutputWeb.HomeLive do
     conversations =
       Conversations.list_recent_conversations(14)
       |> Enum.map(fn c ->
+        completed = c.completed_at != nil and c.feedback != nil
+
         %{
           type: :conversation,
           id: c.id,
           preview: c.topic || gettext("(Conversation)"),
-          completed: c.completed_at != nil and c.feedback != nil,
+          completed: completed,
           date: c.inserted_at,
-          path: "/conversations/#{c.id}",
+          path:
+            if(completed, do: "/conversations/#{c.id}", else: "/conversations/#{c.id}/continue"),
           label: gettext("Conversation")
         }
       end)
@@ -112,7 +117,12 @@ defmodule DailyOutputWeb.HomeLive do
         <%!-- Entry row --%>
         <.link
           :if={@today_entry}
-          navigate={~p"/entries/#{@today_entry.id}"}
+          navigate={
+            if(is_nil(@today_entry.feedback),
+              do: ~p"/entries/#{@today_entry.id}/edit",
+              else: ~p"/entries/#{@today_entry.id}"
+            )
+          }
           class="block border-b-2 border-ink p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
         >
           <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -162,7 +172,12 @@ defmodule DailyOutputWeb.HomeLive do
         <%!-- Conversation row --%>
         <.link
           :if={@today_conversation}
-          navigate={~p"/conversations/#{@today_conversation.id}"}
+          navigate={
+            if(is_nil(@today_conversation.feedback),
+              do: ~p"/conversations/#{@today_conversation.id}/continue",
+              else: ~p"/conversations/#{@today_conversation.id}"
+            )
+          }
           class="block p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
         >
           <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
