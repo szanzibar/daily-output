@@ -3,7 +3,7 @@ defmodule DailyOutputWeb.EntryLive.EditTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.Journal
+  alias DailyOutput.{Journal, FocusTopics}
 
   test "blocks done while draft timer is active", %{conn: conn} do
     {:ok, entry} =
@@ -57,5 +57,79 @@ defmodule DailyOutputWeb.EntryLive.EditTest do
     render_hook(view, "update_body", %{"body" => long_body})
 
     assert has_element?(view, ~s(button[phx-click="resubmit"][disabled]))
+  end
+
+  test "focus topic not used keeps entry as draft", %{conn: conn} do
+    unique = System.unique_integer([:positive])
+
+    {:ok, topic} =
+      FocusTopics.create_topic(%{
+        text: "Use besuchen + object",
+        source_text: "focus-source-#{unique}",
+        source_type: "entry",
+        source_id: unique
+      })
+
+    {:ok, entry} =
+      Journal.create_entry(%{
+        body: "Heute war ein ruhiger Tag.",
+        language: "de",
+        focus_topic_id: topic.id
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/entries/#{entry.id}/edit")
+
+    feedback = %{
+      "annotated_text" => "Heute war ein ruhiger Tag.",
+      "annotations" => [],
+      "commentary" => [],
+      "encouragement" => "Gut!",
+      "focus_result" => %{"used" => false, "correct" => false, "comment" => "Nicht benutzt."}
+    }
+
+    send(view.pid, {:feedback_loaded, {:ok, feedback}, entry})
+
+    assert_redirect(view, ~p"/entries/#{entry.id}")
+
+    reloaded = Journal.get_entry!(entry.id)
+    assert is_nil(reloaded.completed_at)
+    assert reloaded.feedback["focus_result"]["used"] == false
+  end
+
+  test "focus topic attempted marks entry complete", %{conn: conn} do
+    unique = System.unique_integer([:positive])
+
+    {:ok, topic} =
+      FocusTopics.create_topic(%{
+        text: "Use besuchen + object",
+        source_text: "focus-source-#{unique}",
+        source_type: "entry",
+        source_id: unique
+      })
+
+    {:ok, entry} =
+      Journal.create_entry(%{
+        body: "Heute besuche ich meine Freundin.",
+        language: "de",
+        focus_topic_id: topic.id
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/entries/#{entry.id}/edit")
+
+    feedback = %{
+      "annotated_text" => "Heute besuche ich meine Freundin.",
+      "annotations" => [],
+      "commentary" => [],
+      "encouragement" => "Super!",
+      "focus_result" => %{"used" => true, "correct" => true, "comment" => "Treffer."}
+    }
+
+    send(view.pid, {:feedback_loaded, {:ok, feedback}, entry})
+
+    assert_redirect(view, ~p"/entries/#{entry.id}")
+
+    reloaded = Journal.get_entry!(entry.id)
+    refute is_nil(reloaded.completed_at)
+    assert reloaded.feedback["focus_result"]["used"] == true
   end
 end

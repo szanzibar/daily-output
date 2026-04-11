@@ -150,16 +150,27 @@ defmodule DailyOutputWeb.JournalComponents do
 
   # ── Focus Result ────────────────────────────────────────
 
-  attr :result, :map, required: true
+  attr :result, :any, required: true
   attr :focus_mastered, :boolean, default: false
 
   def focus_result_box(assigns) do
+    used = focus_flag(assigns.result, "used")
+    correct = focus_flag(assigns.result, "correct")
+    comment = focus_comment(assigns.result)
+
+    assigns =
+      assign(assigns,
+        used: used,
+        correct: correct,
+        comment: comment
+      )
+
     ~H"""
     <div class={[
       "border-4 border-ink p-5",
       cond do
-        @result["used"] && @result["correct"] -> "block-green"
-        @result["used"] -> "block-orange"
+        @used && @correct -> "block-green"
+        @used -> "block-orange"
         true -> "block-red"
       end
     ]}>
@@ -168,17 +179,17 @@ defmodule DailyOutputWeb.JournalComponents do
       </h2>
       <p class="text-sm font-bold mb-2">
         <%= cond do %>
-          <% @result["used"] && @result["correct"] -> %>
+          <% @used && @correct -> %>
             {gettext("Used correctly!")}
-          <% @result["used"] -> %>
+          <% @used -> %>
             {gettext("Attempted — keep practicing!")}
           <% true -> %>
             {gettext("Not used.")}
         <% end %>
       </p>
-      <p :if={@result["comment"]} class="text-sm">{@result["comment"]}</p>
+      <p :if={@comment} class="text-sm">{@comment}</p>
       <div class="flex flex-wrap gap-2 mt-3">
-        <%= if @result["used"] && @result["correct"] do %>
+        <%= if @used && @correct do %>
           <%= if @focus_mastered do %>
             <span class="brutal-btn px-4 py-1.5 block-green text-xs">
               ✓ {gettext("Mastered")}
@@ -193,7 +204,7 @@ defmodule DailyOutputWeb.JournalComponents do
           <% end %>
         <% end %>
         <button
-          :if={!@result["used"]}
+          :if={!@used}
           phx-click="override_focus_result"
           class="brutal-btn px-4 py-1.5 block-dark text-xs"
         >
@@ -251,4 +262,13 @@ defmodule DailyOutputWeb.JournalComponents do
   defp word_count(nil), do: 0
   defp word_count(""), do: 0
   defp word_count(text), do: text |> String.split(~r/\s+/, trim: true) |> length()
+
+  defp focus_flag(%{} = result, key) do
+    Map.get(result, key) == true
+  end
+
+  defp focus_flag(_, _), do: false
+
+  defp focus_comment(%{} = result), do: Map.get(result, "comment")
+  defp focus_comment(_), do: nil
 end

@@ -114,8 +114,10 @@ defmodule DailyOutput.Journal do
   end
 
   def save_feedback(%Entry{} = entry, feedback) do
+    normalized_feedback = Proofreader.normalize_feedback(feedback)
+
     entry
-    |> Entry.changeset(%{feedback: feedback})
+    |> Entry.changeset(%{feedback: normalized_feedback})
     |> Repo.update()
   end
 

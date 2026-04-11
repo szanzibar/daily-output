@@ -2,6 +2,7 @@ defmodule DailyOutputWeb.SettingsLive do
   use DailyOutputWeb, :live_view
 
   alias DailyOutput.Settings
+  alias DailyOutput.AI.LanguageProfile
 
   @impl true
   def mount(_params, _session, socket) do
@@ -290,14 +291,8 @@ defmodule DailyOutputWeb.SettingsLive do
   end
 
   defp language_options do
-    [
-      {"Deutsch", "de"},
-      {"English", "en"},
-      {"Français", "fr"},
-      {"Español", "es"},
-      {"Italiano", "it"},
-      {"Português", "pt"}
-    ]
+    ["de", "en", "fr", "es", "it", "pt"]
+    |> Enum.map(fn code -> {language_option_label(code), code} end)
   end
 
   defp level_options do
@@ -314,9 +309,30 @@ defmodule DailyOutputWeb.SettingsLive do
   defp ui_language_options do
     [
       {gettext("Auto (based on level)"), "auto"},
-      {"English", "en"},
-      {"Deutsch", "de"}
+      {language_option_label("en"), "en"},
+      {language_option_label("de"), "de"}
     ]
+  end
+
+  defp language_option_label(code) do
+    base_name =
+      case code do
+        "de" -> "Deutsch"
+        "en" -> "English"
+        "fr" -> "Français"
+        "es" -> "Español"
+        "it" -> "Italiano"
+        "pt" -> "Português"
+        _ -> String.upcase(code)
+      end
+
+    profile = LanguageProfile.resolve(code)
+
+    if profile.settings_context do
+      "#{base_name} (#{profile.settings_context})"
+    else
+      base_name
+    end
   end
 
   defp api_key_set? do

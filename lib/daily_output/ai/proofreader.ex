@@ -7,6 +7,7 @@ defmodule DailyOutput.AI.Proofreader do
   require Logger
 
   alias DailyOutput.AI
+  alias DailyOutput.AI.LanguageProfile
 
   def proofread(text, opts) do
     target = Keyword.fetch!(opts, :target_language)
@@ -14,6 +15,7 @@ defmodule DailyOutput.AI.Proofreader do
     level = Keyword.get(opts, :language_level, "B2")
     context = Keyword.get(opts, :prompt_context, "")
     focus_topic = Keyword.get(opts, :focus_topic)
+    profile = LanguageProfile.resolve(target)
 
     context_block =
       if context != "" do
@@ -41,12 +43,19 @@ defmodule DailyOutput.AI.Proofreader do
         native
       end
 
+    language_conventions_block =
+      if profile.conventions == [] do
+        ""
+      else
+        """
+
+        Language-specific conventions for #{profile.prompt_name}:
+        #{LanguageProfile.conventions_block(profile)}
+        """
+      end
+
     system = """
-    You are a #{target} teacher proofreading a journal entry written by a #{native} speaker at CEFR level #{level}.
-    The student is learning Swiss Standard German (Schweizer Hochdeutsch). Important:
-    - Never use ß — always use ss (e.g. "dass" not "daß", "Strasse" not "Straße")
-    - Prefer Swiss German standard terms (Velo not Fahrrad, Poulet not Hähnchen, Natel not Handy, Trottoir not Bürgersteig, parkieren not parken, etc.)
-    - Use Swiss conventions for dates, numbers, and spelling where they differ from German German
+    You are a #{profile.prompt_name} teacher proofreading a journal entry written by a #{native} speaker at CEFR level #{level}.#{language_conventions_block}
 
     Calibrate your feedback to #{level} level:
     - Only flag errors that a #{level} student should know better
@@ -195,12 +204,42 @@ defmodule DailyOutput.AI.Proofreader do
       "encouragement" => feedback["encouragement"] || ""
     }
 
-    if feedback["focus_result"] do
-      Map.put(base, "focus_result", feedback["focus_result"])
-    else
-      base
+    case decode_focus_result(feedback["focus_result"]) do
+      nil -> base
+      focus_result -> Map.put(base, "focus_result", focus_result)
     end
   end
+
+  defp decode_focus_result(nil), do: nil
+
+  defp decode_focus_result(%{} = result), do: result
+
+  defp decode_focus_result(result) when is_list(result) do
+    Enum.find(result, &is_map/1)
+  end
+
+  defp decode_focus_result(result) when is_binary(result) do
+    trimmed = String.trim(result)
+
+    case Jason.decode(trimmed) do
+      {:ok, %{} = decoded} ->
+        decoded
+
+      {:ok, [%{} = first | _]} ->
+        first
+
+      _ ->
+        parsed =
+          trimmed
+          |> String.trim_leading("[")
+          |> String.trim_trailing("]")
+          |> lenient_parse_object()
+
+        if map_size(parsed) > 0, do: parsed, else: nil
+    end
+  end
+
+  defp decode_focus_result(_), do: nil
 
   defp decode_if_string(val) when is_binary(val) do
     case Jason.decode(val) do

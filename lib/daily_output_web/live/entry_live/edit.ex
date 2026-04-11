@@ -122,9 +122,8 @@ defmodule DailyOutputWeb.EntryLive.Edit do
                   Journal.create_entry(version_attrs(entry, body))
                 else
                   Journal.update_entry(entry, %{body: body})
-                end),
-             {:ok, completed_entry} <- Journal.complete_entry(entry_for_feedback) do
-          request_feedback(socket, completed_entry, body, config)
+                end) do
+          request_feedback(socket, entry_for_feedback, body, config)
         else
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, gettext("Could not save."))}
@@ -211,7 +210,23 @@ defmodule DailyOutputWeb.EntryLive.Edit do
   def handle_info({:feedback_loaded, {:ok, feedback}, entry}, socket) do
     case Journal.save_feedback(entry, feedback) do
       {:ok, entry} ->
-        {:noreply, push_navigate(socket, to: ~p"/entries/#{entry.id}")}
+        if should_complete_entry?(entry) do
+          case Journal.complete_entry(entry) do
+            {:ok, completed_entry} ->
+              {:noreply, push_navigate(socket, to: ~p"/entries/#{completed_entry.id}")}
+
+            {:error, _changeset} ->
+              {:noreply, put_flash(socket, :error, gettext("Could not complete entry."))}
+          end
+        else
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             gettext("Focus topic not used yet. Edit and resubmit to complete the day.")
+           )
+           |> push_navigate(to: ~p"/entries/#{entry.id}")}
+        end
 
       {:error, _} ->
         {:noreply, assign(socket, feedback: feedback, feedback_loading: false)}
@@ -233,6 +248,20 @@ defmodule DailyOutputWeb.EntryLive.Edit do
        feedback_loading: false,
        error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
      )}
+  end
+
+  defp should_complete_entry?(entry) do
+    if is_nil(entry.focus_topic_id) do
+      true
+    else
+      case entry.feedback do
+        %{"focus_result" => %{} = focus_result} ->
+          Map.get(focus_result, "used") == true
+
+        _ ->
+          false
+      end
+    end
   end
 
   @impl true

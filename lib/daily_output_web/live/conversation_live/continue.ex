@@ -90,8 +90,6 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
     config = socket.assigns.config
     messages = socket.assigns.messages
 
-    {:ok, conversation} = Conversations.complete_conversation(conversation)
-
     user_text =
       messages
       |> Enum.filter(&(&1.role == "user"))
@@ -144,10 +142,30 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
   def handle_info({:feedback_loaded, {:ok, feedback}}, socket) do
     case Conversations.save_feedback(socket.assigns.conversation, feedback) do
       {:ok, conversation} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("Feedback received!"))
-         |> push_navigate(to: ~p"/conversations/#{conversation.id}")}
+        if should_complete_conversation?(conversation) do
+          case Conversations.complete_conversation(conversation) do
+            {:ok, completed_conversation} ->
+              {:noreply,
+               socket
+               |> put_flash(:info, gettext("Feedback received!"))
+               |> push_navigate(to: ~p"/conversations/#{completed_conversation.id}")}
+
+            {:error, _changeset} ->
+              {:noreply,
+               assign(socket,
+                 feedback_loading: false,
+                 error: gettext("Could not complete conversation.")
+               )}
+          end
+        else
+          {:noreply,
+           socket
+           |> put_flash(
+             :info,
+             gettext("Focus topic not used yet. Continue and resubmit to complete the day.")
+           )
+           |> push_navigate(to: ~p"/conversations/#{conversation.id}")}
+        end
 
       {:error, _} ->
         {:noreply,
@@ -164,6 +182,20 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
        feedback_loading: false,
        error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
      )}
+  end
+
+  defp should_complete_conversation?(conversation) do
+    if is_nil(conversation.focus_topic_id) do
+      true
+    else
+      case conversation.feedback do
+        %{"focus_result" => %{} = focus_result} ->
+          Map.get(focus_result, "used") == true
+
+        _ ->
+          false
+      end
+    end
   end
 
   defp request_ai_response(socket, messages) do
