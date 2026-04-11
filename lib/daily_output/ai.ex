@@ -3,6 +3,8 @@ defmodule DailyOutput.AI do
   AI context wrapping Anthropix for prompt generation and proofreading.
   """
 
+  require Logger
+
   alias DailyOutput.AI.{
     PromptGenerator,
     Proofreader,
@@ -14,7 +16,6 @@ defmodule DailyOutput.AI do
   alias DailyOutput.Cache
 
   @model_cache_key "anthropic_sonnet_model"
-  @fallback_model "claude-sonnet-4-5-20241022"
 
   defdelegate generate_prompts(topics, target_language, native_language),
     to: PromptGenerator
@@ -36,21 +37,52 @@ defmodule DailyOutput.AI do
     end
   end
 
-  def model do
-    case Cache.get(@model_cache_key, 86400) do
-      nil -> discover_model()
-      cached -> cached
+  def model(force_refresh \\ false) do
+    if force_refresh do
+      discover_model()
+    else
+      case Cache.get(@model_cache_key, 86400) do
+        nil -> discover_model()
+        cached -> {:ok, cached}
+      end
+    end
+  end
+
+  def chat(client, opts) do
+    requested_model = Keyword.get(opts, :model)
+    model_result = if is_binary(requested_model), do: {:ok, requested_model}, else: model()
+
+    with {:ok, model_id} <- model_result do
+      request_opts = Keyword.put(opts, :model, model_id)
+
+      case Anthropix.chat(client, request_opts) do
+        {:error, %Anthropix.APIError{} = api_error} = error ->
+          if model_not_found_error?(api_error) do
+            retry_chat_with_refreshed_model(client, opts, model_id, error)
+          else
+            error
+          end
+
+        other ->
+          other
+      end
     end
   end
 
   defp discover_model do
     case fetch_models() do
-      {:ok, model_id} ->
+      {:ok, model_info} ->
+        model_id = model_info.id
         Cache.put(@model_cache_key, model_id)
-        model_id
 
-      {:error, _reason} ->
-        @fallback_model
+        Logger.info(
+          "Selected Anthropic Sonnet model from API: id=#{model_info.id} display_name=#{inspect(model_info.display_name)} created_at=#{inspect(model_info.created_at)}"
+        )
+
+        {:ok, model_id}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -79,10 +111,36 @@ defmodule DailyOutput.AI do
   end
 
   defp get_api_key do
-    case System.get_env("ANTHROPIC_API_KEY") do
+    case Application.get_env(:daily_output, :anthropic_api_key) ||
+           System.get_env("ANTHROPIC_API_KEY") do
       nil -> {:error, :api_key_not_set}
       "" -> {:error, :api_key_not_set}
       key -> {:ok, key}
+    end
+  end
+
+  defp model_not_found_error?(%Anthropix.APIError{status: 404, type: "not_found_error"} = err) do
+    message = Map.get(err, :message, "")
+    String.contains?(message, "model")
+  end
+
+  defp model_not_found_error?(_), do: false
+
+  defp retry_chat_with_refreshed_model(client, opts, failed_model, original_error) do
+    case model(true) do
+      {:ok, refreshed_model} ->
+        if refreshed_model == failed_model do
+          original_error
+        else
+          Logger.warning(
+            "AI model '#{failed_model}' not found. Retrying with '#{refreshed_model}'."
+          )
+
+          Anthropix.chat(client, Keyword.put(opts, :model, refreshed_model))
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -94,8 +152,16 @@ defmodule DailyOutput.AI do
       |> List.first()
 
     case sonnet do
-      nil -> {:error, :no_sonnet_found}
-      %{"id" => id} -> {:ok, id}
+      nil ->
+        {:error, :no_sonnet_found}
+
+      %{"id" => id} = model ->
+        {:ok,
+         %{
+           id: id,
+           display_name: model["display_name"],
+           created_at: model["created_at"]
+         }}
     end
   end
 end

@@ -9,12 +9,12 @@ defmodule DailyOutputWeb.EntryLive.Show do
     {version, total} = Journal.version_info(entry)
     versions = Journal.get_versions(entry)
 
-    focus_mastered =
+    {focus_topic_text, focus_mastered} =
       if entry.focus_topic_id do
         topic = DailyOutput.FocusTopics.get_topic!(entry.focus_topic_id)
-        topic.mastered_at != nil
+        {topic.text, topic.mastered_at != nil}
       else
-        false
+        {nil, false}
       end
 
     {:ok,
@@ -26,6 +26,7 @@ defmodule DailyOutputWeb.EntryLive.Show do
        total_versions: total,
        versions: versions,
        confirm_delete: false,
+       focus_topic_text: focus_topic_text,
        focus_pool_texts: DailyOutput.FocusTopics.active_source_texts(),
        focus_mastered: focus_mastered
      )}
@@ -172,6 +173,13 @@ defmodule DailyOutputWeb.EntryLive.Show do
         class="text-sm font-mono text-base-content/60 border-l-4 border-ink pl-3"
       >
         Prompt: {@entry.prompt}
+      </div>
+
+      <div
+        :if={@focus_topic_text}
+        class="text-sm font-mono text-base-content/60 border-l-4 border-ink pl-3"
+      >
+        {gettext("Focus:")} {@focus_topic_text}
       </div>
 
       <%!-- Feedback (inline corrections) --%>

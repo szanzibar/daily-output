@@ -31,8 +31,7 @@ defmodule DailyOutput.AI.TopicGenerator do
     """
 
     with {:ok, client} <- AI.client() do
-      case Anthropix.chat(client,
-             model: AI.model(),
+      case AI.chat(client,
              system: system,
              messages: [%{role: "user", content: "Generate 4 conversation openers."}],
              max_tokens: 1024

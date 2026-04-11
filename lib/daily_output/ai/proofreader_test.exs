@@ -96,7 +96,11 @@ defmodule DailyOutput.AI.ProofreaderTest do
       assert is_list(result["commentary"])
       assert length(result["commentary"]) == 5
       assert Enum.all?(result["commentary"], &is_map/1)
-      assert Enum.all?(result["commentary"], &(Map.has_key?(&1, "type") and Map.has_key?(&1, "text")))
+
+      assert Enum.all?(
+               result["commentary"],
+               &(Map.has_key?(&1, "type") and Map.has_key?(&1, "text"))
+             )
 
       assert hd(result["commentary"])["type"] == "pattern"
       assert String.contains?(hd(result["commentary"])["text"], "die App")

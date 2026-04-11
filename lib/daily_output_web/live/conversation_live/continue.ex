@@ -1,7 +1,7 @@
 defmodule DailyOutputWeb.ConversationLive.Continue do
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.{Conversations, Settings, AI}
+  alias DailyOutput.{Conversations, Settings, AI, FocusTopics}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -32,18 +32,32 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
         {original, original.messages}
       end
 
-    {:ok,
-     assign(socket,
-       page_title: gettext("Continue Conversation"),
-       config: config,
-       conversation: conversation,
-       messages: messages,
-       input: "",
-       ai_loading: false,
-       feedback: nil,
-       feedback_loading: false,
-       error: nil
-     )}
+    socket =
+      assign(socket,
+        page_title: gettext("Continue Conversation"),
+        config: config,
+        conversation: conversation,
+        messages: messages,
+        focus_topic_text:
+          if conversation.focus_topic_id do
+            FocusTopics.get_topic!(conversation.focus_topic_id).text
+          end,
+        input: "",
+        ai_loading: false,
+        feedback: nil,
+        feedback_loading: false,
+        error: nil
+      )
+
+    socket =
+      if connected?(socket) and match?(%{role: "user"}, List.last(messages)) do
+        send(self(), :request_ai_reply)
+        assign(socket, ai_loading: true)
+      else
+        socket
+      end
+
+    {:ok, socket}
   end
 
   @impl true
@@ -94,7 +108,8 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
           target_language: config.target_language || "de",
           native_language: config.native_language || "en",
           language_level: config.language_level || "B2",
-          prompt_context: config.prompt_context || ""
+          prompt_context: config.prompt_context || "",
+          focus_topic: socket.assigns.focus_topic_text
         )
 
       send(pid, {:feedback_loaded, result})
@@ -104,6 +119,10 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
   end
 
   @impl true
+  def handle_info(:request_ai_reply, socket) do
+    request_ai_response(socket, socket.assigns.messages)
+  end
+
   def handle_info({:ai_response, {:ok, text}}, socket) do
     case Conversations.add_message(socket.assigns.conversation, %{role: "assistant", body: text}) do
       {:ok, msg} ->
@@ -174,6 +193,11 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-4">
+      <div :if={@focus_topic_text} class="border-4 border-ink p-3 block-blue">
+        <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
+        <span class="text-sm ml-2">{@focus_topic_text}</span>
+      </div>
+
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
           {gettext("Continue Conversation")}

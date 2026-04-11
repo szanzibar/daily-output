@@ -10,12 +10,12 @@ defmodule DailyOutputWeb.ConversationLive.Show do
     {version, total} = Conversations.version_info(conversation)
     versions = Conversations.get_versions(conversation)
 
-    focus_mastered =
+    {focus_topic_text, focus_mastered} =
       if conversation.focus_topic_id do
         topic = DailyOutput.FocusTopics.get_topic!(conversation.focus_topic_id)
-        topic.mastered_at != nil
+        {topic.text, topic.mastered_at != nil}
       else
-        false
+        {nil, false}
       end
 
     {:ok,
@@ -30,6 +30,7 @@ defmodule DailyOutputWeb.ConversationLive.Show do
        total_versions: total,
        versions: versions,
        confirm_delete: false,
+       focus_topic_text: focus_topic_text,
        focus_pool_texts: DailyOutput.FocusTopics.active_source_texts(),
        focus_mastered: focus_mastered
      )}
@@ -177,6 +178,13 @@ defmodule DailyOutputWeb.ConversationLive.Show do
         class="text-sm font-mono text-base-content/60 border-l-4 border-ink pl-3"
       >
         {gettext("Topic:")} {@conversation.topic}
+      </div>
+
+      <div
+        :if={@focus_topic_text}
+        class="text-sm font-mono text-base-content/60 border-l-4 border-ink pl-3"
+      >
+        {gettext("Focus:")} {@focus_topic_text}
       </div>
 
       <%!-- Conversation with feedback (unified) or plain chat --%>

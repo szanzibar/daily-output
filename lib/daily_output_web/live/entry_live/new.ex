@@ -15,16 +15,8 @@ defmodule DailyOutputWeb.EntryLive.New do
        prompts: [],
        prompts_loading: true,
        selected_prompt: nil,
-       body: "",
-       timer_seconds: (config.timer_minutes || 5) * 60,
-       timer_running: false,
-       timer_expired: false,
-       entry: nil,
-       feedback: nil,
-       feedback_loading: false,
        error: nil,
-       focus_topics: [],
-       selected_focus_topic: nil
+       focus_topics: []
      )
      |> then(fn socket ->
        if connected?(socket), do: load_prompts(socket), else: socket
@@ -76,54 +68,12 @@ defmodule DailyOutputWeb.EntryLive.New do
      )}
   end
 
-  def handle_info(:tick, socket) do
-    remaining = socket.assigns.timer_seconds - 1
-
-    if remaining <= 0 do
-      {:noreply, assign(socket, timer_seconds: 0, timer_expired: true, timer_running: false)}
-    else
-      Process.send_after(self(), :tick, 1000)
-      {:noreply, assign(socket, timer_seconds: remaining)}
-    end
-  end
-
-  def handle_info({:feedback_loaded, {:ok, feedback}, entry}, socket) do
-    case Journal.save_feedback(entry, feedback) do
-      {:ok, entry} ->
-        {:noreply, push_navigate(socket, to: ~p"/entries/#{entry.id}")}
-
-      {:error, _} ->
-        {:noreply, assign(socket, feedback: feedback, feedback_loading: false)}
-    end
-  end
-
-  def handle_info({:feedback_loaded, {:error, reason}, _entry}, socket) do
-    {:noreply,
-     assign(socket,
-       feedback_loading: false,
-       error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
-     )}
-  end
-
   @impl true
-  def handle_event("add_focus_topic", _params, socket) do
-    # Feedback redirects to show page, so this is a no-op here
-    {:noreply, socket}
-  end
-
-  def handle_event("master_focus_topic", _params, socket) do
-    {:noreply, socket}
-  end
-
-  def handle_event("override_focus_result", _params, socket) do
-    {:noreply, socket}
-  end
-
   def handle_event("select_prompt", %{"prompt" => prompt}, socket) do
     topics = FocusTopics.list_active_topics()
 
     if topics == [] do
-      {:noreply, socket |> assign(selected_prompt: prompt, phase: :writing) |> start_timer()}
+      start_entry(socket, prompt, nil)
     else
       {:noreply,
        assign(socket, selected_prompt: prompt, phase: :focus_topic, focus_topics: topics)}
@@ -134,7 +84,7 @@ defmodule DailyOutputWeb.EntryLive.New do
     topics = FocusTopics.list_active_topics()
 
     if topics == [] do
-      {:noreply, socket |> assign(selected_prompt: nil, phase: :writing) |> start_timer()}
+      start_entry(socket, nil, nil)
     else
       {:noreply, assign(socket, selected_prompt: nil, phase: :focus_topic, focus_topics: topics)}
     end
@@ -142,83 +92,31 @@ defmodule DailyOutputWeb.EntryLive.New do
 
   def handle_event("select_focus_topic", %{"id" => id}, socket) do
     topic = FocusTopics.get_topic!(String.to_integer(id))
-    {:noreply, socket |> assign(selected_focus_topic: topic, phase: :writing) |> start_timer()}
+    start_entry(socket, socket.assigns.selected_prompt, topic)
   end
 
   def handle_event("skip_focus_topic", _params, socket) do
-    {:noreply, socket |> assign(phase: :writing) |> start_timer()}
+    start_entry(socket, socket.assigns.selected_prompt, nil)
   end
 
-  def handle_event("update_body", %{"body" => body}, socket) do
-    {:noreply, assign(socket, body: body)}
-  end
-
-  def handle_event("complete", _params, socket) do
-    body = socket.assigns.body
+  defp start_entry(socket, prompt, focus_topic) do
     config = socket.assigns.config
 
-    if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, gettext("Write something first!"))}
-    else
-      focus_topic = socket.assigns.selected_focus_topic
+    attrs = %{
+      body: "",
+      prompt: prompt,
+      language: config.target_language || "de",
+      duration: (config.timer_minutes || 5) * 60,
+      focus_topic_id: focus_topic && focus_topic.id
+    }
 
-      attrs = %{
-        body: body,
-        prompt: socket.assigns.selected_prompt,
-        language: config.target_language || "de",
-        duration: (config.timer_minutes || 5) * 60 - socket.assigns.timer_seconds,
-        focus_topic_id: focus_topic && focus_topic.id
-      }
+    case Journal.create_entry(attrs) do
+      {:ok, entry} ->
+        {:noreply, push_navigate(socket, to: ~p"/entries/#{entry.id}/edit")}
 
-      case Journal.create_entry(attrs) do
-        {:ok, entry} ->
-          entry = Journal.complete_entry(entry) |> elem(1)
-          request_feedback(socket, entry, body, config)
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, gettext("Could not save entry."))}
-      end
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not start entry."))}
     end
-  end
-
-  defp request_feedback(socket, entry, body, config) do
-    focus_topic = socket.assigns.selected_focus_topic
-
-    socket =
-      assign(socket,
-        entry: entry,
-        phase: :feedback,
-        feedback_loading: true
-      )
-
-    pid = self()
-
-    Task.start(fn ->
-      result =
-        AI.proofread(body,
-          target_language: config.target_language || "de",
-          native_language: config.native_language || "en",
-          language_level: config.language_level || "B2",
-          prompt_context: config.prompt_context || "",
-          focus_topic: focus_topic && focus_topic.text
-        )
-
-      send(pid, {:feedback_loaded, result, entry})
-    end)
-
-    {:noreply, socket}
-  end
-
-  defp start_timer(socket) do
-    Process.send_after(self(), :tick, 1000)
-    assign(socket, timer_running: true)
-  end
-
-  defp format_time(seconds) do
-    minutes = div(seconds, 60)
-    secs = rem(seconds, 60)
-
-    "#{String.pad_leading(Integer.to_string(minutes), 2, "0")}:#{String.pad_leading(Integer.to_string(secs), 2, "0")}"
   end
 
   @impl true
@@ -291,87 +189,6 @@ defmodule DailyOutputWeb.EntryLive.New do
               {gettext("Write without a focus topic")}
             </div>
           </button>
-        </div>
-      </div>
-
-      <%!-- PHASE: Writing --%>
-      <div :if={@phase == :writing}>
-        <%!-- Focus topic reminder --%>
-        <div :if={@selected_focus_topic} class="border-4 border-ink p-3 block-blue mb-4">
-          <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
-          <span class="text-sm ml-2">{@selected_focus_topic.text}</span>
-        </div>
-
-        <.editor id="editor-new" body={@body} prompt={@selected_prompt} error={@error}>
-          <:header>
-            <div :if={@selected_prompt} class="text-sm font-mono text-base-content/60 truncate mr-4">
-              {@selected_prompt}
-            </div>
-            <div :if={!@selected_prompt} class="text-sm font-mono text-base-content/60">
-              {gettext("Freestyle")}
-            </div>
-
-            <div class={[
-              "timer-display text-2xl sm:text-3xl shrink-0",
-              @timer_expired && "text-bold-red",
-              !@timer_expired && "text-ink"
-            ]}>
-              {format_time(@timer_seconds)}
-            </div>
-          </:header>
-          <:actions>
-            <button
-              phx-click="complete"
-              class={[
-                "brutal-btn px-6 py-3 text-lg",
-                if(@timer_expired, do: "block-green", else: "bg-base-200")
-              ]}
-            >
-              {gettext("Done")} &check;
-            </button>
-          </:actions>
-        </.editor>
-
-        <div :if={@timer_expired} class="block-red px-4 py-2 text-sm font-mono text-center mt-4">
-          {gettext("Time's up! You can keep writing or submit your entry.")}
-        </div>
-      </div>
-
-      <%!-- PHASE: Feedback --%>
-      <div :if={@phase == :feedback}>
-        <.loading
-          :if={@feedback_loading}
-          title={gettext("Feedback")}
-          message={gettext("Your text is being reviewed")}
-        />
-
-        <.feedback_view
-          :if={@feedback && !@feedback_loading}
-          feedback={@feedback}
-          error={@error}
-        >
-          <:actions>
-            <.link navigate={~p"/"} class="brutal-btn px-6 py-3 block-yellow no-underline text-lg">
-              {gettext("Back")}
-            </.link>
-          </:actions>
-        </.feedback_view>
-
-        <%!-- Error state: loading finished but no feedback (AI call failed) --%>
-        <div :if={@error && !@feedback_loading && !@feedback} class="space-y-6">
-          <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
-            {gettext("Feedback")}
-          </h1>
-          <hr class="brutal-hr" />
-          <div class="border-4 border-ink p-5 block-red">
-            <p class="font-mono text-sm">{@error}</p>
-          </div>
-          <.link
-            navigate={~p"/"}
-            class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
-          >
-            {gettext("Back")}
-          </.link>
         </div>
       </div>
     </div>

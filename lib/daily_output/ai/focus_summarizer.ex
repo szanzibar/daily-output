@@ -23,8 +23,7 @@ defmodule DailyOutput.AI.FocusSummarizer do
     """
 
     with {:ok, client} <- AI.client() do
-      case Anthropix.chat(client,
-             model: AI.model(),
+      case AI.chat(client,
              system: system,
              messages: [%{role: "user", content: "Summarize this tip:\n\n#{tip_text}"}],
              max_tokens: 256
