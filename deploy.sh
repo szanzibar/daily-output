@@ -13,4 +13,4 @@ echo "==> Restarting (migrations run automatically on start)..."
 docker compose down
 docker compose up -d
 
-echo "==> Done! Running on port 46142"
+echo "==> Done! Running on port 4000 (or custom host port from docker-compose)"
