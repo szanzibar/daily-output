@@ -97,7 +97,37 @@ defmodule DailyOutputWeb.ConversationLive.Show do
   end
 
   def handle_event("override_focus_result", _params, socket) do
-    {:noreply, put_flash(socket, :info, gettext("Overridden — counts as used."))}
+    conversation = socket.assigns.conversation
+
+    with {:ok, conversation} <-
+           Conversations.save_feedback(
+             conversation,
+             overridden_focus_feedback(conversation.feedback)
+           ),
+         {:ok, conversation} <- maybe_complete_conversation(conversation) do
+      {:noreply,
+       socket
+       |> assign(conversation: conversation)
+       |> put_flash(:info, gettext("Overridden — counts as used."))}
+    else
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not override focus result."))}
+    end
+  end
+
+  defp maybe_complete_conversation(%{completed_at: nil} = conversation),
+    do: Conversations.complete_conversation(conversation)
+
+  defp maybe_complete_conversation(conversation), do: {:ok, conversation}
+
+  defp overridden_focus_feedback(feedback) when is_map(feedback) do
+    focus_result =
+      feedback
+      |> Map.get("focus_result", %{})
+      |> Map.put("used", true)
+      |> Map.put_new("correct", false)
+
+    Map.put(feedback, "focus_result", focus_result)
   end
 
   @impl true

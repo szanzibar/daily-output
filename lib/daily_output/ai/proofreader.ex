@@ -30,6 +30,12 @@ defmodule DailyOutput.AI.Proofreader do
 
         The student chose to focus on this concept for this exercise: "#{focus_topic}"
         You MUST include a "focus_result" in your response.
+        Evaluate focus usage by meaning, not by exact keyword matching:
+        - Set used=true if the student attempted the concept in any valid variant (inflection, paraphrase, synonym, equivalent connector, or minor typo)
+        - Set used=false only if there is no attempt anywhere in the text
+        - Set correct=true only if used=true and usage is correct in context
+        - If used=false, correct MUST be false
+        - The comment MUST match the booleans; never praise correct usage when used=false
         """
       else
         ""
@@ -80,6 +86,7 @@ defmodule DailyOutput.AI.Proofreader do
     - Keep annotation explanations VERY SHORT (5-10 words)
     - Put longer explanations and teaching points in "commentary" instead
     - commentary type can be "pattern", "suggestion", or "alternative"
+    - focus_result booleans must be self-consistent with focus_result comment
     """
 
     with {:ok, client} <- AI.client() do
@@ -159,15 +166,18 @@ defmodule DailyOutput.AI.Proofreader do
             "properties" => %{
               "used" => %{
                 "type" => "boolean",
-                "description" => "Did the student attempt to use this concept?"
+                "description" =>
+                  "Did the student attempt this concept anywhere in the text? true for inflections/paraphrases/synonyms; exact keyword match is not required"
               },
               "correct" => %{
                 "type" => "boolean",
-                "description" => "If used, did they use it correctly?"
+                "description" =>
+                  "If used=true, did they use it correctly in context? Must be false when used=false"
               },
               "comment" => %{
                 "type" => "string",
-                "description" => "Brief encouraging feedback about their use of this concept"
+                "description" =>
+                  "Brief encouraging feedback consistent with used/correct booleans"
               }
             },
             "required" => ["used", "correct", "comment"]
@@ -204,10 +214,21 @@ defmodule DailyOutput.AI.Proofreader do
       "encouragement" => feedback["encouragement"] || ""
     }
 
-    case decode_focus_result(feedback["focus_result"]) do
+    case feedback["focus_result"] |> decode_focus_result() |> normalize_focus_result() do
       nil -> base
       focus_result -> Map.put(base, "focus_result", focus_result)
     end
+  end
+
+  defp normalize_focus_result(nil), do: nil
+
+  defp normalize_focus_result(%{} = result) do
+    used = normalize_bool(Map.get(result, "used"))
+    correct = normalize_bool(Map.get(result, "correct"))
+
+    result
+    |> Map.put("used", used)
+    |> Map.put("correct", if(used, do: correct, else: false))
   end
 
   defp decode_focus_result(nil), do: nil
@@ -240,6 +261,23 @@ defmodule DailyOutput.AI.Proofreader do
   end
 
   defp decode_focus_result(_), do: nil
+
+  defp normalize_bool(true), do: true
+  defp normalize_bool(false), do: false
+
+  defp normalize_bool(value) when is_binary(value) do
+    case String.downcase(String.trim(value)) do
+      "true" -> true
+      "1" -> true
+      "yes" -> true
+      "y" -> true
+      "ja" -> true
+      _ -> false
+    end
+  end
+
+  defp normalize_bool(1), do: true
+  defp normalize_bool(_), do: false
 
   defp decode_if_string(val) when is_binary(val) do
     case Jason.decode(val) do

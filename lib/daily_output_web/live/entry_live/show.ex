@@ -94,7 +94,31 @@ defmodule DailyOutputWeb.EntryLive.Show do
   end
 
   def handle_event("override_focus_result", _params, socket) do
-    {:noreply, put_flash(socket, :info, gettext("Overridden — counts as used."))}
+    entry = socket.assigns.entry
+
+    with {:ok, entry} <- Journal.save_feedback(entry, overridden_focus_feedback(entry.feedback)),
+         {:ok, entry} <- maybe_complete_entry(entry) do
+      {:noreply,
+       socket
+       |> assign(entry: entry)
+       |> put_flash(:info, gettext("Overridden — counts as used."))}
+    else
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not override focus result."))}
+    end
+  end
+
+  defp maybe_complete_entry(%{completed_at: nil} = entry), do: Journal.complete_entry(entry)
+  defp maybe_complete_entry(entry), do: {:ok, entry}
+
+  defp overridden_focus_feedback(feedback) when is_map(feedback) do
+    focus_result =
+      feedback
+      |> Map.get("focus_result", %{})
+      |> Map.put("used", true)
+      |> Map.put_new("correct", false)
+
+    Map.put(feedback, "focus_result", focus_result)
   end
 
   @impl true
