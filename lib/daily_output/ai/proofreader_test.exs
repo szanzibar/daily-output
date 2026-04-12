@@ -21,6 +21,9 @@ defmodule DailyOutput.AI.ProofreaderTest do
       assert Map.has_key?(focus_props, "used")
       assert Map.has_key?(focus_props, "correct")
       assert Map.has_key?(focus_props, "comment")
+
+      assert focus_props["used"]["description"] =~ "exact keyword match is not required"
+      assert focus_props["correct"]["description"] =~ "Must be false when used=false"
     end
 
     test "with empty string focus topic, focus_result is not required" do
@@ -151,14 +154,44 @@ defmodule DailyOutput.AI.ProofreaderTest do
         "annotations" => [],
         "commentary" => [],
         "encouragement" => "Gut!",
-        "focus_result" => ~s({"used": false, "correct": true, "comment": "Bitte weiter ueben."})
+        "focus_result" => ~s({"used": true, "correct": true, "comment": "Bitte weiter ueben."})
+      }
+
+      result = Proofreader.normalize_feedback(input)
+
+      assert result["focus_result"]["used"] == true
+      assert result["focus_result"]["correct"] == true
+      assert result["focus_result"]["comment"] == "Bitte weiter ueben."
+    end
+
+    test "coerces string booleans in focus_result" do
+      input = %{
+        "annotated_text" => "Test",
+        "annotations" => [],
+        "commentary" => [],
+        "encouragement" => "Gut!",
+        "focus_result" => %{"used" => "true", "correct" => "false", "comment" => "Fast!"}
+      }
+
+      result = Proofreader.normalize_feedback(input)
+
+      assert result["focus_result"]["used"] == true
+      assert result["focus_result"]["correct"] == false
+    end
+
+    test "forces focus_result.correct to false when used is false" do
+      input = %{
+        "annotated_text" => "Test",
+        "annotations" => [],
+        "commentary" => [],
+        "encouragement" => "Gut!",
+        "focus_result" => %{"used" => false, "correct" => true, "comment" => "Nicht benutzt."}
       }
 
       result = Proofreader.normalize_feedback(input)
 
       assert result["focus_result"]["used"] == false
-      assert result["focus_result"]["correct"] == true
-      assert result["focus_result"]["comment"] == "Bitte weiter ueben."
+      assert result["focus_result"]["correct"] == false
     end
 
     test "handles malformed focus_result string safely" do
