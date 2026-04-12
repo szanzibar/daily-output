@@ -3,6 +3,27 @@ set -eu
 
 cd -P -- "$(dirname -- "$0")"
 
+SECRET_KEY_BASE_FILE="${SECRET_KEY_BASE_FILE:-../data/secret_key_base}"
+
+load_or_create_secret_key_base() {
+	if [ -n "${SECRET_KEY_BASE:-}" ]; then
+		return
+	fi
+
+	if [ -s "$SECRET_KEY_BASE_FILE" ]; then
+		SECRET_KEY_BASE="$(cat "$SECRET_KEY_BASE_FILE")"
+	else
+		mkdir -p "$(dirname "$SECRET_KEY_BASE_FILE")"
+		umask 077
+		SECRET_KEY_BASE="$(openssl rand -hex 64)"
+		printf '%s' "$SECRET_KEY_BASE" > "$SECRET_KEY_BASE_FILE"
+	fi
+
+	export SECRET_KEY_BASE
+}
+
+load_or_create_secret_key_base
+
 # Run migrations before starting
 ./daily_output eval DailyOutput.Release.migrate
 

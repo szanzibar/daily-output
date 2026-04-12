@@ -63,10 +63,25 @@ Visit [localhost:4000](http://localhost:4000).
 
 ```bash
 cp .env.example .env
-# Edit with ANTHROPIC_API_KEY and SECRET_KEY_BASE (generate: mix phx.gen.secret)
+# Edit with ANTHROPIC_API_KEY
 
 docker compose up -d
 ```
+
+On first startup, the release script auto-generates `SECRET_KEY_BASE` and stores
+it in `./data/secret_key_base`. The SQLite database is always stored at
+`./data/daily_output.db`.
+
+`PORT` controls the host-side published app port in docker-compose
+(default: `4000`). The app itself listens on internal port `4000`.
+
+Production contract:
+
+- Phoenix advertises a public URL of `https://<PHX_HOST>` on port `443`
+- Phoenix expects HTTPS origin checks for `PHX_HOST`
+- A reverse proxy is responsible for TLS termination on `:443` and forwarding to the host-published `PORT` (for example `40005`), which maps to container `:4000`
+
+For local Docker convenience, this repository's compose file publishes `${PORT}` to container `:4000`.
 
 ### Container Publishing (GHCR)
 
@@ -88,7 +103,12 @@ To pull and run:
 
 ```bash
 docker pull ghcr.io/szanzibar/daily-output:latest
-docker run --rm -p 4000:4000 ghcr.io/szanzibar/daily-output:latest
+docker run --rm \
+  -e ANTHROPIC_API_KEY=your_api_key \
+  -e PHX_HOST=localhost \
+  -v daily_output_data:/app/data \
+  -p 4000:4000 \
+  ghcr.io/szanzibar/daily-output:latest
 ```
 
 Simple compose example using the GHCR image:
@@ -98,13 +118,11 @@ services:
   daily_output:
     image: ghcr.io/szanzibar/daily-output:latest
     ports:
-      - "46142:4000"
+      - "${PORT:-4000}:4000"
     environment:
       ANTHROPIC_API_KEY: "your_api_key"
-      SECRET_KEY_BASE: "generate_with_mix_phx.gen.secret"
-      DATABASE_PATH: "/app/data/daily_output.db"
-      PHX_SERVER: "true"
-      PORT: "4000"
+      # Required in production (public hostname at the reverse proxy):
+      PHX_HOST: "localhost"
     volumes:
       - ./data:/app/data
     restart: unless-stopped

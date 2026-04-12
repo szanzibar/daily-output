@@ -31,12 +31,7 @@ config :daily_output, DailyOutputWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
-  database_path =
-    System.get_env("DATABASE_PATH") ||
-      raise """
-      environment variable DATABASE_PATH is missing.
-      For example: /etc/daily_output/daily_output.db
-      """
+  database_path = "/app/data/daily_output.db"
 
   config :daily_output, DailyOutput.Repo,
     database: database_path,
@@ -51,10 +46,15 @@ if config_env() == :prod do
     System.get_env("SECRET_KEY_BASE") ||
       raise """
       environment variable SECRET_KEY_BASE is missing.
-      You can generate one by calling: mix phx.gen.secret
+      Start with bin/server to auto-generate one, or set SECRET_KEY_BASE manually.
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host =
+    System.get_env("PHX_HOST") ||
+      raise """
+      environment variable PHX_HOST is missing.
+      Set it to the public hostname served by your reverse proxy, for example: app.example.com
+      """
 
   config :daily_output, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

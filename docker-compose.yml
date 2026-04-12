@@ -2,13 +2,9 @@ services:
   daily_output:
     build: .
     ports:
-      - '46142:4000'
+      - '${PORT:-4000}:4000'
     env_file:
       - .env
-    environment:
-      - DATABASE_PATH=/app/data/daily_output.db
-      - PHX_SERVER=true
-      - PORT=4000
     volumes:
       - ./data:/app/data
     restart: unless-stopped
