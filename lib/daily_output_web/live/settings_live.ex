@@ -238,7 +238,9 @@ defmodule DailyOutputWeb.SettingsLive do
             field={@form[:prompt_context]}
             type="textarea"
             label={gettext("Additional instructions for the AI")}
-            placeholder="z.B. Ich habe Schwierigkeiten mit Dativ/Akkusativ. Ich möchte Konjunktiv II üben."
+            placeholder={
+              gettext("e.g. I struggle with dative/accusative. I want to practice subjunctive.")
+            }
             rows="4"
             class="w-full textarea border-3 border-ink font-mono text-sm"
           />
@@ -261,6 +263,20 @@ defmodule DailyOutputWeb.SettingsLive do
           />
         </div>
 
+        <%!-- AI Provider --%>
+        <div class="border-4 border-ink p-5">
+          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 block-pink"></span> AI Provider
+          </h2>
+          <.input
+            field={@form[:ai_provider]}
+            type="select"
+            label={gettext("AI Provider")}
+            options={provider_options()}
+            class="w-full select border-3 border-ink font-mono"
+          />
+        </div>
+
         <button type="submit" class="brutal-btn w-full py-4 block-blue text-lg">
           {gettext("Save")}
         </button>
@@ -269,7 +285,7 @@ defmodule DailyOutputWeb.SettingsLive do
       <%!-- API Key status --%>
       <div class="border-4 border-ink p-5">
         <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-          <span class="inline-block w-3 h-3 block-pink"></span> API
+          <span class="inline-block w-3 h-3 block-pink"></span> API Keys
         </h2>
         <div class="flex items-center gap-2">
           <span :if={api_key_set?()} class="text-xs font-mono px-2 py-1 block-green uppercase">
@@ -282,8 +298,28 @@ defmodule DailyOutputWeb.SettingsLive do
             ANTHROPIC_API_KEY
           </span>
         </div>
+        <div class="flex items-center gap-2 mt-2">
+          <span
+            :if={openrouter_key_set?()}
+            class="text-xs font-mono px-2 py-1 block-green uppercase"
+          >
+            {gettext("Configured")}
+          </span>
+          <span
+            :if={!openrouter_key_set?()}
+            class="text-xs font-mono px-2 py-1 block-red uppercase"
+          >
+            {gettext("Missing")}
+          </span>
+          <span class="text-sm text-base-content/60">
+            OPENROUTER_API_KEY
+          </span>
+        </div>
         <p :if={!api_key_set?()} class="text-xs text-base-content/60 mt-2 font-mono">
           {gettext("Set the ANTHROPIC_API_KEY environment variable in the .env file.")}
+        </p>
+        <p :if={!openrouter_key_set?()} class="text-xs text-base-content/60 mt-2 font-mono">
+          {gettext("Set the OPENROUTER_API_KEY environment variable in the .env file.")}
         </p>
       </div>
     </div>
@@ -291,7 +327,7 @@ defmodule DailyOutputWeb.SettingsLive do
   end
 
   defp language_options do
-    ["de", "en", "fr", "es", "it", "pt"]
+    ["de", "en", "fr", "es", "it", "ja", "pt"]
     |> Enum.map(fn code -> {language_option_label(code), code} end)
   end
 
@@ -322,6 +358,7 @@ defmodule DailyOutputWeb.SettingsLive do
         "fr" -> "Français"
         "es" -> "Español"
         "it" -> "Italiano"
+        "ja" -> "日本語 (Japanese - Romaji)"
         "pt" -> "Português"
         _ -> String.upcase(code)
       end
@@ -337,5 +374,16 @@ defmodule DailyOutputWeb.SettingsLive do
 
   defp api_key_set? do
     Application.get_env(:daily_output, :anthropic_api_key) not in [nil, ""]
+  end
+
+  defp openrouter_key_set? do
+    Application.get_env(:daily_output, :openrouter_api_key) not in [nil, ""]
+  end
+
+  defp provider_options do
+    [
+      {"Anthropic (Direct)", "anthropic"},
+      {"OpenRouter", "openrouter"}
+    ]
   end
 end

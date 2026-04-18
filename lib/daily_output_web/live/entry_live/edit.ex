@@ -237,8 +237,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     {:noreply,
      assign(socket,
        feedback_loading: false,
-       error:
-         gettext("ANTHROPIC_API_KEY not set. Add it to the .env file and restart the server.")
+       error: DailyOutput.AI.api_key_error_message()
      )}
   end
 

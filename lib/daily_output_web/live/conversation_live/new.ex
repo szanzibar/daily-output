@@ -52,7 +52,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
      assign(socket,
        openers: [],
        openers_loading: false,
-       error: gettext("ANTHROPIC_API_KEY not set.")
+       error: DailyOutput.AI.api_key_error_message()
      )}
   end
 

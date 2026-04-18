@@ -2,7 +2,7 @@
 
 A daily language practice journal with AI feedback. Write and speak in your target language every day, get instant inline corrections and learning tips.
 
-Built with Phoenix LiveView, SQLite, and the Anthropic API (Claude). Brutalist UI design.
+Built with Phoenix LiveView, SQLite, and the Anthropic API (Claude) or [OpenRouter](https://openrouter.ai/). Brutalist UI design.
 
 ## Why
 
@@ -41,7 +41,7 @@ The AI prompts for German use Swiss Standard German conventions (no ß).
 
 - Elixir 1.15+
 - Node.js (for JS tests)
-- An [Anthropic API key](https://console.anthropic.com/)
+- An [Anthropic API key](https://console.anthropic.com/) or an [OpenRouter API key](https://openrouter.ai/)
 
 ### Development
 
@@ -49,9 +49,9 @@ The AI prompts for German use Swiss Standard German conventions (no ß).
 # Install dependencies
 mix setup
 
-# Create .env with your API key
+# Create .env with your API key(s)
 cp .env.example .env
-# Edit .env with your ANTHROPIC_API_KEY
+# Edit .env — set ANTHROPIC_API_KEY and/or OPENROUTER_API_KEY
 
 # Start the server
 mix phx.server
@@ -63,7 +63,7 @@ Visit [localhost:4000](http://localhost:4000).
 
 ```bash
 cp .env.example .env
-# Edit with ANTHROPIC_API_KEY
+# Edit with ANTHROPIC_API_KEY and/or OPENROUTER_API_KEY
 
 docker compose up -d
 ```
@@ -105,6 +105,7 @@ To pull and run:
 docker pull ghcr.io/szanzibar/daily-output:latest
 docker run --rm \
   -e ANTHROPIC_API_KEY=your_api_key \
+  -e OPENROUTER_API_KEY=your_openrouter_key \
   -e PHX_HOST=localhost \
   -v daily_output_data:/app/data \
   -p 4000:4000 \
@@ -121,6 +122,7 @@ services:
       - "${PORT:-4000}:4000"
     environment:
       ANTHROPIC_API_KEY: "your_api_key"
+      OPENROUTER_API_KEY: "your_openrouter_key"
       # Required in production (public hostname at the reverse proxy):
       PHX_HOST: "localhost"
     volumes:
@@ -157,13 +159,15 @@ All configuration is done through the in-app settings page:
 | Prompt context | Custom instructions for the AI |
 | UI language | Auto (target language at B1+), English, or German |
 
-The only environment variable required is `ANTHROPIC_API_KEY` in `.env`.
+| AI provider | Anthropic (direct) or OpenRouter — switch in settings |
+
+The environment variables `ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` are set in `.env`. You need at least one, depending on which provider you select.
 
 ## Architecture
 
 - **Phoenix LiveView** — all pages are stateful LiveViews, no REST API
 - **Ecto + SQLite** — file-based database, no Postgres needed
-- **Anthropix** — Elixir client for the Anthropic API
+- **Anthropix / OpenRouter** — Anthropic API directly via Anthropix, or any model via OpenRouter (Req-based)
 - **Tailwind 4** — custom brutalist theme
 - **Gettext** — i18n with English source, German translations
 - **Minimal JS** — only DOM measurement for annotated text and textarea auto-expand

@@ -12,6 +12,7 @@ defmodule DailyOutput.AI.LanguageProfile do
     "es" => "Spanish",
     "fr" => "French",
     "it" => "Italian",
+    "ja" => "Japanese",
     "pt" => "Portuguese"
   }
 
@@ -24,6 +25,20 @@ defmodule DailyOutput.AI.LanguageProfile do
         "Never use ß — always use ss (for example: \"dass\" not \"daß\", \"Strasse\" not \"Straße\")",
         "Prefer Swiss standard terms naturally when suitable (Velo, Poulet, Natel, Trottoir, parkieren, etc.)",
         "Use Swiss conventions for dates, numbers, and spelling where they differ from Germany usage"
+      ]
+    },
+    "ja" => %{
+      prompt_name: "Japanese (Romaji)",
+      locale_context: nil,
+      settings_context: "ローマ字 Romaji",
+      conventions: [
+        "The student writes ONLY in romaji (Latin script) — never use hiragana, katakana, or kanji",
+        "All prompts, feedback, corrections, and example sentences must be written in romaji only",
+        "Use modified Hepburn romanization (e.g. \"shi\" not \"si\", \"chi\" not \"ti\", \"tsu\" not \"tu\", \"fu\" not \"hu\")",
+        "Use long vowel markers with macrons or doubled vowels (e.g. \"ō\" or \"ou\" for おう, \"ū\" or \"uu\" for うう) — be consistent",
+        "Separate particles clearly as individual words (e.g. \"watashi wa\" not \"watashiwa\")",
+        "Mark the topic particle は as \"wa\" (not \"ha\") and the direction particle へ as \"e\" (not \"he\")",
+        "Treat the student as learning Japanese grammar and vocabulary — the romaji is just the writing system"
       ]
     }
   }

@@ -101,7 +101,7 @@ defmodule DailyOutputWeb.HomeLive do
             {@streak}
           </div>
           <div class="text-xs font-mono uppercase tracking-widest">
-            {ngettext("day", "days", @streak)} Streak
+            {ngettext("day streak", "days streak", max(@streak, 1))}
           </div>
         </div>
       </div>

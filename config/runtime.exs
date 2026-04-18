@@ -5,6 +5,8 @@ if config_env() != :test do
   Dotenvy.source!([".env", System.get_env()])
 
   config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string)
+
+  config :daily_output, :openrouter_api_key, Dotenvy.env!("OPENROUTER_API_KEY", :string)
 end
 
 # config/runtime.exs is executed for all environments, including
