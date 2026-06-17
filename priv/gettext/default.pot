@@ -36,8 +36,8 @@ msgstr ""
 msgid "(empty)"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:146
-#: lib/daily_output_web/live/home_live.ex:201
+#: lib/daily_output_web/live/home_live.ex:153
+#: lib/daily_output_web/live/home_live.ex:208
 #, elixir-autogen, elixir-format
 msgid "+ New"
 msgstr ""
@@ -84,7 +84,7 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:235
+#: lib/daily_output_web/live/home_live.ex:246
 #, elixir-autogen, elixir-format
 msgid "Activity"
 msgstr ""
@@ -180,8 +180,8 @@ msgstr ""
 #: lib/daily_output_web/live/conversation_live/new.ex:155
 #: lib/daily_output_web/live/conversation_live/show.ex:140
 #: lib/daily_output_web/live/home_live.ex:60
-#: lib/daily_output_web/live/home_live.ex:192
-#: lib/daily_output_web/live/home_live.ex:216
+#: lib/daily_output_web/live/home_live.ex:199
+#: lib/daily_output_web/live/home_live.ex:223
 #, elixir-autogen, elixir-format
 msgid "Conversation"
 msgstr ""
@@ -255,7 +255,7 @@ msgstr ""
 msgid "Could not save."
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:114
+#: lib/daily_output_web/live/home_live.ex:121
 #, elixir-autogen, elixir-format
 msgid "Day complete!"
 msgstr ""
@@ -297,8 +297,8 @@ msgstr ""
 
 #: lib/daily_output_web/live/entry_live/show.ex:131
 #: lib/daily_output_web/live/home_live.ex:43
-#: lib/daily_output_web/live/home_live.ex:137
-#: lib/daily_output_web/live/home_live.ex:159
+#: lib/daily_output_web/live/home_live.ex:144
+#: lib/daily_output_web/live/home_live.ex:166
 #, elixir-autogen, elixir-format
 msgid "Entry"
 msgstr ""
@@ -477,17 +477,17 @@ msgstr ""
 msgid "No"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:227
+#: lib/daily_output_web/live/home_live.ex:234
 #, elixir-autogen, elixir-format
 msgid "No conversation yet today."
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:285
+#: lib/daily_output_web/live/home_live.ex:296
 #, elixir-autogen, elixir-format
 msgid "No entries yet. Start today!"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:169
+#: lib/daily_output_web/live/home_live.ex:176
 #, elixir-autogen, elixir-format
 msgid "No entry yet today."
 msgstr ""
@@ -592,7 +592,7 @@ msgstr ""
 msgid "Speak without a focus topic"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:223
+#: lib/daily_output_web/live/home_live.ex:230
 #, elixir-autogen, elixir-format
 msgid "Start"
 msgstr ""
@@ -678,7 +678,7 @@ msgstr ""
 msgid "What will you write about?"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex:166
+#: lib/daily_output_web/live/home_live.ex:173
 #, elixir-autogen, elixir-format
 msgid "Write"
 msgstr ""
@@ -1009,4 +1009,14 @@ msgstr ""
 #: lib/daily_output_web/live/settings_live.ex:387
 #, elixir-autogen, elixir-format
 msgid "Your VAPID_PUBLIC_KEY looks invalid (it must be the longer public key). Regenerate with `mix daily_output.gen_vapid` and restart."
+msgstr ""
+
+#: lib/daily_output_web/live/home_live.ex:240
+#, elixir-autogen, elixir-format
+msgid "One task keeps your streak alive. Both makes it a full day."
+msgstr ""
+
+#: lib/daily_output_web/live/home_live.ex:109
+#, elixir-autogen, elixir-format
+msgid "Streak freezes — each one saves a missed day"
 msgstr ""

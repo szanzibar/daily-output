@@ -1,7 +1,9 @@
 defmodule DailyOutput.FocusTopicsTest do
   use DailyOutput.DataCase
 
-  alias DailyOutput.FocusTopics
+  alias DailyOutput.{Clock, Conversations, FocusTopics, Journal, Repo}
+  alias DailyOutput.Conversations.Conversation
+  alias DailyOutput.Journal.Entry
 
   defp create_topic(attrs \\ %{}) do
     {:ok, topic} =
@@ -146,5 +148,96 @@ defmodule DailyOutput.FocusTopicsTest do
     test "returns 0 with no activity" do
       assert FocusTopics.current_streak() == 0
     end
+  end
+
+  describe "day_status/1 (tiered days)" do
+    test "full when both tasks are done" do
+      today = Clock.today()
+      full_day_on(today)
+      assert FocusTopics.day_status(today) == :full
+    end
+
+    test "partial with one task done" do
+      today = Clock.today()
+      complete_entry_on(today)
+      assert FocusTopics.day_status(today) == :partial
+    end
+
+    test "none with no activity" do
+      assert FocusTopics.day_status(Clock.today()) == :none
+    end
+  end
+
+  describe "streak_info/0 (tiers + freezes)" do
+    test "an unfinished today doesn't zero a streak ending yesterday" do
+      today = Clock.today()
+      complete_entry_on(Date.add(today, -1))
+
+      info = FocusTopics.streak_info()
+      assert info.count == 1
+      assert info.today_status == :none
+    end
+
+    test "partial days keep the streak alive" do
+      today = Clock.today()
+      complete_entry_on(today)
+      complete_conversation_on(Date.add(today, -1))
+
+      assert FocusTopics.current_streak() == 2
+    end
+
+    test "a gap with no earned freeze ends the streak" do
+      today = Clock.today()
+      full_day_on(Date.add(today, -1))
+      full_day_on(Date.add(today, -2))
+      # offset 3 missing, only 2 full days earned → no freeze to bridge it
+
+      assert FocusTopics.current_streak() == 2
+      assert FocusTopics.streak_info().freezes_available == 0
+    end
+
+    test "an earned freeze bridges a one-day gap" do
+      today = Clock.today()
+      # 6 full days earns one freeze; offset 3 is intentionally missing
+      for offset <- [1, 2, 4, 5, 6, 7], do: full_day_on(Date.add(today, -offset))
+
+      info = FocusTopics.streak_info()
+      assert info.count == 6
+      assert info.freezes_available == 0
+    end
+
+    test "freezes stay available (unspent) on a clean streak" do
+      today = Clock.today()
+      for offset <- 1..5, do: full_day_on(Date.add(today, -offset))
+
+      info = FocusTopics.streak_info()
+      assert info.count == 5
+      assert info.freezes_available == 1
+    end
+  end
+
+  defp complete_entry_on(date) do
+    backdate(Journal.create_entry(%{body: "x", language: "de"}), Entry, date)
+  end
+
+  defp complete_conversation_on(date) do
+    backdate(Conversations.create_conversation(%{topic: "x", language: "de"}), Conversation, date)
+  end
+
+  defp full_day_on(date) do
+    complete_entry_on(date)
+    complete_conversation_on(date)
+  end
+
+  defp backdate({:ok, record}, schema, date) do
+    at = DateTime.new!(date, ~T[12:00:00], "Etc/UTC")
+
+    {1, _} =
+      Repo.update_all(
+        from(r in schema, where: r.id == ^record.id),
+        set: [inserted_at: at, completed_at: at, feedback: %{"annotated_text" => "x"}]
+      )
+
+    record
   end
 end

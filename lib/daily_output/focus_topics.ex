@@ -77,76 +77,134 @@ defmodule DailyOutput.FocusTopics do
     Repo.exists?(from(t in FocusTopic, where: is_nil(t.mastered_at)))
   end
 
-  # ── Daily Challenge ──────────────────────────────────
+  # ── Daily Challenge & Streak ─────────────────────────
+
+  # You earn one streak freeze per N full days (both tasks), capped, so a missed day
+  # doesn't reset a hard-won streak to zero.
+  @full_days_per_freeze 5
+  @max_freezes 3
 
   @doc """
-  Check today's daily challenge status.
-  Entry/conversation complete = has feedback AND completed_at is set.
+  Today's challenge status. Entry/conversation complete = has feedback AND completed_at.
   This allows entries with feedback but unmet focus requirements to remain drafts.
   """
   def daily_challenge_status do
-    {today_start, today_end} = Clock.day_range(Clock.today())
-
-    entry_complete =
-      Repo.exists?(
-        from(e in Entry,
-          where:
-            is_nil(e.deleted_at) and not is_nil(e.feedback) and not is_nil(e.completed_at) and
-              e.inserted_at >= ^today_start and e.inserted_at < ^today_end
-        )
-      )
-
-    conversation_complete =
-      Repo.exists?(
-        from(c in Conversation,
-          where:
-            is_nil(c.deleted_at) and not is_nil(c.feedback) and not is_nil(c.completed_at) and
-              c.inserted_at >= ^today_start and c.inserted_at < ^today_end
-        )
-      )
+    {entry_done, convo_done} = day_completions(Clock.today())
 
     %{
-      entry: if(entry_complete, do: :complete, else: :none),
-      conversation: if(conversation_complete, do: :complete, else: :none),
-      all_done: entry_complete and conversation_complete
+      entry: if(entry_done, do: :complete, else: :none),
+      conversation: if(convo_done, do: :complete, else: :none),
+      all_done: entry_done and convo_done
     }
   end
 
-  @doc "Check if a specific date was fully completed."
-  def day_completed?(date) do
-    {day_start, day_end} = Clock.day_range(date)
-
-    entry_done =
-      Repo.exists?(
-        from(e in Entry,
-          where:
-            is_nil(e.deleted_at) and not is_nil(e.feedback) and not is_nil(e.completed_at) and
-              e.inserted_at >= ^day_start and e.inserted_at < ^day_end
-        )
-      )
-
-    convo_done =
-      Repo.exists?(
-        from(c in Conversation,
-          where:
-            is_nil(c.deleted_at) and not is_nil(c.feedback) and not is_nil(c.completed_at) and
-              c.inserted_at >= ^day_start and c.inserted_at < ^day_end
-        )
-      )
-
-    entry_done and convo_done
+  @doc "The tier reached on `date`: :full (both tasks), :partial (one), or :none."
+  def day_status(date) do
+    case day_completions(date) do
+      {true, true} -> :full
+      {false, false} -> :none
+      _ -> :partial
+    end
   end
 
-  @doc "Count consecutive completed days ending today."
-  def current_streak do
-    count_streak(Clock.today(), 0)
+  @doc "True when `date` counts toward the streak — at least one task done."
+  def day_kept?(date), do: day_status(date) != :none
+
+  @doc "Backwards-compatible check for a fully completed day (both tasks)."
+  def day_completed?(date), do: day_status(date) == :full
+
+  @doc "Count of consecutive kept days ending today (freeze-aware)."
+  def current_streak, do: streak_info().count
+
+  @doc """
+  Streak details with tiered days and streak freezes.
+
+  A day counts if it's at least *partial* (one task done). Missed days are bridged by
+  *freezes*: you earn one per #{@full_days_per_freeze} full days (capped at
+  #{@max_freezes}), and each missed day bridged in your current run spends one. Today
+  not being done yet never zeroes the streak — it just leaves it at risk.
+
+  Returns `%{count, freezes_available, today_status}`.
+  """
+  def streak_info do
+    entry_dates = completed_logical_dates(Entry)
+    convo_dates = completed_logical_dates(Conversation)
+
+    full_days = MapSet.intersection(entry_dates, convo_dates) |> MapSet.size()
+    earned = min(@max_freezes, div(full_days, @full_days_per_freeze))
+    kept = MapSet.union(entry_dates, convo_dates)
+
+    today = Clock.today()
+    start = if MapSet.member?(kept, today), do: today, else: Date.add(today, -1)
+
+    {count, consumed} = walk_streak(start, kept, 0, earned, 0)
+
+    %{
+      count: count,
+      freezes_available: max(0, earned - consumed),
+      today_status: status_from(entry_dates, convo_dates, today)
+    }
   end
 
-  defp count_streak(date, count) do
-    if day_completed?(date) do
-      count_streak(Date.add(date, -1), count + 1)
+  defp walk_streak(date, kept, count, budget, consumed) do
+    if MapSet.member?(kept, date) do
+      walk_streak(Date.add(date, -1), kept, count + 1, budget, consumed)
     else
-      count
+      # A run of missed days only continues the streak if freezes can cover the whole
+      # gap AND there's an earlier kept day to bridge to (don't spend freezes on the void).
+      case measure_gap(date, kept, budget, 0) do
+        {gap, next_kept} when not is_nil(next_kept) ->
+          walk_streak(next_kept, kept, count, budget - gap, consumed + gap)
+
+        _ ->
+          {count, consumed}
+      end
+    end
+  end
+
+  defp measure_gap(date, kept, budget, gap) do
+    cond do
+      gap > budget -> {gap, nil}
+      MapSet.member?(kept, date) -> {gap, date}
+      true -> measure_gap(Date.add(date, -1), kept, budget, gap + 1)
+    end
+  end
+
+  # {entry_done?, conversation_done?} for a single logical day.
+  defp day_completions(date) do
+    {start, stop} = Clock.day_range(date)
+    {completed_exists?(Entry, start, stop), completed_exists?(Conversation, start, stop)}
+  end
+
+  defp completed_exists?(schema, start, stop) do
+    Repo.exists?(
+      from(r in schema,
+        where:
+          is_nil(r.deleted_at) and not is_nil(r.feedback) and not is_nil(r.completed_at) and
+            r.inserted_at >= ^start and r.inserted_at < ^stop
+      )
+    )
+  end
+
+  # Set of logical dates with at least one completed record of `schema`.
+  defp completed_logical_dates(schema) do
+    from(r in schema,
+      where: is_nil(r.deleted_at) and not is_nil(r.feedback) and not is_nil(r.completed_at),
+      select: r.inserted_at
+    )
+    |> Repo.all()
+    |> Enum.map(&Clock.to_logical_date/1)
+    |> MapSet.new()
+  end
+
+  defp status_from(entry_dates, convo_dates, date) do
+    entry? = MapSet.member?(entry_dates, date)
+    convo? = MapSet.member?(convo_dates, date)
+
+    cond do
+      entry? and convo? -> :full
+      entry? or convo? -> :partial
+      true -> :none
     end
   end
 end

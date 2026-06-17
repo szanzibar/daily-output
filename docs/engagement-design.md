@@ -71,16 +71,20 @@ injected time + status; `Clock` boundary math. (Encryption/transport is the libr
 
 ---
 
-## Phase 2 — Flexible goal + streak protection (the retention fix)
+## Phase 2 — Flexible goal + streak protection (the retention fix) — DONE
 
-- **Tiered days:** `:full` (both tasks) vs `:partial` (one) vs `:none`. A *partial* day keeps
-  the streak alive; a *full* day earns a gold star and progress toward a freeze.
-- **Streak freeze:** `streak_freezes` (earn one per N full days, cap a few). When a day ends
-  incomplete and a freeze is available, the nightly tick records a `frozen_day` and decrements.
-  `current_streak/0` treats frozen days as bridged.
-- **Grace window:** 4am boundary via `Clock` (shared with Phase 1).
-- Home + streak badge reflect partial/full/frozen states.
-- **Tests:** streak math across full/partial/frozen/missed sequences; freeze earn/consume.
+- **Tiered days:** `FocusTopics.day_status/1` → `:full` (both tasks), `:partial` (one), `:none`.
+  A *partial* day keeps the streak alive; a *full* day counts toward earning freezes.
+- **Streak freeze (functional model):** `streak_info/0` derives everything from history —
+  no extra table, no nightly tick, no timing bugs. You earn one freeze per 5 full days
+  (capped at 3); the streak walk bridges missed days using that budget, but only when a
+  freeze actually connects to an earlier kept day (never spends into the void). An
+  unfinished *today* never zeroes the streak — it just leaves it at risk. `freezes_available`
+  = earned − spent-in-current-run, shown as ❄ on the home streak badge. (Simpler and more
+  forgiving than the persisted-counter sketch this doc originally had.)
+- **Grace window:** 4am boundary via `Clock` (built in Phase 1).
+- **Tests:** `day_status` tiers; partial-keeps-streak; today-not-done doesn't zero; gap
+  without budget ends streak; earned freeze bridges a gap; clean streak keeps freezes unspent.
 
 ## Phase 3 — Growth & progress stats (intrinsic motivation)
 

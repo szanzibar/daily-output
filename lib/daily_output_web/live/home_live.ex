@@ -12,7 +12,7 @@ defmodule DailyOutputWeb.HomeLive do
     today_entry = Journal.get_today_entry()
     today_conversation = Conversations.get_today_conversation()
     recent_days = build_recent_days()
-    streak = FocusTopics.current_streak()
+    streak = FocusTopics.streak_info()
     challenge = FocusTopics.daily_challenge_status()
 
     {:ok,
@@ -98,10 +98,17 @@ defmodule DailyOutputWeb.HomeLive do
 
         <div class="border-4 border-ink p-3 text-center">
           <div class="text-3xl sm:text-4xl font-black streak-active leading-none">
-            {@streak}
+            {@streak.count}
           </div>
           <div class="text-xs font-mono uppercase tracking-widest">
-            {ngettext("day", "days", @streak)} Streak
+            {ngettext("day", "days", @streak.count)} Streak
+          </div>
+          <div
+            :if={@streak.freezes_available > 0}
+            class="text-xs font-mono mt-1"
+            title={gettext("Streak freezes — each one saves a missed day")}
+          >
+            {String.duplicate("❄", @streak.freezes_available)}
           </div>
         </div>
       </div>
@@ -228,6 +235,10 @@ defmodule DailyOutputWeb.HomeLive do
           </p>
         </div>
       </div>
+
+      <p class="text-xs font-mono text-base-content/50 text-center">
+        {gettext("One task keeps your streak alive. Both makes it a full day.")}
+      </p>
 
       <%!-- === PAST DAYS === --%>
       <div :if={@recent_days != []}>
