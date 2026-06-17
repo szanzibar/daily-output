@@ -17,6 +17,9 @@ config :daily_output, DailyOutputWeb.Endpoint,
   secret_key_base: "/xD6yxGcMt2uKnXA1oFAmtgWR7UndlZm4oflvTu7oN2aFGFtepvSJMzuoN1wxgwR",
   server: false
 
+# Don't run the reminder scheduler during tests
+config :daily_output, start_reminders: false
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

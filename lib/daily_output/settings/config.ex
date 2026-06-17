@@ -11,6 +11,10 @@ defmodule DailyOutput.Settings.Config do
     field :prompt_context, :string, default: ""
     field :min_exchanges, :integer, default: 5
     field :ui_language, :string, default: "auto"
+    field :timezone, :string
+    field :reminders_enabled, :boolean, default: false
+    field :reminder_time, :time, default: ~T[20:00:00]
+    field :last_reminder_on, :date
 
     timestamps(type: :utc_datetime)
   end
@@ -25,7 +29,11 @@ defmodule DailyOutput.Settings.Config do
       :language_level,
       :prompt_context,
       :min_exchanges,
-      :ui_language
+      :ui_language,
+      :timezone,
+      :reminders_enabled,
+      :reminder_time,
+      :last_reminder_on
     ])
     |> validate_required([:timer_minutes, :target_language, :native_language])
     |> validate_number(:timer_minutes, greater_than: 0, less_than_or_equal_to: 60)

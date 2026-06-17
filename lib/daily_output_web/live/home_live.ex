@@ -63,7 +63,7 @@ defmodule DailyOutputWeb.HomeLive do
 
     (entries ++ conversations)
     |> Enum.sort_by(& &1.date, {:desc, DateTime})
-    |> Enum.group_by(fn item -> DateTime.to_date(item.date) end)
+    |> Enum.group_by(fn item -> DailyOutput.Clock.to_logical_date(item.date) end)
     |> Enum.map(fn {date, items} ->
       day_done =
         Enum.any?(items, &(&1.type == :entry and &1.completed)) and

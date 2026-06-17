@@ -20,9 +20,86 @@ function persistField(el) {
   if (form) form.addEventListener("submit", () => window.localStorage.removeItem(key))
 }
 
+// Decode a base64url VAPID key into the Uint8Array pushManager wants.
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+  const raw = window.atob(base64)
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+}
+
 // Hooks for LiveView
 const Hooks = {
   ...colocatedHooks,
+
+  // Daily-reminder controls: subscribe/unsubscribe to Web Push and detect timezone.
+  // The element carries data-vapid-key and data-timezone.
+  Reminders: {
+    mounted() {
+      // Auto-detect timezone on first visit if the server has none yet.
+      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (!this.el.dataset.timezone && browserTz) {
+        this.pushEvent("detect_timezone", { timezone: browserTz })
+      }
+
+      this.el.querySelector("[data-action=enable]")?.addEventListener("click", () => this.enable())
+      this.el.querySelector("[data-action=disable]")?.addEventListener("click", () => this.disable())
+      this.el.querySelector("[data-action=test]")?.addEventListener("click", () => this.pushEvent("test_notification", {}))
+      this.el.querySelector("[data-action=detect-tz]")?.addEventListener("click", () => {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const input = this.el.querySelector("input[name=timezone]")
+        if (input) input.value = tz
+        this.pushEvent("set_timezone", { timezone: tz })
+      })
+    },
+
+    async enable() {
+      try {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+          return this.error("This browser doesn't support notifications.")
+        }
+        const key = this.el.dataset.vapidKey
+        if (!key) return this.error("Push keys aren't configured on the server.")
+
+        const permission = await Notification.requestPermission()
+        if (permission !== "granted") return this.error("Notifications are blocked. Allow them in your browser settings.")
+
+        const reg = await navigator.serviceWorker.ready
+
+        // Always start from a clean subscription: a leftover one created with a
+        // different VAPID key makes subscribe() throw InvalidStateError.
+        const existing = await reg.pushManager.getSubscription()
+        if (existing) await existing.unsubscribe()
+
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(key)
+        })
+
+        this.pushEvent("enable_reminders", { subscription: sub.toJSON() })
+      } catch (e) {
+        console.error("enable reminders failed:", e)
+        this.error(`Could not enable reminders: ${e.message || e.name}`)
+      }
+    },
+
+    async disable() {
+      try {
+        const reg = await navigator.serviceWorker.ready
+        const sub = await reg.pushManager.getSubscription()
+        const endpoint = sub?.endpoint
+        if (sub) await sub.unsubscribe()
+        this.pushEvent("disable_reminders", endpoint ? { endpoint } : {})
+      } catch (e) {
+        this.pushEvent("disable_reminders", {})
+      }
+    },
+
+    error(message) {
+      const el = this.el.querySelector("[data-role=error]")
+      if (el) { el.textContent = message; el.classList.remove("hidden") }
+    }
+  },
 
   // Auto-save textarea content to LiveView on input
   AutoSave: {
@@ -107,13 +184,11 @@ liveSocket.connect()
 
 window.liveSocket = liveSocket
 
-// Register service worker for PWA (production only)
-if ("serviceWorker" in navigator && process.env.NODE_ENV !== "development") {
+// Register service worker for PWA + Web Push. Registered in all environments
+// (localhost is a secure context) so push can be tested in dev. The SW is
+// network-first, so it won't serve stale assets while developing.
+if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {})
-} else if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((r) => r.unregister())
-  })
 }
 
 // Live reload dev features

@@ -1,7 +1,7 @@
 defmodule DailyOutputWeb.SettingsLive do
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.Settings
+  alias DailyOutput.{Push, Settings}
   alias DailyOutput.AI.LanguageProfile
 
   @impl true
@@ -14,7 +14,10 @@ defmodule DailyOutputWeb.SettingsLive do
        page_title: gettext("Settings"),
        config: config,
        form: to_form(changeset),
-       topic_input: ""
+       topic_input: "",
+       push_configured: Push.configured?(),
+       push_key_valid: Push.public_key_valid?(),
+       vapid_public_key: Application.get_env(:daily_output, :vapid_public_key) || ""
      )}
   end
 
@@ -97,6 +100,98 @@ defmodule DailyOutputWeb.SettingsLive do
     value = params["topic_input"] || params["value"] || ""
     {:noreply, assign(socket, topic_input: value)}
   end
+
+  # ── Reminders & timezone ────────────────────────────────
+
+  # Auto-detect the browser timezone on first visit if none is set yet.
+  def handle_event("detect_timezone", %{"timezone" => tz}, socket) do
+    if is_nil(socket.assigns.config.timezone) and valid_timezone?(tz) do
+      persist(socket, %{timezone: tz}, nil)
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Explicit "use this timezone" (button or manual entry).
+  def handle_event("set_timezone", %{"timezone" => tz}, socket) do
+    if valid_timezone?(tz) do
+      persist(socket, %{timezone: tz}, gettext("Timezone updated."))
+    else
+      {:noreply, put_flash(socket, :error, gettext("Unknown timezone."))}
+    end
+  end
+
+  def handle_event("save_reminder_time", %{"reminder_time" => value}, socket) do
+    case parse_time(value) do
+      {:ok, time} -> persist(socket, %{reminder_time: time}, gettext("Reminder time saved."))
+      :error -> {:noreply, put_flash(socket, :error, gettext("Invalid time."))}
+    end
+  end
+
+  def handle_event("enable_reminders", %{"subscription" => subscription}, socket) do
+    %{"endpoint" => endpoint, "keys" => %{"p256dh" => p256dh, "auth" => auth}} = subscription
+
+    case Push.subscribe(%{endpoint: endpoint, p256dh: p256dh, auth: auth}) do
+      {:ok, _} ->
+        persist(socket, %{reminders_enabled: true}, gettext("Reminders on. We'll nudge you."))
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not enable reminders."))}
+    end
+  end
+
+  def handle_event("disable_reminders", %{"endpoint" => endpoint}, socket) do
+    Push.delete_by_endpoint(endpoint)
+    persist(socket, %{reminders_enabled: false}, gettext("Reminders off."))
+  end
+
+  def handle_event("disable_reminders", _params, socket) do
+    persist(socket, %{reminders_enabled: false}, gettext("Reminders off."))
+  end
+
+  def handle_event("test_notification", _params, socket) do
+    payload = %{
+      title: gettext("Daily Output"),
+      body: gettext("Test notification — push is working."),
+      url: "/"
+    }
+
+    case Push.send_to_all(payload) do
+      0 ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("No notification sent. Make sure reminders are enabled on this device.")
+         )}
+
+      count ->
+        {:noreply,
+         put_flash(socket, :info, gettext("Test sent to %{count} device(s).", count: count))}
+    end
+  end
+
+  defp persist(socket, attrs, flash_msg) do
+    case Settings.update_config(socket.assigns.config, attrs) do
+      {:ok, config} ->
+        socket = assign(socket, config: config, form: to_form(Settings.change_config(config)))
+        socket = if flash_msg, do: put_flash(socket, :info, flash_msg), else: socket
+        {:noreply, socket}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("Could not save."))}
+    end
+  end
+
+  defp parse_time(value) do
+    case Time.from_iso8601(value <> ":00") do
+      {:ok, time} -> {:ok, time}
+      _ -> :error
+    end
+  end
+
+  defp valid_timezone?(tz) when is_binary(tz) and tz != "", do: match?({:ok, _}, DateTime.now(tz))
+  defp valid_timezone?(_), do: false
 
   @impl true
   def render(assigns) do
@@ -265,6 +360,123 @@ defmodule DailyOutputWeb.SettingsLive do
           {gettext("Save")}
         </button>
       </.form>
+
+      <%!-- Daily reminder --%>
+      <div
+        :if={@push_configured}
+        id="reminders-panel"
+        phx-hook="Reminders"
+        data-vapid-key={@vapid_public_key}
+        data-enabled={to_string(@config.reminders_enabled)}
+        data-timezone={@config.timezone || ""}
+        class="border-4 border-ink p-5 space-y-4"
+      >
+        <h2 class="text-lg font-black uppercase flex items-center gap-2">
+          <span class="inline-block w-3 h-3 block-cyan"></span> {gettext("Daily Reminder")}
+        </h2>
+        <p class="text-sm text-base-content/60">
+          {gettext(
+            "Get a nudge at your chosen time if you haven't practiced yet. Works on your phone once the app is installed to your home screen."
+          )}
+        </p>
+
+        <p
+          :if={!@push_key_valid}
+          class="text-sm font-mono text-bold-red border-l-4 border-bold-red pl-3"
+        >
+          {gettext(
+            "Your VAPID_PUBLIC_KEY looks invalid (it must be the longer public key). Regenerate with `mix daily_output.gen_vapid` and restart."
+          )}
+        </p>
+
+        <div class="flex items-center gap-3">
+          <span class={[
+            "text-xs font-mono px-2 py-1 uppercase",
+            if(@config.reminders_enabled, do: "block-green", else: "bg-base-200")
+          ]}>
+            {if @config.reminders_enabled, do: gettext("On"), else: gettext("Off")}
+          </span>
+          <button
+            :if={!@config.reminders_enabled}
+            type="button"
+            data-action="enable"
+            class="brutal-btn px-4 py-2 block-cyan text-sm"
+          >
+            {gettext("Enable reminders")}
+          </button>
+          <button
+            :if={@config.reminders_enabled}
+            type="button"
+            data-action="disable"
+            class="brutal-btn px-4 py-2 bg-base-200 text-sm"
+          >
+            {gettext("Turn off")}
+          </button>
+          <button
+            :if={@config.reminders_enabled}
+            type="button"
+            data-action="test"
+            class="brutal-btn px-4 py-2 block-purple text-sm"
+          >
+            {gettext("Send test")}
+          </button>
+        </div>
+
+        <p data-role="error" class="hidden text-sm font-mono text-bold-red"></p>
+
+        <form phx-submit="save_reminder_time" class="flex items-end gap-2">
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-widest mb-1">
+              {gettext("Reminder time")}
+            </label>
+            <input
+              type="time"
+              name="reminder_time"
+              value={Calendar.strftime(@config.reminder_time, "%H:%M")}
+              class="input border-3 border-ink font-mono"
+            />
+          </div>
+          <button type="submit" class="brutal-btn px-4 py-2 block-green text-sm">
+            {gettext("Save")}
+          </button>
+        </form>
+
+        <form phx-submit="set_timezone" class="flex items-end gap-2">
+          <div class="flex-1">
+            <label class="block text-xs font-mono uppercase tracking-widest mb-1">
+              {gettext("Timezone")}
+            </label>
+            <input
+              type="text"
+              name="timezone"
+              value={@config.timezone}
+              placeholder="Europe/Berlin"
+              class="input border-3 border-ink font-mono w-full text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            data-action="detect-tz"
+            class="brutal-btn px-3 py-2 bg-base-200 text-sm"
+          >
+            {gettext("Use current")}
+          </button>
+          <button type="submit" class="brutal-btn px-4 py-2 block-green text-sm">
+            {gettext("Save")}
+          </button>
+        </form>
+      </div>
+
+      <div :if={!@push_configured} class="border-4 border-ink p-5">
+        <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
+          <span class="inline-block w-3 h-3 block-cyan"></span> {gettext("Daily Reminder")}
+        </h2>
+        <p class="text-sm text-base-content/60">
+          {gettext(
+            "Reminders are unavailable until push keys are set. Run `mix daily_output.gen_vapid` and add the VAPID_* values to your .env."
+          )}
+        </p>
+      </div>
 
       <%!-- API Key status --%>
       <div class="border-4 border-ink p-5">

@@ -4,6 +4,7 @@ defmodule DailyOutput.FocusTopics do
   """
 
   import Ecto.Query
+  alias DailyOutput.Clock
   alias DailyOutput.Repo
   alias DailyOutput.FocusTopics.FocusTopic
   alias DailyOutput.Journal.Entry
@@ -84,7 +85,7 @@ defmodule DailyOutput.FocusTopics do
   This allows entries with feedback but unmet focus requirements to remain drafts.
   """
   def daily_challenge_status do
-    {today_start, today_end} = today_range()
+    {today_start, today_end} = Clock.day_range(Clock.today())
 
     entry_complete =
       Repo.exists?(
@@ -113,8 +114,7 @@ defmodule DailyOutput.FocusTopics do
 
   @doc "Check if a specific date was fully completed."
   def day_completed?(date) do
-    day_start = DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
-    day_end = date |> Date.add(1) |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    {day_start, day_end} = Clock.day_range(date)
 
     entry_done =
       Repo.exists?(
@@ -139,7 +139,7 @@ defmodule DailyOutput.FocusTopics do
 
   @doc "Count consecutive completed days ending today."
   def current_streak do
-    count_streak(Date.utc_today(), 0)
+    count_streak(Clock.today(), 0)
   end
 
   defp count_streak(date, count) do
@@ -148,11 +148,5 @@ defmodule DailyOutput.FocusTopics do
     else
       count
     end
-  end
-
-  defp today_range do
-    today_start = Date.utc_today() |> DateTime.new!(~T[00:00:00], "Etc/UTC")
-    today_end = Date.utc_today() |> Date.add(1) |> DateTime.new!(~T[00:00:00], "Etc/UTC")
-    {today_start, today_end}
   end
 end

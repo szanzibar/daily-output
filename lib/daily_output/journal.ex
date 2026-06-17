@@ -5,6 +5,7 @@ defmodule DailyOutput.Journal do
   """
 
   import Ecto.Query
+  alias DailyOutput.Clock
   alias DailyOutput.Repo
   alias DailyOutput.AI.Proofreader
   alias DailyOutput.Journal.Entry
@@ -29,7 +30,7 @@ defmodule DailyOutput.Journal do
   """
   def list_recent_entries(days \\ 14) do
     cutoff = DateTime.utc_now() |> DateTime.add(-days * 86400)
-    today_start = Date.utc_today() |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    {today_start, _} = Clock.day_range(Clock.today())
 
     # Get all non-deleted entries in range, then group by date in Elixir
     entries =
@@ -39,9 +40,9 @@ defmodule DailyOutput.Journal do
       |> order_by([e], desc: e.inserted_at)
       |> Repo.all()
 
-    # Group by date, take the latest (first) from each group
+    # Group by logical date, take the latest (first) from each group
     entries
-    |> Enum.group_by(fn e -> DateTime.to_date(e.inserted_at) end)
+    |> Enum.group_by(fn e -> Clock.to_logical_date(e.inserted_at) end)
     |> Enum.map(fn {_date, [latest | _]} -> latest end)
     |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
   end
@@ -57,7 +58,7 @@ defmodule DailyOutput.Journal do
 
   @doc "Returns the latest non-deleted entry for today."
   def get_today_entry do
-    {today_start, today_end} = today_range()
+    {today_start, today_end} = Clock.day_range(Clock.today())
 
     Entry
     |> not_deleted()
@@ -69,14 +70,13 @@ defmodule DailyOutput.Journal do
 
   @doc "Returns all non-deleted entries for the same date as the given entry."
   def get_versions(%Entry{} = entry) do
-    date = DateTime.to_date(entry.inserted_at)
+    date = Clock.to_logical_date(entry.inserted_at)
     get_entries_for_date(date)
   end
 
   @doc "Returns all non-deleted entries for a given date, newest first."
   def get_entries_for_date(%Date{} = date) do
-    day_start = DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
-    day_end = date |> Date.add(1) |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    {day_start, day_end} = Clock.day_range(date)
 
     Entry
     |> not_deleted()
@@ -150,16 +150,10 @@ defmodule DailyOutput.Journal do
     count_consecutive_days(entries)
   end
 
-  defp today_range do
-    today_start = Date.utc_today() |> DateTime.new!(~T[00:00:00], "Etc/UTC")
-    today_end = Date.utc_today() |> Date.add(1) |> DateTime.new!(~T[00:00:00], "Etc/UTC")
-    {today_start, today_end}
-  end
-
   defp count_consecutive_days([]), do: 0
 
   defp count_consecutive_days(dates) do
-    today = Date.utc_today() |> Date.to_iso8601()
+    today = Clock.today() |> Date.to_iso8601()
 
     dates
     |> Enum.map(&to_string/1)

@@ -4,6 +4,7 @@ defmodule DailyOutput.Conversations do
   """
 
   import Ecto.Query
+  alias DailyOutput.Clock
   alias DailyOutput.Repo
   alias DailyOutput.AI.Proofreader
   alias DailyOutput.Conversations.{Conversation, Message}
@@ -70,8 +71,7 @@ defmodule DailyOutput.Conversations do
   end
 
   def get_today_conversations do
-    today_start = Date.utc_today() |> DateTime.new!(~T[00:00:00], "Etc/UTC")
-    today_end = Date.utc_today() |> Date.add(1) |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    {today_start, today_end} = Clock.day_range(Clock.today())
 
     Conversation
     |> not_deleted()
@@ -82,8 +82,7 @@ defmodule DailyOutput.Conversations do
 
   @doc "Returns the latest conversation for today, if any."
   def get_today_conversation do
-    today_start = Date.utc_today() |> DateTime.new!(~T[00:00:00], "Etc/UTC")
-    today_end = Date.utc_today() |> Date.add(1) |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    {today_start, today_end} = Clock.day_range(Clock.today())
 
     Conversation
     |> not_deleted()
@@ -95,9 +94,8 @@ defmodule DailyOutput.Conversations do
 
   @doc "Returns all non-deleted conversations for the same date."
   def get_versions(%Conversation{} = conversation) do
-    date = DateTime.to_date(conversation.inserted_at)
-    day_start = DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
-    day_end = date |> Date.add(1) |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    date = Clock.to_logical_date(conversation.inserted_at)
+    {day_start, day_end} = Clock.day_range(date)
 
     Conversation
     |> not_deleted()
@@ -117,7 +115,7 @@ defmodule DailyOutput.Conversations do
   @doc "Returns recent conversations (latest per day, excluding today) for the home page."
   def list_recent_conversations(days \\ 14) do
     cutoff = DateTime.utc_now() |> DateTime.add(-days * 86400)
-    today_start = Date.utc_today() |> DateTime.new!(~T[00:00:00], "Etc/UTC")
+    {today_start, _} = Clock.day_range(Clock.today())
 
     convos =
       Conversation
@@ -127,7 +125,7 @@ defmodule DailyOutput.Conversations do
       |> Repo.all()
 
     convos
-    |> Enum.group_by(fn c -> DateTime.to_date(c.inserted_at) end)
+    |> Enum.group_by(fn c -> Clock.to_logical_date(c.inserted_at) end)
     |> Enum.map(fn {_date, [latest | _]} -> latest end)
     |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
   end

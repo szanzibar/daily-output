@@ -5,6 +5,20 @@ if config_env() != :test do
   Dotenvy.source!([".env", System.get_env()])
 
   config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string)
+
+  # Web Push (optional). Generate keys with `mix generate.vapid.keys` and add them to .env.
+  # Reminders stay off until these are set.
+  vapid_public_key = Dotenvy.env!("VAPID_PUBLIC_KEY", :string, "")
+  vapid_private_key = Dotenvy.env!("VAPID_PRIVATE_KEY", :string, "")
+
+  config :web_push_elixir,
+    vapid_public_key: vapid_public_key,
+    vapid_private_key: vapid_private_key,
+    vapid_subject: Dotenvy.env!("VAPID_SUBJECT", :string, "mailto:admin@example.com")
+
+  config :daily_output,
+    vapid_public_key: vapid_public_key,
+    default_timezone: Dotenvy.env!("DEFAULT_TIMEZONE", :string, "Etc/UTC")
 end
 
 # config/runtime.exs is executed for all environments, including

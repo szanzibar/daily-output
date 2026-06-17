@@ -65,7 +65,9 @@ defmodule DailyOutput.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:anthropix, "~> 0.6"},
-      {:dotenvy, "~> 1.0"}
+      {:dotenvy, "~> 1.0"},
+      {:tz, "~> 0.28"},
+      {:web_push_elixir, "~> 0.8"}
     ]
   end
 
