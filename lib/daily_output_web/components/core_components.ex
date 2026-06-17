@@ -306,6 +306,21 @@ defmodule DailyOutputWeb.CoreComponents do
   end
 
   @doc """
+  Renders trusted Markdown (AI focus tips, feedback) as styled HTML.
+
+  Bold, italic, inline code and `>` blockquotes are turned into real elements so the
+  raw `**`/`*`/`>` characters never reach the reader. See `DailyOutput.Markdown`.
+  """
+  attr :text, :string, default: nil
+  attr :class, :any, default: nil
+
+  def rich_text(assigns) do
+    ~H"""
+    <div class={["rich-text", @class]}>{DailyOutput.Markdown.to_html(@text)}</div>
+    """
+  end
+
+  @doc """
   Renders a header with title.
   """
   slot :inner_block, required: true

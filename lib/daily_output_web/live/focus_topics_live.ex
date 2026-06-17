@@ -60,7 +60,7 @@ defmodule DailyOutputWeb.FocusTopicsLive do
       <div :if={@active_topics != []} class="border-4 border-ink divide-y-2 divide-ink">
         <div :for={topic <- @active_topics} class="p-4 flex items-start justify-between gap-3">
           <div class="flex-1">
-            <p class="text-sm font-bold">{topic.text}</p>
+            <.rich_text text={topic.text} class="text-sm" />
             <p class="text-xs font-mono text-base-content/50 mt-1">
               {topic.source_type} — {Calendar.strftime(topic.inserted_at, "%d.%m.%Y")}
             </p>
@@ -104,7 +104,7 @@ defmodule DailyOutputWeb.FocusTopicsLive do
         <div :if={@show_mastered} class="border-4 border-ink divide-y divide-ink mt-2 opacity-60">
           <div :for={topic <- @mastered_topics} class="p-3 flex items-start justify-between gap-3">
             <div class="flex-1">
-              <p class="text-sm line-through">{topic.text}</p>
+              <.rich_text text={topic.text} class="text-sm line-through" />
               <p class="text-xs font-mono text-base-content/40 mt-1">
                 {gettext("Mastered on %{date}",
                   date: Calendar.strftime(topic.mastered_at, "%d.%m.%Y")

@@ -3,7 +3,19 @@ defmodule DailyOutputWeb.EntryLive.NewTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.{FocusTopics, Journal}
+  alias DailyOutput.{FocusTopics, Journal, PromptCache}
+
+  test "shows cached prompts on mount without regenerating", %{conn: conn} do
+    PromptCache.put(:prompts, [], "de", "en", [
+      %{"prompt" => "Was hast du gegessen?", "translation" => "What did you eat?"}
+    ])
+
+    {:ok, view, _html} = live(conn, ~p"/entries/new")
+
+    assert has_element?(view, ~s(button[phx-click="select_prompt"]), "Was hast du gegessen?")
+    # The big "generate" empty-state button is gone once prompts are cached.
+    refute has_element?(view, "button", "Generate 5 prompts")
+  end
 
   test "creates a persisted draft with focus and navigates to edit", %{conn: conn} do
     focus_topic =
@@ -36,7 +48,7 @@ defmodule DailyOutputWeb.EntryLive.NewTest do
     assert is_nil(entry.feedback)
 
     {:ok, edit_view, _html} = live(conn, path)
-    assert has_element?(edit_view, "div.block-blue span", focus_topic.text)
+    assert has_element?(edit_view, "div.block-blue .rich-text", focus_topic.text)
 
     draft_body = "Heute habe ich mit viel Fokus geschrieben."
     render_hook(edit_view, "update_body", %{"body" => draft_body})

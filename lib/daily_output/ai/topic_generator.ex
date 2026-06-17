@@ -30,15 +30,20 @@ defmodule DailyOutput.AI.TopicGenerator do
       end
 
     system = """
-    Generate exactly 4 natural conversation openers in #{profile.prompt_name}.
+    Generate exactly 5 natural conversation openers in #{profile.prompt_name}.
     #{locale_line}
     #{conventions_block}
 
-    Topics to draw from: #{topic_list}
+    Treat these interests as loose inspiration, not a checklist: #{topic_list}
+
+    Prize variety — surprise the learner with openers they wouldn't expect, while keeping
+    each one something a real friend might genuinely say.
 
     Each opener should:
     - Be a natural question or statement a native #{profile.prompt_name} speaker would use
     - Be 1-2 sentences max
+    - Only sometimes touch the interests above; let others roam into everyday moments,
+      light opinions, small stories, or the occasional more reflective question
     - Range from easier to more challenging vocabulary
     - Include a #{native_language} translation
 
@@ -50,7 +55,7 @@ defmodule DailyOutput.AI.TopicGenerator do
     with {:ok, client} <- AI.client() do
       case AI.chat(client,
              system: system,
-             messages: [%{role: "user", content: "Generate 4 conversation openers."}],
+             messages: [%{role: "user", content: "Generate 5 conversation openers."}],
              max_tokens: 1024
            ) do
         {:ok, %{"content" => [%{"text" => text} | _]}} ->

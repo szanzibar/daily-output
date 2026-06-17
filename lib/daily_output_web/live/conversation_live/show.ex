@@ -212,9 +212,10 @@ defmodule DailyOutputWeb.ConversationLive.Show do
 
       <div
         :if={@focus_topic_text}
-        class="text-sm font-mono text-base-content/60 border-l-4 border-ink pl-3"
+        class="text-sm text-base-content/60 border-l-4 border-ink pl-3"
       >
-        {gettext("Focus:")} {@focus_topic_text}
+        <span class="font-mono">{gettext("Focus:")}</span>
+        <.rich_text text={@focus_topic_text} />
       </div>
 
       <%!-- Conversation with feedback (unified) or plain chat --%>

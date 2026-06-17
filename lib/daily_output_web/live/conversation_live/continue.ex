@@ -50,11 +50,20 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
       )
 
     socket =
-      if connected?(socket) and match?(%{role: "user"}, List.last(messages)) do
-        send(self(), :request_ai_reply)
-        assign(socket, ai_loading: true)
-      else
-        socket
+      cond do
+        not connected?(socket) ->
+          socket
+
+        match?(%{role: "user"}, List.last(messages)) ->
+          send(self(), :request_ai_reply)
+          assign(socket, ai_loading: true)
+
+        messages == [] and conversation.topic ->
+          send(self(), :request_ai_opener)
+          assign(socket, ai_loading: true)
+
+        true ->
+          socket
       end
 
     {:ok, socket}
@@ -119,6 +128,26 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
   @impl true
   def handle_info(:request_ai_reply, socket) do
     request_ai_response(socket, socket.assigns.messages)
+  end
+
+  def handle_info(:request_ai_opener, socket) do
+    config = socket.assigns.config
+    topic = socket.assigns.conversation.topic
+    pid = self()
+
+    Task.start(fn ->
+      result =
+        AI.conversation_open(topic,
+          target_language: config.target_language || "de",
+          native_language: config.native_language || "en",
+          language_level: config.language_level || "B2",
+          prompt_context: config.prompt_context || ""
+        )
+
+      send(pid, {:ai_response, result})
+    end)
+
+    {:noreply, socket}
   end
 
   def handle_info({:ai_response, {:ok, text}}, socket) do
@@ -227,7 +256,7 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
     <div class="max-w-4xl mx-auto space-y-4">
       <div :if={@focus_topic_text} class="border-4 border-ink p-3 block-blue">
         <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
-        <span class="text-sm ml-2">{@focus_topic_text}</span>
+        <.rich_text text={@focus_topic_text} class="text-sm mt-1" />
       </div>
 
       <div class="flex flex-wrap items-center justify-between gap-2">
@@ -261,7 +290,9 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
         <div :if={@ai_loading} class="chat-bubble-row chat-ai mt-3">
           <div class="chat-role">{gettext("Partner")}</div>
           <div class="chat-bubble chat-bubble-ai">
-            <span class="animate-pulse font-mono">...</span>
+            <span class="chat-typing" aria-label={gettext("Partner is typing")}>
+              <span></span><span></span><span></span>
+            </span>
           </div>
         </div>
 
@@ -269,6 +300,7 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
           <textarea
             id="chat-input-continue"
             phx-hook="AutoExpand"
+            data-persist-key={"chat-#{@conversation.id}"}
             phx-mounted={JS.focus()}
             name="message"
             rows="1"

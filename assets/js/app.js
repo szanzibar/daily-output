@@ -5,6 +5,21 @@ import {hooks as colocatedHooks} from "phoenix-colocated/daily_output"
 import topbar from "../vendor/topbar"
 import {parseMarkers, tokenize, wrapLines, buildHtml, positionNotes} from "./annotated_text"
 
+// Persist a field's value across LiveView navigation via localStorage.
+// Restores on mount, saves on input, clears once its form is submitted.
+// Opt in with `data-persist-key` (stable across remounts); falls back to the id.
+function persistField(el) {
+  const key = `persist:${el.dataset.persistKey || el.id}`
+  const saved = window.localStorage.getItem(key)
+  if (saved !== null && el.value === "") {
+    el.value = saved
+    el.dispatchEvent(new Event("input", {bubbles: true}))
+  }
+  el.addEventListener("input", () => window.localStorage.setItem(key, el.value))
+  const form = el.closest("form")
+  if (form) form.addEventListener("submit", () => window.localStorage.removeItem(key))
+}
+
 // Hooks for LiveView
 const Hooks = {
   ...colocatedHooks,
@@ -18,16 +33,21 @@ const Hooks = {
     }
   },
 
-  // Auto-expanding textarea for chat input, Enter to send
+  // Auto-expanding textarea. Grows to fit its content as you type.
+  // Submits on Enter unless `data-no-enter-submit` is set (multi-line composers),
+  // and persists across navigation when `data-persist-key` is present.
   AutoExpand: {
     mounted() {
       this.el.addEventListener("input", () => this.resize())
-      this.el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault()
-          this.el.closest("form").requestSubmit()
-        }
-      })
+      if (this.el.dataset.noEnterSubmit === undefined) {
+        this.el.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault()
+            this.el.closest("form").requestSubmit()
+          }
+        })
+      }
+      if (this.el.dataset.persistKey) persistField(this.el)
       this.resize()
     },
     resize() {

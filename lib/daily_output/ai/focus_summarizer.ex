@@ -15,9 +15,14 @@ defmodule DailyOutput.AI.FocusSummarizer do
     Rules:
     - 1-2 short sentences max
     - Include the grammar rule or pattern name if applicable
-    - Include a brief example if it helps
     - Make it self-contained — someone reading it tomorrow without context should understand what to practice
     - Write in the same language as the input
+
+    Formatting (use Markdown, keep it minimal):
+    - Wrap the rule or pattern name in **bold**
+    - Wrap any inline foreign-language word or particle in *italics*
+    - If you give an example sentence, put it on its own line as a blockquote starting with "> "
+    - Do NOT use quotation marks for emphasis — use the Markdown above instead
 
     Respond with ONLY the summarized text, nothing else.
     """

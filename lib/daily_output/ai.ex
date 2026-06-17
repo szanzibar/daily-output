@@ -13,7 +13,7 @@ defmodule DailyOutput.AI do
     FocusSummarizer
   }
 
-  alias DailyOutput.Cache
+  alias DailyOutput.{Cache, PromptCache}
 
   @model_cache_key "anthropic_sonnet_model"
 
@@ -27,7 +27,31 @@ defmodule DailyOutput.AI do
 
   defdelegate conversation_respond(messages, opts), to: ConversationPartner, as: :respond
 
+  defdelegate conversation_open(topic, opts), to: ConversationPartner, as: :open
+
   defdelegate summarize_focus_topic(tip_text), to: FocusSummarizer, as: :summarize
+
+  @doc "Returns today's cached journal prompts, or `nil` if none have been generated yet."
+  def cached_prompts(topics, target_language, native_language),
+    do: PromptCache.get(:prompts, topics, target_language, native_language)
+
+  @doc "Generates a fresh set of journal prompts and caches them for the day."
+  def refresh_prompts(topics, target_language, native_language) do
+    with {:ok, prompts} <- generate_prompts(topics, target_language, native_language) do
+      {:ok, PromptCache.put(:prompts, topics, target_language, native_language, prompts)}
+    end
+  end
+
+  @doc "Returns today's cached conversation openers, or `nil` if none have been generated yet."
+  def cached_openers(topics, target_language, native_language),
+    do: PromptCache.get(:openers, topics, target_language, native_language)
+
+  @doc "Generates a fresh set of conversation openers and caches them for the day."
+  def refresh_openers(topics, target_language, native_language) do
+    with {:ok, openers} <- generate_openers(topics, target_language, native_language) do
+      {:ok, PromptCache.put(:openers, topics, target_language, native_language, openers)}
+    end
+  end
 
   def client do
     case Application.get_env(:daily_output, :anthropic_api_key) do

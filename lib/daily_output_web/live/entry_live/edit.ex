@@ -272,7 +272,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
       <div :if={@phase == :writing}>
         <div :if={@focus_topic_text} class="border-4 border-ink p-3 block-blue mb-4">
           <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
-          <span class="text-sm ml-2">{@focus_topic_text}</span>
+          <.rich_text text={@focus_topic_text} class="text-sm mt-1" />
         </div>
 
         <.editor id={"editor-#{@entry.id}"} body={@body} prompt={@entry.prompt} error={@error}>

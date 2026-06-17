@@ -6,6 +6,18 @@ defmodule DailyOutput.AI.ConversationPartner do
   alias DailyOutput.AI
   alias DailyOutput.AI.LanguageProfile
 
+  @doc """
+  Opens a conversation about `topic` (given in any language) by producing the first
+  message from the partner. Used when the student picks "let the AI start" instead of
+  writing the opening line themselves.
+  """
+  def open(topic, opts) do
+    instruction =
+      "Start our conversation. Bring up this topic naturally and ask me an opening question about it: #{topic}"
+
+    respond([%{role: "user", body: instruction}], opts)
+  end
+
   def respond(messages, opts) do
     target = Keyword.fetch!(opts, :target_language)
     native = Keyword.fetch!(opts, :native_language)
