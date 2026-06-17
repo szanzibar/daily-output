@@ -86,17 +86,18 @@ injected time + status; `Clock` boundary math. (Encryption/transport is the libr
 - **Tests:** `day_status` tiers; partial-keeps-streak; today-not-done doesn't zero; gap
   without budget ends streak; earned freeze bridges a gap; clean streak keeps freezes unspent.
 
-## Phase 3 — Growth & progress stats (intrinsic motivation)
+## Phase 3 — Growth & progress stats (intrinsic motivation) — DONE
 
-The app generates feedback daily but never aggregates it. Show improvement.
-
-- `DailyOutput.Stats`: words written, entries/conversations, **corrections-per-100-words trend**
-  (from feedback annotations), focus points mastered over time.
-- `/progress` LiveView: brutalist CSS/SVG bar+line charts (no chart dependency).
-- **Weekly recap card** ("5 days · 1,400 words · 2 focus points mastered · fewer dative slips"),
-  shown on home Monday-ish and screenshot-able.
-- Reframe the focus pool as a quest log: "master 3 this week."
-- **Tests:** aggregation against seeded entries/conversations; recap windowing.
+- `DailyOutput.Stats.overview/1`: one pass over completed entries + conversations →
+  lifetime words/entries/conversations/active-days/focus-mastered, a weekly
+  **corrections-per-100-words** trend, and a 7-day recap. Words and corrections are both
+  derived uniformly from `feedback["annotated_text"]` (`[[id:orig||corr]]` markers).
+- `/progress` LiveView (linked in the nav): brutalist stat tiles, a CSS bar chart of the
+  error-rate trend ("lower is better ↓"), and a "This week" recap card. Empty-state when
+  there's no completed work yet.
+- **Tests:** `correction_count`/`word_count`/`error_rate` helpers, `overview` aggregation
+  against seeded data, and the page's empty + populated states.
+- Deferred (optional later): focus-pool "quest log" framing; showing the recap on home.
 
 ## Phase 4 — Quick-start, micro-sessions & delight (cut friction + reward)
 

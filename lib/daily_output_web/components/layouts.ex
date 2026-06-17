@@ -28,6 +28,12 @@ defmodule DailyOutputWeb.Layouts do
               {gettext("Focus")}
             </.link>
             <.link
+              navigate={~p"/progress"}
+              class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-purple no-underline"
+            >
+              {gettext("Progress")}
+            </.link>
+            <.link
               navigate={~p"/settings"}
               class="brutal-btn px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm block-orange no-underline"
             >

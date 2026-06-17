@@ -24,6 +24,7 @@ defmodule DailyOutputWeb.Router do
       live "/conversations/:id", ConversationLive.Show
       live "/conversations/:id/continue", ConversationLive.Continue
       live "/focus", FocusTopicsLive
+      live "/progress", ProgressLive
       live "/settings", SettingsLive
       live "/about", AboutLive
     end

@@ -68,7 +68,7 @@ msgstr ""
 msgid "ANTHROPIC_API_KEY not set. Add it to the .env file and restart the server."
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:40
+#: lib/daily_output_web/components/layouts.ex:46
 #: lib/daily_output_web/live/about_live.ex:6
 #, elixir-autogen, elixir-format
 msgid "About"
@@ -109,8 +109,8 @@ msgstr ""
 msgid "Attempted — keep practicing!"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:83
-#: lib/daily_output_web/components/layouts.ex:95
+#: lib/daily_output_web/components/layouts.ex:89
+#: lib/daily_output_web/components/layouts.ex:101
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
@@ -124,6 +124,7 @@ msgstr ""
 #: lib/daily_output_web/live/entry_live/show.ex:223
 #: lib/daily_output_web/live/entry_live/show.ex:241
 #: lib/daily_output_web/live/focus_topics_live.ex:129
+#: lib/daily_output_web/live/progress_live.ex:106
 #, elixir-autogen, elixir-format
 msgid "Back"
 msgstr ""
@@ -564,7 +565,7 @@ msgstr ""
 msgid "Set the ANTHROPIC_API_KEY environment variable in the .env file."
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:34
+#: lib/daily_output_web/components/layouts.ex:40
 #: lib/daily_output_web/live/settings_live.ex:14
 #: lib/daily_output_web/live/settings_live.ex:201
 #, elixir-autogen, elixir-format
@@ -582,7 +583,7 @@ msgstr ""
 msgid "Skip"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:90
+#: lib/daily_output_web/components/layouts.ex:96
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
@@ -668,7 +669,7 @@ msgstr ""
 msgid "Used correctly!"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:78
+#: lib/daily_output_web/components/layouts.ex:84
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -688,7 +689,7 @@ msgstr ""
 msgid "Write a message..."
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:57
+#: lib/daily_output_web/components/layouts.ex:63
 #, elixir-autogen, elixir-format
 msgid "Write every day."
 msgstr ""
@@ -1019,4 +1020,72 @@ msgstr ""
 #: lib/daily_output_web/live/home_live.ex:109
 #, elixir-autogen, elixir-format
 msgid "Streak freezes — each one saves a missed day"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:46
+#, elixir-autogen, elixir-format
+msgid "Active days"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:54
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Conversations"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:66
+#, elixir-autogen, elixir-format
+msgid "Corrections per 100 words, by week. Lower is better ↓"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:91
+#, elixir-autogen, elixir-format
+msgid "Days"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:52
+#, elixir-autogen, elixir-format
+msgid "Entries"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:38
+#, elixir-autogen, elixir-format
+msgid "Finish an entry or conversation to start tracking your progress."
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:48
+#: lib/daily_output_web/live/progress_live.ex:97
+#, elixir-autogen, elixir-format
+msgid "Focus mastered"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:63
+#, elixir-autogen, elixir-format
+msgid "Mistakes over time"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:94
+#, elixir-autogen, elixir-format
+msgid "Mistakes/100"
+msgstr ""
+
+#: lib/daily_output_web/components/layouts.ex:34
+#: lib/daily_output_web/live/progress_live.ex:16
+#: lib/daily_output_web/live/progress_live.ex:31
+#, elixir-autogen, elixir-format
+msgid "Progress"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:89
+#, elixir-autogen, elixir-format
+msgid "This week"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:92
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Words"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex:45
+#, elixir-autogen, elixir-format
+msgid "Words written"
 msgstr ""
