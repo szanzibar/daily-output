@@ -84,6 +84,31 @@ defmodule DailyOutput.JournalTest do
     end
   end
 
+  describe "writing floor (soft timer)" do
+    test "floor_met?/1 is false below the floor, true at/above it" do
+      below = String.duplicate("wort ", Journal.floor_words() - 1)
+      at = String.duplicate("wort ", Journal.floor_words())
+
+      refute Journal.floor_met?(below)
+      assert Journal.floor_met?(at)
+      assert Journal.floor_met?(at <> "noch mehr text")
+    end
+
+    test "words_until_floor/1 counts down to zero and never goes negative" do
+      assert Journal.words_until_floor("") == Journal.floor_words()
+      assert Journal.words_until_floor("eins zwei drei") == Journal.floor_words() - 3
+
+      over = String.duplicate("wort ", Journal.floor_words() + 10)
+      assert Journal.words_until_floor(over) == 0
+    end
+
+    test "empty and nil bodies are below the floor" do
+      refute Journal.floor_met?("")
+      refute Journal.floor_met?(nil)
+      assert Journal.words_until_floor(nil) == Journal.floor_words()
+    end
+  end
+
   describe "get_today_entry/0" do
     test "returns an entry from today" do
       create_entry(%{body: "first"})

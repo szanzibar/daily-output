@@ -63,6 +63,14 @@ defmodule DailyOutput.Conversations do
     |> Repo.update()
   end
 
+  # Minimum user exchanges that unlock finishing a conversation. `min_exchanges` (a
+  # setting) stays the suggested *target*; this lower floor lets a warm-up still count
+  # as the conversation task (one task keeps the streak).
+  @warmup_exchanges 2
+
+  @doc "Minimum user exchanges that unlock finishing a conversation."
+  def warmup_exchanges, do: @warmup_exchanges
+
   def user_message_count(%Conversation{} = conversation) do
     from(m in Message,
       where: m.conversation_id == ^conversation.id and m.role == "user"

@@ -2,9 +2,10 @@ defmodule DailyOutputWeb.ConversationLive.Show do
   use DailyOutputWeb, :live_view
 
   alias DailyOutput.Conversations
+  alias DailyOutputWeb.Celebration
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
+  def mount(%{"id" => id} = params, _session, socket) do
     conversation = Conversations.get_conversation!(id)
     messages = conversation.messages
     {version, total} = Conversations.version_info(conversation)
@@ -18,22 +19,24 @@ defmodule DailyOutputWeb.ConversationLive.Show do
         {nil, false}
       end
 
-    {:ok,
-     assign(socket,
-       page_title:
-         gettext("Conversation — %{date}",
-           date: Calendar.strftime(conversation.inserted_at, "%d.%m.%Y")
-         ),
-       conversation: conversation,
-       messages: messages,
-       version: version,
-       total_versions: total,
-       versions: versions,
-       confirm_delete: false,
-       focus_topic_text: focus_topic_text,
-       focus_pool_texts: DailyOutput.FocusTopics.active_source_texts(),
-       focus_mastered: focus_mastered
-     )}
+    socket =
+      assign(socket,
+        page_title:
+          gettext("Conversation — %{date}",
+            date: Calendar.strftime(conversation.inserted_at, "%d.%m.%Y")
+          ),
+        conversation: conversation,
+        messages: messages,
+        version: version,
+        total_versions: total,
+        versions: versions,
+        confirm_delete: false,
+        focus_topic_text: focus_topic_text,
+        focus_pool_texts: DailyOutput.FocusTopics.active_source_texts(),
+        focus_mastered: focus_mastered
+      )
+
+    {:ok, Celebration.maybe_push(socket, params["celebrate"])}
   end
 
   @impl true

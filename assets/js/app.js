@@ -222,6 +222,42 @@ function dismissToast(el) {
 
 window.addEventListener("phx:toast", e => showToast(e.detail.message, e.detail.kind))
 
+// Brutalist celebration: falling color blocks + a stamped headline. Fired by the
+// server via `push_event(socket, "celebrate", %{kind, message})` when a day is
+// completed or a streak milestone is hit. Pure DOM + CSS keyframes (see app.css),
+// reduced-motion aware, and self-removing.
+const CELEBRATE_COLORS = ["block-red", "block-blue", "block-yellow", "block-green", "block-pink", "block-cyan"]
+
+function celebrate(detail = {}) {
+  if (document.querySelector(".celebrate-overlay")) return // never stack bursts
+
+  const overlay = document.createElement("div")
+  overlay.className = "celebrate-overlay"
+  overlay.setAttribute("aria-hidden", "true")
+
+  for (let i = 0; i < 36; i++) {
+    const block = document.createElement("span")
+    block.className = `celebrate-block ${CELEBRATE_COLORS[i % CELEBRATE_COLORS.length]}`
+    block.style.left = `${Math.random() * 100}vw`
+    block.style.animationDelay = `${Math.random() * 0.5}s`
+    block.style.animationDuration = `${1.8 + Math.random() * 1.2}s`
+    block.style.setProperty("--spin", `${(Math.random() < 0.5 ? -1 : 1) * (360 + Math.random() * 540)}deg`)
+    overlay.appendChild(block)
+  }
+
+  if (detail.message) {
+    const msg = document.createElement("div")
+    msg.className = "celebrate-message border-4 border-ink block-yellow"
+    msg.textContent = detail.message
+    overlay.appendChild(msg)
+  }
+
+  document.body.appendChild(overlay)
+  setTimeout(() => overlay.remove(), 2800)
+}
+
+window.addEventListener("phx:celebrate", e => celebrate(e.detail))
+
 topbar.config({barColors: {0: "#000"}, shadowColor: "rgba(0, 0, 0, .5)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => {

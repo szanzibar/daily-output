@@ -12,7 +12,11 @@ defmodule DailyOutput.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      # Keep gettext .po/.pot files quiet: reference comments point at the file a
+      # string is used in, but *without* line numbers — so moving code around no
+      # longer churns every reference on extract/merge.
+      gettext: [write_reference_line_numbers: false]
     ]
   end
 

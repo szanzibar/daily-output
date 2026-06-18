@@ -5,7 +5,7 @@ defmodule DailyOutputWeb.EntryLive.EditTest do
 
   alias DailyOutput.{Journal, FocusTopics}
 
-  test "blocks done while draft timer is active", %{conn: conn} do
+  test "blocks done until the writing floor is met", %{conn: conn} do
     {:ok, entry} =
       Journal.create_entry(%{
         body: "Kurzer Text",
@@ -23,14 +23,12 @@ defmodule DailyOutputWeb.EntryLive.EditTest do
     assert is_nil(reloaded.feedback)
   end
 
-  test "word-based heuristic unlocks done after page load", %{conn: conn} do
-    long_body =
-      List.duplicate("Heute schreibe ich konzentriert ueber meinen Tag.", 120)
-      |> Enum.join(" ")
+  test "a body above the floor unlocks done on load", %{conn: conn} do
+    body = String.duplicate("wort ", Journal.floor_words())
 
     {:ok, entry} =
       Journal.create_entry(%{
-        body: long_body,
+        body: body,
         language: "de"
       })
 
@@ -39,7 +37,7 @@ defmodule DailyOutputWeb.EntryLive.EditTest do
     refute has_element?(view, ~s(button[phx-click="resubmit"][disabled]))
   end
 
-  test "typing more words does not unlock done before reload", %{conn: conn} do
+  test "typing past the floor unlocks done live (soft timer, not a lock)", %{conn: conn} do
     {:ok, entry} =
       Journal.create_entry(%{
         body: "",
@@ -50,13 +48,10 @@ defmodule DailyOutputWeb.EntryLive.EditTest do
 
     assert has_element?(view, ~s(button[phx-click="resubmit"][disabled]))
 
-    long_body =
-      List.duplicate("Ich uebe bewusst mit vielen Woertern fuer den Timer.", 120)
-      |> Enum.join(" ")
+    enough = String.duplicate("wort ", Journal.floor_words())
+    render_hook(view, "update_body", %{"body" => enough})
 
-    render_hook(view, "update_body", %{"body" => long_body})
-
-    assert has_element?(view, ~s(button[phx-click="resubmit"][disabled]))
+    refute has_element?(view, ~s(button[phx-click="resubmit"][disabled]))
   end
 
   test "focus topic not used keeps entry as draft", %{conn: conn} do

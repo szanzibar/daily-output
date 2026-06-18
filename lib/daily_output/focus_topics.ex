@@ -116,6 +116,15 @@ defmodule DailyOutput.FocusTopics do
   @doc "Count of consecutive kept days ending today (freeze-aware)."
   def current_streak, do: streak_info().count
 
+  # Streak lengths worth celebrating, plus every further century.
+  @streak_milestones [3, 7, 14, 30, 50, 100]
+
+  @doc "True when a streak count is a milestone (worth a celebration)."
+  def streak_milestone?(count) when is_integer(count),
+    do: count in @streak_milestones or (count > 100 and rem(count, 100) == 0)
+
+  def streak_milestone?(_), do: false
+
   @doc """
   Streak details with tiered days and streak freezes.
 

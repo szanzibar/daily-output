@@ -2,9 +2,10 @@ defmodule DailyOutputWeb.EntryLive.Show do
   use DailyOutputWeb, :live_view
 
   alias DailyOutput.Journal
+  alias DailyOutputWeb.Celebration
 
   @impl true
-  def mount(%{"id" => id}, _session, socket) do
+  def mount(%{"id" => id} = params, _session, socket) do
     entry = Journal.get_entry!(id)
     {version, total} = Journal.version_info(entry)
     versions = Journal.get_versions(entry)
@@ -17,19 +18,21 @@ defmodule DailyOutputWeb.EntryLive.Show do
         {nil, false}
       end
 
-    {:ok,
-     assign(socket,
-       page_title:
-         gettext("Entry — %{date}", date: Calendar.strftime(entry.inserted_at, "%d.%m.%Y")),
-       entry: entry,
-       version: version,
-       total_versions: total,
-       versions: versions,
-       confirm_delete: false,
-       focus_topic_text: focus_topic_text,
-       focus_pool_texts: DailyOutput.FocusTopics.active_source_texts(),
-       focus_mastered: focus_mastered
-     )}
+    socket =
+      assign(socket,
+        page_title:
+          gettext("Entry — %{date}", date: Calendar.strftime(entry.inserted_at, "%d.%m.%Y")),
+        entry: entry,
+        version: version,
+        total_versions: total,
+        versions: versions,
+        confirm_delete: false,
+        focus_topic_text: focus_topic_text,
+        focus_pool_texts: DailyOutput.FocusTopics.active_source_texts(),
+        focus_mastered: focus_mastered
+      )
+
+    {:ok, Celebration.maybe_push(socket, params["celebrate"])}
   end
 
   @impl true

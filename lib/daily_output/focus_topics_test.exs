@@ -150,6 +150,22 @@ defmodule DailyOutput.FocusTopicsTest do
     end
   end
 
+  describe "streak_milestone?/1" do
+    test "true on the named milestones and every further century" do
+      for n <- [3, 7, 14, 30, 50, 100, 200, 300] do
+        assert FocusTopics.streak_milestone?(n), "expected #{n} to be a milestone"
+      end
+    end
+
+    test "false for ordinary counts and non-integers" do
+      for n <- [0, 1, 2, 5, 13, 99, 101, 150] do
+        refute FocusTopics.streak_milestone?(n), "expected #{n} not to be a milestone"
+      end
+
+      refute FocusTopics.streak_milestone?(nil)
+    end
+  end
+
   describe "day_status/1 (tiered days)" do
     test "full when both tasks are done" do
       today = Clock.today()

@@ -547,3 +547,72 @@ h1, h2, h3 {
   100% { width: 95%; }
 }
 
+/* Writing target reached — the timer is a goal, not a lock */
+.timer-met {
+  color: oklch(60% 0.20 155);
+  font-weight: 900;
+}
+
+/* ── Celebration (day complete / streak milestone) ── */
+
+.celebrate-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 60;
+}
+
+/* Falling brutalist blocks — same colour vocabulary as the loader */
+.celebrate-block {
+  position: absolute;
+  top: -8vh;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 3px solid var(--color-ink);
+  animation-name: celebrate-fall;
+  animation-timing-function: cubic-bezier(0.3, 0.6, 0.5, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes celebrate-fall {
+  0% { transform: translateY(-8vh) rotate(0); opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(112vh) rotate(var(--spin, 540deg)); opacity: 0; }
+}
+
+/* Stamped headline */
+.celebrate-message {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%) rotate(-3deg);
+  padding: 1rem 1.75rem;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(1.5rem, 6vw, 2.5rem);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+  box-shadow: 8px 8px 0 var(--color-ink);
+  animation: celebrate-pop 2.8s ease forwards;
+}
+
+@keyframes celebrate-pop {
+  0% { transform: translate(-50%, -50%) rotate(-3deg) scale(0); opacity: 0; }
+  12% { transform: translate(-50%, -50%) rotate(-3deg) scale(1.12); opacity: 1; }
+  22% { transform: translate(-50%, -50%) rotate(-3deg) scale(1); }
+  80% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(-3deg) scale(1); opacity: 0; }
+}
+
+@keyframes celebrate-fade {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-block { display: none; }
+  .celebrate-message { animation: celebrate-fade 2.8s ease forwards; }
+}
+

@@ -2,6 +2,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
   use DailyOutputWeb, :live_view
 
   alias DailyOutput.{Journal, Settings, AI, FocusTopics}
+  alias DailyOutputWeb.Celebration
 
   @default_timer_minutes 5
   @heuristic_words_per_minute 20
@@ -35,7 +36,8 @@ defmodule DailyOutputWeb.EntryLive.Edit do
         error: nil,
         timer_enabled: timer_enabled,
         timer_seconds: timer_seconds,
-        timer_expired: timer_seconds == 0
+        timer_expired: timer_seconds == 0,
+        floor_met: Journal.floor_met?(entry.body || "")
       )
 
     socket =
@@ -54,18 +56,19 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     entry = socket.assigns.entry
 
     if entry.feedback do
-      {:noreply, assign(socket, body: body)}
+      {:noreply, assign(socket, body: body, floor_met: Journal.floor_met?(body))}
     else
       case Journal.update_entry(entry, %{body: body}) do
         {:ok, updated_entry} ->
           {:noreply,
            assign(socket,
              body: body,
-             entry: updated_entry
+             entry: updated_entry,
+             floor_met: Journal.floor_met?(body)
            )}
 
         {:error, _changeset} ->
-          {:noreply, assign(socket, body: body)}
+          {:noreply, assign(socket, body: body, floor_met: Journal.floor_met?(body))}
       end
     end
   end
@@ -104,19 +107,25 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     config = socket.assigns.config
     entry = socket.assigns.entry
 
-    if String.trim(body) == "" do
-      {:noreply, put_flash(socket, :error, gettext("Write something first!"))}
-    else
-      if socket.assigns.timer_enabled and socket.assigns.timer_seconds > 0 do
+    remaining = Journal.words_until_floor(body)
+
+    cond do
+      String.trim(body) == "" ->
+        {:noreply, put_flash(socket, :error, gettext("Write something first!"))}
+
+      socket.assigns.timer_enabled and remaining > 0 ->
         {:noreply,
          put_flash(
            socket,
            :error,
-           gettext("Keep writing for %{time} to unlock Done.",
-             time: format_time(socket.assigns.timer_seconds)
+           ngettext(
+             "Just %{count} more word and you can finish.",
+             "Just %{count} more words and you can finish.",
+             remaining
            )
          )}
-      else
+
+      true ->
         with {:ok, entry_for_feedback} <-
                (if entry.feedback do
                   Journal.create_entry(version_attrs(entry, body))
@@ -128,7 +137,6 @@ defmodule DailyOutputWeb.EntryLive.Edit do
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, gettext("Could not save."))}
         end
-      end
     end
   end
 
@@ -213,7 +221,7 @@ defmodule DailyOutputWeb.EntryLive.Edit do
         if should_complete_entry?(entry) do
           case Journal.complete_entry(entry) do
             {:ok, completed_entry} ->
-              {:noreply, push_navigate(socket, to: ~p"/entries/#{completed_entry.id}")}
+              {:noreply, push_navigate(socket, to: completion_path(completed_entry.id))}
 
             {:error, _changeset} ->
               {:noreply, put_flash(socket, :error, gettext("Could not complete entry."))}
@@ -248,6 +256,18 @@ defmodule DailyOutputWeb.EntryLive.Edit do
        feedback_loading: false,
        error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
      )}
+  end
+
+  # The completed entry's show page, celebrating if this finished the day or hit a
+  # streak milestone (the client renders confetti from the `?celebrate=` token).
+  defp completion_path(entry_id) do
+    challenge = FocusTopics.daily_challenge_status()
+    streak = FocusTopics.streak_info()
+
+    case Celebration.after_completion(challenge.all_done, streak.count) do
+      nil -> ~p"/entries/#{entry_id}"
+      token -> ~p"/entries/#{entry_id}?#{[celebrate: token]}"
+    end
   end
 
   defp should_complete_entry?(entry) do
@@ -286,15 +306,16 @@ defmodule DailyOutputWeb.EntryLive.Edit do
               </span>
             </div>
 
+            <%!-- Gentle target, not a lock: counts down, then cheers when you reach it. --%>
             <div
               :if={@timer_enabled}
               class={[
                 "timer-display text-2xl sm:text-3xl shrink-0",
-                @timer_expired && "text-ink",
-                !@timer_expired && "text-bold-red"
+                if(@timer_expired, do: "timer-met", else: "text-base-content/50")
               ]}
+              title={gettext("A suggested target — finish whenever you're ready.")}
             >
-              {format_time(@timer_seconds)}
+              {if @timer_expired, do: "✓ " <> gettext("Target!"), else: format_time(@timer_seconds)}
             </div>
           </:header>
           <:actions>
@@ -309,10 +330,10 @@ defmodule DailyOutputWeb.EntryLive.Edit do
             </button>
             <button
               phx-click="resubmit"
-              disabled={@timer_enabled and !@timer_expired}
+              disabled={@timer_enabled and !@floor_met}
               class={[
                 "brutal-btn px-6 py-3 text-lg",
-                if(@timer_enabled and !@timer_expired,
+                if(@timer_enabled and !@floor_met,
                   do: "bg-base-200 opacity-60 cursor-not-allowed",
                   else: "block-green"
                 )

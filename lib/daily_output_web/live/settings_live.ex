@@ -214,11 +214,18 @@ defmodule DailyOutputWeb.SettingsLive do
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
             <span class="inline-block w-3 h-3 block-red"></span> {gettext("Timer & Conversation")}
           </h2>
-          <div class="grid grid-cols-2 gap-4">
+          <%!-- Labels share the top row, inputs share the bottom row, so a label that
+               wraps to two lines never knocks its input out of line with the other. --%>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+            <label for={@form[:timer_minutes].id} class="label">
+              {gettext("Minutes per entry")}
+            </label>
+            <label for={@form[:min_exchanges].id} class="label">
+              {gettext("Min. exchanges per conversation")}
+            </label>
             <.input
               field={@form[:timer_minutes]}
               type="number"
-              label={gettext("Minutes per entry")}
               min="1"
               max="60"
               class="w-24 input font-mono text-lg border-3 border-ink"
@@ -226,7 +233,6 @@ defmodule DailyOutputWeb.SettingsLive do
             <.input
               field={@form[:min_exchanges]}
               type="number"
-              label={gettext("Min. exchanges per conversation")}
               min="1"
               max="50"
               class="w-24 input font-mono text-lg border-3 border-ink"

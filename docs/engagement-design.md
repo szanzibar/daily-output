@@ -99,15 +99,28 @@ injected time + status; `Clock` boundary math. (Encryption/transport is the libr
   against seeded data, and the page's empty + populated states.
 - Deferred (optional later): focus-pool "quest log" framing; showing the recap on home.
 
-## Phase 4 — Quick-start, micro-sessions & delight (cut friction + reward)
+## Phase 4 — Micro-sessions & delight (cut friction + reward) — DONE
 
-- **Quick start:** one tap → freestyle entry created → straight into the editor. Notifications
-  deep-link here.
-- **Micro / warm-up mode:** shorter timer + fewer exchanges; counts as a *partial* day.
-- **Softer timer:** "Done" allowed once a low floor is met; celebrate beating the target.
-- **Celebration:** brutalist confetti-blocks on day-complete and streak milestones; more
-  personality in copy.
-- **Tests:** quick-start creates the right draft; micro-session marks partial.
+- **Quick start: cut.** The "Schreiben" path already drops you straight into a freestyle
+  entry, so a dedicated one-tap button was redundant clutter — not real friction removed.
+  The reminder notification deep-links to `/`; the existing `Write →` is the one tap from there.
+- **Unified soft floor (micro/warm-up + softer timer collapsed into one model):** the writing
+  timer is now a *gentle target*, not a lock. `Journal.floor_met?/1` (a low word floor,
+  `Journal.floor_words/0`) unlocks **Done**; the countdown still ticks and turns into a
+  cheery `✓ Target!` when reached (`.timer-met`), never punishing. A short session just works
+  and counts as a *partial* day (one task keeps the streak — `day_status/1`). Conversations
+  mirror this: `Conversations.warmup_exchanges/0` unlocks **Done** well below the
+  `min_exchanges` target, which stays the suggested goal. No separate mode, toggle, or
+  config — one interaction model.
+- **Celebration:** `DailyOutputWeb.Celebration` decides what fires after a task completes
+  (day-complete beats a streak milestone — `FocusTopics.streak_milestone?/1`); the completion
+  redirect carries a `?celebrate=` token the show page turns into a `push_event`, and the
+  `phx:celebrate` listener in `app.js` renders brutalist falling blocks + a stamped headline
+  (CSS keyframes matching the loader, reduced-motion aware). Warmer copy throughout.
+- **Tests:** floor pure-functions (`floor_met?`/`words_until_floor`); `streak_milestone?`;
+  `Celebration` decision + payload; quick-start creates/resumes the right draft; the entry
+  floor gates/ungates **Done** live; a warm-up conversation at the floor finishes and marks
+  the day *partial*.
 
 ---
 

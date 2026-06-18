@@ -2,6 +2,7 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
   use DailyOutputWeb, :live_view
 
   alias DailyOutput.{Conversations, Settings, AI, FocusTopics}
+  alias DailyOutputWeb.Celebration
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -177,7 +178,7 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
               {:noreply,
                socket
                |> put_flash(:info, gettext("Feedback received!"))
-               |> push_navigate(to: ~p"/conversations/#{completed_conversation.id}")}
+               |> push_navigate(to: completion_path(completed_conversation.id))}
 
             {:error, _changeset} ->
               {:noreply,
@@ -211,6 +212,18 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
        feedback_loading: false,
        error: gettext("Could not load feedback: %{reason}", reason: inspect(reason))
      )}
+  end
+
+  # The completed conversation's show page, celebrating a finished day or streak
+  # milestone via the `?celebrate=` token the client turns into confetti.
+  defp completion_path(conversation_id) do
+    challenge = FocusTopics.daily_challenge_status()
+    streak = FocusTopics.streak_info()
+
+    case Celebration.after_completion(challenge.all_done, streak.count) do
+      nil -> ~p"/conversations/#{conversation_id}"
+      token -> ~p"/conversations/#{conversation_id}?#{[celebrate: token]}"
+    end
   end
 
   defp should_complete_conversation?(conversation) do
@@ -264,14 +277,20 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
           {gettext("Continue Conversation")}
         </h1>
         <div class="flex items-center gap-3">
-          <span class="text-xs font-mono text-base-content/60">
+          <span class={[
+            "text-xs font-mono",
+            if(user_count(@messages) >= (@config.min_exchanges || 5),
+              do: "timer-met",
+              else: "text-base-content/60"
+            )
+          ]}>
             {gettext("%{count}/%{min} exchanges",
               count: user_count(@messages),
               min: @config.min_exchanges || 5
             )}
           </span>
           <button
-            :if={user_count(@messages) >= (@config.min_exchanges || 5) && !@feedback_loading}
+            :if={user_count(@messages) >= Conversations.warmup_exchanges() && !@feedback_loading}
             phx-click="complete"
             class="brutal-btn px-4 py-2 block-green text-sm"
           >

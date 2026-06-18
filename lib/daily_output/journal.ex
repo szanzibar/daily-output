@@ -134,8 +134,28 @@ defmodule DailyOutput.Journal do
   def word_count(%Entry{body: nil}), do: 0
 
   def word_count(%Entry{body: body}) do
-    body |> String.split(~r/\s+/, trim: true) |> length()
+    count_words(body)
   end
+
+  # ── Writing floor (soft timer) ───────────────────────
+  #
+  # The writing timer is a gentle *target*, not a lock. "Done" unlocks as soon as a
+  # draft clears this low word floor, so a quick warm-up still counts (one task keeps
+  # the streak — see `FocusTopics.day_status/1`).
+  @floor_words 25
+
+  @doc "Minimum words that unlock finishing a draft entry."
+  def floor_words, do: @floor_words
+
+  @doc "How many more words until a draft clears the floor (0 once met)."
+  def words_until_floor(body) when is_binary(body), do: max(@floor_words - count_words(body), 0)
+  def words_until_floor(_), do: @floor_words
+
+  @doc "True once a draft has enough writing to finish."
+  def floor_met?(body), do: words_until_floor(body) == 0
+
+  defp count_words(nil), do: 0
+  defp count_words(body), do: body |> String.split(~r/\s+/, trim: true) |> length()
 
   def current_streak do
     entries =
