@@ -1,47 +1,100 @@
-This is a web application written using the Phoenix web framework.
+# Daily Output
 
-## Project guidelines
+A self-hosted daily language-practice journal (Phoenix LiveView). Each day the user
+writes a journal entry and has a role-play conversation with an AI partner, both in
+their target language; the AI proofreads and the app builds streaks, a focus pool of
+grammar points to practice, and progress stats. Single user, self-hosted, installable
+as a PWA. The current target language is German (`de`); UI is English/German.
 
-- Use `mix precommit` alias when you are done with all changes and fix any pending issues
-- Use the already included and available `:req` (`Req`) library for HTTP requests, **avoid** `:httpoison`, `:tesla`, and `:httpc`. Req is included by default and is the preferred HTTP client for Phoenix apps
+## How to work in this codebase (read this first)
 
-### Phoenix v1.8 guidelines
+These are the standards that matter here. They override generic habits.
 
-- **Always** begin your LiveView templates with `<Layouts.app flash={@flash} ...>` which wraps all inner content
-- The `MyAppWeb.Layouts` module is aliased in the `my_app_web.ex` file, so you can use it without needing to alias it again
-- Anytime you run into errors with no `current_scope` assign:
-  - You failed to follow the Authenticated Routes guidelines, or you failed to pass `current_scope` to `<Layouts.app>`
-  - **Always** fix the `current_scope` error by moving your routes to the proper `live_session` and ensure you pass `current_scope` as needed
-- Phoenix v1.8 moved the `<.flash_group>` component to the `Layouts` module. You are **forbidden** from calling `<.flash_group>` outside of the `layouts.ex` module
-- Out of the box, `core_components.ex` imports an `<.icon name="hero-x-mark" class="w-5 h-5"/>` component for hero icons. **Always** use the `<.icon>` component for icons, **never** use `Heroicons` modules or similar
-- **Always** use the imported `<.input>` component for form inputs from `core_components.ex` when available. `<.input>` is imported and using it will save steps and prevent errors
-- If you override the default input classes (`<.input class="myclass px-2 py-1 rounded-lg">)`) class with your own values, no default classes are inherited, so your
-custom classes must fully style the input
+- **Radical simplicity, never clever.** Reach for the plainest solution that reads
+  clearly and is easy to maintain. Prefer deriving state from data over adding tables,
+  schedulers, or caches (e.g. streak freezes are computed from history in
+  `FocusTopics.streak_info/0` — no extra table). Don't add abstraction for hypothetical
+  futures. If a "clever" trick is tempting, write the obvious version instead.
+- **Logic is always covered by good unit tests.** Keep logic in pure functions so it's
+  testable without the DB/API/browser (see `Clock`, `Stats`, `Markdown`,
+  `Reminders.due?/4`, the streak walk). Run **`mix precommit`** before you're done and
+  fix everything (it compiles with `--warnings-as-errors`, formats, and runs the Elixir
+  + JS test suites). Add/adjust tests for every behaviour change.
+- **Mobile-first and responsive.** Design every screen for a narrow phone first, then
+  scale up with `sm:`/`lg:`. Anything in a row must wrap or stack rather than overflow
+  (the top nav is a hamburger on mobile — see `nav-must-flex-wrap` memory). Always
+  sanity-check layouts at phone width.
+- **Consistency over novelty.** One interaction model per concern — e.g. settings
+  auto-save on change with a "Saved" toast; never mix that with per-field or page-level
+  save buttons. Reuse the brutalist component vocabulary and match surrounding naming and
+  idioms instead of inventing new patterns.
+- **Polished, fun, enticing — but never noisy.** Micro-interactions and clear feedback
+  (toasts auto-dismiss and the timer resets so the latest action shows). Loading and
+  empty states are designed, not afterthoughts.
+- **Everything user-facing is translated.** Wrap strings in `gettext(...)`. After adding
+  or changing strings: `mix gettext.extract && mix gettext.merge priv/gettext`, then fill
+  in the German (`de`) `msgstr`s and clear any `fuzzy` flags (fuzzy/empty fall back to the
+  English msgid, so German silently breaks if you skip this).
+- **Never do UTC-naive day math.** "Today", streaks, day ranges, and reminders all go
+  through `DailyOutput.Clock` (user's timezone + a 4am logical-day boundary so late-night
+  sessions still count as today).
+- **Tooling etiquette.** Prefer the dedicated file/search tools over shell for reading and
+  editing. Create migrations with `mix ecto.gen.migration`. Don't hand-edit the
+  `usage-rules` block below (it's synced from deps). `mix precommit` and `mix ecto.*` are
+  the expected shell commands.
+- Use the included `:req` (`Req`) for HTTP. When building AI features, default to the
+  latest, most capable Claude models.
 
-### JS and CSS guidelines
+## Architecture map (where things live)
 
-- **Use Tailwind CSS classes and custom CSS rules** to create polished, responsive, and visually stunning interfaces.
-- Tailwindcss v4 **no longer needs a tailwind.config.js** and uses a new import syntax in `app.css`:
+- **Contexts** (`lib/daily_output/`): `Journal` (entries), `Conversations` (+ `Message`),
+  `FocusTopics` (focus pool **and** daily-challenge / streak / freeze logic), `Settings`
+  (single-row `Config`), `Stats` (progress aggregation), `Push` (Web Push subscriptions),
+  `Cache` + `PromptCache` (day-long caches).
+- **`Clock`** — timezone + 4am day boundary; the single source of truth for day math.
+- **`Reminders`** — GenServer that fires the daily push nag; started in the supervision
+  tree, disabled in test via `config :daily_output, :start_reminders`.
+- **AI** (`lib/daily_output/ai/`): `DailyOutput.AI` delegates to `PromptGenerator`,
+  `TopicGenerator`, `Proofreader`, `ConversationPartner`, `FocusSummarizer`,
+  `LanguageProfile`. Generation is non-deterministic and cached for the day where it makes
+  sense.
+- **Web** (`lib/daily_output_web/`): LiveViews are `*Live` modules; shared UI in
+  `components/core_components.ex` (incl. `<.rich_text>` for AI Markdown, `<.icon>`,
+  `<.input>`, flash), plus `journal_components.ex` and `conversation_components.ex`; the
+  shell, nav, and flash group live in `components/layouts.ex`.
+- **Front-end**: JS hooks in `assets/js/app.js` (`AutoExpand`, `Reminders`, `Flash`, …);
+  pure JS logic is split into modules (e.g. `annotated_text.js`) and unit-tested with
+  `node --test`. The brutalist theme (custom CSS, no design-system dependency) lives in
+  `assets/css/app.css`: `brutal-btn`, `block-*` colour blocks, `brutal-hr`, loaders.
+  Only the `app.js`/`app.css` bundles are served — no external `<script>`/`<link>`, no
+  inline `<script>`; vendor deps are imported into the bundles.
 
-      @import "tailwindcss" source(none);
-      @source "../css";
-      @source "../js";
-      @source "../../lib/my_app_web";
+## Domain concepts
 
-- **Always use and maintain this import syntax** in the app.css file for projects generated with `phx.new`
-- **Never** use `@apply` when writing raw css
-- **Always** manually write your own tailwind-based components instead of using daisyUI for a unique, world-class design
-- Out of the box **only the app.js and app.css bundles are supported**
-  - You cannot reference an external vendor'd script `src` or link `href` in the layouts
-  - You must import the vendor deps into app.js and app.css to use them
-  - **Never write inline <script>custom js</script> tags within templates**
+- **Daily challenge**: one entry **and** one conversation per logical day, each "complete"
+  = has `feedback` AND `completed_at`.
+- **Streak (tiered + freezes)**: a day counts if at least *partial* (one task); *full* =
+  both. Freezes are earned 1 per 5 full days (cap 3) and bridge missed days; an unfinished
+  *today* never zeroes the streak. All derived in `FocusTopics.streak_info/0`.
+- **Focus pool**: grammar/usage tips distilled (`FocusSummarizer`) into reusable practice
+  targets; rendered as Markdown via `<.rich_text>`.
+- **Feedback `annotated_text`** marks corrections as `[[id:original||corrected]]`; `Stats`
+  derives words-written and corrections from it (corrections per 100 words is the headline
+  "am I improving" metric).
+- **Reminders / push**: Web Push via `web_push_elixir`; VAPID keys come from `.env`
+  (generate with `mix daily_output.gen_vapid`). The service worker (`priv/static/sw.js`) is
+  registered in all environments; iOS requires the PWA be installed to the home screen.
 
-### UI/UX & design guidelines
+## Phoenix / Tailwind specifics
 
-- **Produce world-class UI designs** with a focus on usability, aesthetics, and modern design principles
-- Implement **subtle micro-interactions** (e.g., button hover effects, and smooth transitions)
-- Ensure **clean typography, spacing, and layout balance** for a refined, premium look
-- Focus on **delightful details** like hover effects, loading states, and smooth page transitions
+- Begin LiveView templates with `<Layouts.app flash={@flash} ...>`; `Layouts` is already
+  aliased. `<.flash_group>` is only ever used inside `layouts.ex`.
+- Use `<.icon name="hero-..." />` for icons (never `Heroicons` modules) and the imported
+  `<.input>` for form fields. Overriding `<.input class=...>` replaces all default classes,
+  so restyle fully.
+- Tailwind v4 (no config file) with the `@import "tailwindcss" source(none)` + `@source`
+  syntax already in `app.css` — keep it. Never use `@apply`.
+- More detailed Elixir/Phoenix/LiveView/Ecto rules follow in the synced block below.
 
 
 <!-- usage-rules-start -->

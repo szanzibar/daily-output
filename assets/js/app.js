@@ -32,6 +32,21 @@ function urlBase64ToUint8Array(base64String) {
 const Hooks = {
   ...colocatedHooks,
 
+  // Auto-dismiss flash toasts. The timer resets whenever the message updates, so the
+  // latest action is always what's shown (and visible for its full duration).
+  Flash: {
+    mounted() { this.schedule() },
+    updated() { this.schedule() },
+    destroyed() { clearTimeout(this.timer) },
+    schedule() {
+      clearTimeout(this.timer)
+      const after = parseInt(this.el.dataset.dismissAfter || "3000", 10)
+      this.timer = setTimeout(() => {
+        this.liveSocket.execJS(this.el, this.el.getAttribute("phx-click"))
+      }, after)
+    }
+  },
+
   // Daily-reminder controls: subscribe/unsubscribe to Web Push and detect timezone.
   // The element carries data-vapid-key and data-timezone.
   Reminders: {
@@ -176,9 +191,45 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: Hooks,
 })
 
+// Client-rendered toasts. Driven by server `push_event(socket, "toast", %{message, kind})`,
+// which fires on every event — so two changes in a row visibly dismiss the old toast and
+// slide in a new one (Phoenix flash can't, since identical messages don't re-render).
+function showToast(message, kind = "info") {
+  const tray = document.getElementById("toast-tray")
+  if (!tray || !message) return
+  tray.querySelectorAll(".app-toast").forEach(dismissToast)
+
+  const el = document.createElement("div")
+  el.className =
+    "app-toast border-4 border-ink px-4 py-3 font-black uppercase text-sm tracking-wide " +
+    (kind === "error" ? "block-red" : "block-green")
+  el.textContent = message
+  el.addEventListener("click", () => dismissToast(el))
+  tray.appendChild(el)
+
+  requestAnimationFrame(() => el.classList.add("toast-in"))
+  el._timer = setTimeout(() => dismissToast(el), kind === "error" ? 6000 : 2500)
+}
+
+function dismissToast(el) {
+  if (el._dismissed) return
+  el._dismissed = true
+  clearTimeout(el._timer)
+  el.classList.remove("toast-in")
+  el.classList.add("toast-out")
+  setTimeout(() => el.remove(), 220)
+}
+
+window.addEventListener("phx:toast", e => showToast(e.detail.message, e.detail.kind))
+
 topbar.config({barColors: {0: "#000"}, shadowColor: "rgba(0, 0, 0, .5)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
-window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+window.addEventListener("phx:page-loading-stop", _info => {
+  topbar.hide()
+  // Close the mobile nav after navigating (the layout shell persists across nav).
+  const navToggle = document.getElementById("nav-toggle")
+  if (navToggle) navToggle.checked = false
+})
 
 liveSocket.connect()
 

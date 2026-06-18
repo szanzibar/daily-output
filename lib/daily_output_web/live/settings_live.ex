@@ -21,28 +21,23 @@ defmodule DailyOutputWeb.SettingsLive do
      )}
   end
 
+  # Auto-save: every change to the main settings form is persisted immediately.
+  # Invalid input is rejected and shown inline; the last good value stays saved.
   @impl true
-  def handle_event("validate", %{"config" => params}, socket) do
-    changeset =
-      socket.assigns.config
-      |> Settings.change_config(params)
-      |> Map.put(:action, :validate)
-
-    {:noreply, assign(socket, form: to_form(changeset))}
-  end
-
-  def handle_event("save", %{"config" => params}, socket) do
+  def handle_event("save_form", %{"config" => params}, socket) do
     case Settings.update_config(socket.assigns.config, params) do
-      {:ok, _config} ->
+      {:ok, config} ->
         {:noreply,
          socket
-         |> put_flash(:info, gettext("Settings saved!"))
-         |> push_navigate(to: ~p"/")}
+         |> assign(config: config, form: to_form(Settings.change_config(config)))
+         |> toast(gettext("Saved"))}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
+        {:noreply, assign(socket, form: to_form(Map.put(changeset, :action, :validate)))}
     end
   end
+
+  def handle_event("save_form", _params, socket), do: {:noreply, socket}
 
   def handle_event("add_topic", %{"topic" => topic}, socket) do
     topic = String.trim(topic)
@@ -112,19 +107,19 @@ defmodule DailyOutputWeb.SettingsLive do
     end
   end
 
-  # Explicit "use this timezone" (button or manual entry).
+  # Auto-saved on blur / detect. Empty clears back to the default timezone.
   def handle_event("set_timezone", %{"timezone" => tz}, socket) do
-    if valid_timezone?(tz) do
-      persist(socket, %{timezone: tz}, gettext("Timezone updated."))
-    else
-      {:noreply, put_flash(socket, :error, gettext("Unknown timezone."))}
+    cond do
+      String.trim(tz) == "" -> persist(socket, %{timezone: nil}, gettext("Saved"))
+      valid_timezone?(tz) -> persist(socket, %{timezone: tz}, gettext("Saved"))
+      true -> {:noreply, toast(socket, gettext("Unknown timezone."), :error)}
     end
   end
 
   def handle_event("save_reminder_time", %{"reminder_time" => value}, socket) do
     case parse_time(value) do
-      {:ok, time} -> persist(socket, %{reminder_time: time}, gettext("Reminder time saved."))
-      :error -> {:noreply, put_flash(socket, :error, gettext("Invalid time."))}
+      {:ok, time} -> persist(socket, %{reminder_time: time}, gettext("Saved"))
+      :error -> {:noreply, toast(socket, gettext("Invalid time."), :error)}
     end
   end
 
@@ -136,7 +131,7 @@ defmodule DailyOutputWeb.SettingsLive do
         persist(socket, %{reminders_enabled: true}, gettext("Reminders on. We'll nudge you."))
 
       {:error, _} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not enable reminders."))}
+        {:noreply, toast(socket, gettext("Could not enable reminders."), :error)}
     end
   end
 
@@ -159,28 +154,32 @@ defmodule DailyOutputWeb.SettingsLive do
     case Push.send_to_all(payload) do
       0 ->
         {:noreply,
-         put_flash(
+         toast(
            socket,
-           :error,
-           gettext("No notification sent. Make sure reminders are enabled on this device.")
+           gettext("No notification sent. Make sure reminders are enabled on this device."),
+           :error
          )}
 
       count ->
-        {:noreply,
-         put_flash(socket, :info, gettext("Test sent to %{count} device(s).", count: count))}
+        {:noreply, toast(socket, gettext("Test sent to %{count} device(s).", count: count))}
     end
   end
 
-  defp persist(socket, attrs, flash_msg) do
+  defp persist(socket, attrs, message) do
     case Settings.update_config(socket.assigns.config, attrs) do
       {:ok, config} ->
         socket = assign(socket, config: config, form: to_form(Settings.change_config(config)))
-        socket = if flash_msg, do: put_flash(socket, :info, flash_msg), else: socket
-        {:noreply, socket}
+        {:noreply, if(message, do: toast(socket, message), else: socket)}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, gettext("Could not save."))}
+        {:noreply, toast(socket, gettext("Could not save."), :error)}
     end
+  end
+
+  # Client-rendered toast (see app.js). Fires on every event, so rapid changes each get
+  # their own visible toast — unlike Phoenix flash, which dedupes identical messages.
+  defp toast(socket, message, kind \\ :info) do
+    push_event(socket, "toast", %{message: message, kind: to_string(kind)})
   end
 
   defp parse_time(value) do
@@ -203,7 +202,13 @@ defmodule DailyOutputWeb.SettingsLive do
 
       <hr class="brutal-hr" />
 
-      <.form for={@form} phx-change="validate" phx-submit="save" class="space-y-6">
+      <.form
+        for={@form}
+        id="settings-form"
+        phx-change="save_form"
+        phx-debounce="500"
+        class="space-y-6"
+      >
         <%!-- Timer + Exchanges --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
@@ -355,10 +360,6 @@ defmodule DailyOutputWeb.SettingsLive do
             class="w-full select border-3 border-ink font-mono"
           />
         </div>
-
-        <button type="submit" class="brutal-btn w-full py-4 block-blue text-lg">
-          {gettext("Save")}
-        </button>
       </.form>
 
       <%!-- Daily reminder --%>
@@ -389,7 +390,7 @@ defmodule DailyOutputWeb.SettingsLive do
           )}
         </p>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2">
           <span class={[
             "text-xs font-mono px-2 py-1 uppercase",
             if(@config.reminders_enabled, do: "block-green", else: "bg-base-200")
@@ -424,46 +425,42 @@ defmodule DailyOutputWeb.SettingsLive do
 
         <p data-role="error" class="hidden text-sm font-mono text-bold-red"></p>
 
-        <form phx-submit="save_reminder_time" class="flex items-end gap-2">
-          <div>
-            <label class="block text-xs font-mono uppercase tracking-widest mb-1">
-              {gettext("Reminder time")}
-            </label>
-            <input
-              type="time"
-              name="reminder_time"
-              value={Calendar.strftime(@config.reminder_time, "%H:%M")}
-              class="input border-3 border-ink font-mono"
-            />
-          </div>
-          <button type="submit" class="brutal-btn px-4 py-2 block-green text-sm">
-            {gettext("Save")}
-          </button>
+        <form phx-change="save_reminder_time" class="space-y-1">
+          <label class="block text-xs font-mono uppercase tracking-widest">
+            {gettext("Reminder time")}
+          </label>
+          <input
+            type="time"
+            name="reminder_time"
+            value={Calendar.strftime(@config.reminder_time, "%H:%M")}
+            class="input border-3 border-ink font-mono"
+          />
         </form>
 
-        <form phx-submit="set_timezone" class="flex items-end gap-2">
-          <div class="flex-1">
-            <label class="block text-xs font-mono uppercase tracking-widest mb-1">
-              {gettext("Timezone")}
-            </label>
+        <form phx-change="set_timezone" class="space-y-1">
+          <label class="block text-xs font-mono uppercase tracking-widest">
+            {gettext("Timezone")}
+          </label>
+          <div class="flex items-stretch gap-2">
             <input
+              id="timezone-input"
               type="text"
               name="timezone"
               value={@config.timezone}
               placeholder="Europe/Berlin"
-              class="input border-3 border-ink font-mono w-full text-sm"
+              phx-debounce="blur"
+              class="input border-3 border-ink font-mono w-full text-sm min-w-0 flex-1"
             />
+            <button
+              type="button"
+              data-action="detect-tz"
+              class="brutal-btn px-3 bg-base-200 shrink-0 inline-flex items-center justify-center"
+              aria-label={gettext("Use current timezone")}
+              title={gettext("Use current timezone")}
+            >
+              <.icon name="hero-map-pin" class="w-5 h-5" />
+            </button>
           </div>
-          <button
-            type="button"
-            data-action="detect-tz"
-            class="brutal-btn px-3 py-2 bg-base-200 text-sm"
-          >
-            {gettext("Use current")}
-          </button>
-          <button type="submit" class="brutal-btn px-4 py-2 block-green text-sm">
-            {gettext("Save")}
-          </button>
         </form>
       </div>
 

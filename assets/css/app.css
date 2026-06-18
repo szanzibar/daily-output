@@ -220,6 +220,17 @@ h1, h2, h3 {
 .block-cyan { background-color: oklch(75% 0.14 200); color: oklch(15% 0 0); }
 .block-dark { background-color: oklch(35% 0.02 260); color: white; }
 
+/* Client toasts — slide in/out from the right */
+.app-toast {
+  box-shadow: 4px 4px 0 var(--color-ink);
+  cursor: pointer;
+  transform: translateX(120%);
+  opacity: 0;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+.app-toast.toast-in { transform: translateX(0); opacity: 1; }
+.app-toast.toast-out { transform: translateX(120%); opacity: 0; }
+
 /* Rich text — rendered Markdown for focus tips & feedback */
 .rich-text > :first-child { margin-top: 0; }
 .rich-text > :last-child { margin-bottom: 0; }

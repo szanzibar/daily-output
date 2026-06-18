@@ -68,7 +68,7 @@ msgstr ""
 msgid "ANTHROPIC_API_KEY not set. Add it to the .env file and restart the server."
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:46
+#: lib/daily_output_web/components/layouts.ex:58
 #: lib/daily_output_web/live/about_live.ex:6
 #, elixir-autogen, elixir-format
 msgid "About"
@@ -79,7 +79,7 @@ msgstr ""
 msgid "About DailyOutput"
 msgstr ""
 
-#: lib/daily_output_web/components/core_components.ex:383
+#: lib/daily_output_web/components/core_components.ex:385
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr ""
@@ -89,17 +89,17 @@ msgstr ""
 msgid "Activity"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:328
+#: lib/daily_output_web/live/settings_live.ex:329
 #, elixir-autogen, elixir-format
 msgid "Additional context for the AI. Tell it about your goals, weaknesses, or preferences."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:335
+#: lib/daily_output_web/live/settings_live.ex:336
 #, elixir-autogen, elixir-format
 msgid "Additional instructions for the AI"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:516
+#: lib/daily_output_web/live/settings_live.ex:509
 #, elixir-autogen, elixir-format
 msgid "Advanced"
 msgstr ""
@@ -109,13 +109,13 @@ msgstr ""
 msgid "Attempted — keep practicing!"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:89
 #: lib/daily_output_web/components/layouts.ex:101
+#: lib/daily_output_web/components/layouts.ex:113
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:523
+#: lib/daily_output_web/live/settings_live.ex:516
 #, elixir-autogen, elixir-format
 msgid "Auto (based on level)"
 msgstr ""
@@ -124,7 +124,7 @@ msgstr ""
 #: lib/daily_output_web/live/entry_live/show.ex:223
 #: lib/daily_output_web/live/entry_live/show.ex:241
 #: lib/daily_output_web/live/focus_topics_live.ex:129
-#: lib/daily_output_web/live/progress_live.ex:106
+#: lib/daily_output_web/live/progress_live.ex:112
 #, elixir-autogen, elixir-format
 msgid "Back"
 msgstr ""
@@ -135,7 +135,7 @@ msgstr ""
 msgid "Back to entry"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:512
+#: lib/daily_output_web/live/settings_live.ex:505
 #, elixir-autogen, elixir-format
 msgid "Beginner"
 msgstr ""
@@ -162,7 +162,7 @@ msgstr ""
 msgid "Choose a topic from your focus pool to concentrate on."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:488
+#: lib/daily_output_web/live/settings_live.ex:481
 #, elixir-autogen, elixir-format
 msgid "Configured"
 msgstr ""
@@ -251,7 +251,7 @@ msgstr ""
 
 #: lib/daily_output_web/live/entry_live/edit.ex:97
 #: lib/daily_output_web/live/entry_live/edit.ex:129
-#: lib/daily_output_web/live/settings_live.ex:182
+#: lib/daily_output_web/live/settings_live.ex:177
 #, elixir-autogen, elixir-format
 msgid "Could not save."
 msgstr ""
@@ -291,7 +291,7 @@ msgstr ""
 msgid "Edit — %{date}"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:513
+#: lib/daily_output_web/live/settings_live.ex:506
 #, elixir-autogen, elixir-format
 msgid "Elementary"
 msgstr ""
@@ -331,7 +331,7 @@ msgstr ""
 msgid "Feedback received!"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:28
+#: lib/daily_output_web/components/layouts.ex:40
 #, elixir-autogen, elixir-format
 msgid "Focus"
 msgstr ""
@@ -381,32 +381,32 @@ msgstr ""
 msgid "I did use it"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:353
+#: lib/daily_output_web/live/settings_live.ex:354
 #, elixir-autogen, elixir-format
 msgid "Interface language"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:514
+#: lib/daily_output_web/live/settings_live.ex:507
 #, elixir-autogen, elixir-format
 msgid "Intermediate"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:348
+#: lib/daily_output_web/live/settings_live.ex:349
 #, elixir-autogen, elixir-format
 msgid "Language for the app interface. Auto uses the target language at B1+ level."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:268
+#: lib/daily_output_web/live/settings_live.ex:269
 #, elixir-autogen, elixir-format
 msgid "Language level"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:235
+#: lib/daily_output_web/live/settings_live.ex:236
 #, elixir-autogen, elixir-format
 msgid "Languages"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:258
+#: lib/daily_output_web/live/settings_live.ex:259
 #, elixir-autogen, elixir-format
 msgid "Level"
 msgstr ""
@@ -427,27 +427,27 @@ msgstr ""
 msgid "Mastered — remove from pool"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:224
+#: lib/daily_output_web/live/settings_live.ex:225
 #, elixir-autogen, elixir-format
 msgid "Min. exchanges per conversation"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:216
+#: lib/daily_output_web/live/settings_live.ex:217
 #, elixir-autogen, elixir-format
 msgid "Minutes per entry"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:491
+#: lib/daily_output_web/live/settings_live.ex:484
 #, elixir-autogen, elixir-format
 msgid "Missing"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:248
+#: lib/daily_output_web/live/settings_live.ex:249
 #, elixir-autogen, elixir-format
 msgid "Native language"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:517
+#: lib/daily_output_web/live/settings_live.ex:510
 #, elixir-autogen, elixir-format
 msgid "Near Native"
 msgstr ""
@@ -531,7 +531,7 @@ msgstr ""
 msgid "Phoenix LiveView, powered by Claude AI."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:325
+#: lib/daily_output_web/live/settings_live.ex:326
 #, elixir-autogen, elixir-format
 msgid "Prompt Context"
 msgstr ""
@@ -548,9 +548,6 @@ msgid "Really delete?"
 msgstr ""
 
 #: lib/daily_output_web/live/entry_live/edit.ex:308
-#: lib/daily_output_web/live/settings_live.ex:360
-#: lib/daily_output_web/live/settings_live.ex:440
-#: lib/daily_output_web/live/settings_live.ex:465
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr ""
@@ -560,21 +557,16 @@ msgstr ""
 msgid "Saved."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:498
+#: lib/daily_output_web/live/settings_live.ex:491
 #, elixir-autogen, elixir-format
 msgid "Set the ANTHROPIC_API_KEY environment variable in the .env file."
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:40
+#: lib/daily_output_web/components/layouts.ex:52
 #: lib/daily_output_web/live/settings_live.ex:14
-#: lib/daily_output_web/live/settings_live.ex:201
+#: lib/daily_output_web/live/settings_live.ex:196
 #, elixir-autogen, elixir-format
 msgid "Settings"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex:39
-#, elixir-autogen, elixir-format
-msgid "Settings saved!"
 msgstr ""
 
 #: lib/daily_output_web/live/conversation_live/new.ex:276
@@ -583,7 +575,7 @@ msgstr ""
 msgid "Skip"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:96
+#: lib/daily_output_web/components/layouts.ex:108
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
@@ -608,7 +600,7 @@ msgstr ""
 msgid "Streak tracking"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:241
+#: lib/daily_output_web/live/settings_live.ex:242
 #, elixir-autogen, elixir-format
 msgid "Target language"
 msgstr ""
@@ -623,7 +615,7 @@ msgstr ""
 msgid "Timed writing entries"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:210
+#: lib/daily_output_web/live/settings_live.ex:211
 #, elixir-autogen, elixir-format
 msgid "Timer & Conversation"
 msgstr ""
@@ -639,12 +631,12 @@ msgstr ""
 msgid "Topic:"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:277
+#: lib/daily_output_web/live/settings_live.ex:278
 #, elixir-autogen, elixir-format
 msgid "Topics"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:280
+#: lib/daily_output_web/live/settings_live.ex:281
 #, elixir-autogen, elixir-format
 msgid "Topics for AI-generated writing prompts. What would you like to write about?"
 msgstr ""
@@ -654,12 +646,12 @@ msgstr ""
 msgid "Topics from your feedback tips to focus on while writing and speaking. Choose a focus topic before each entry or conversation."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:345
+#: lib/daily_output_web/live/settings_live.ex:346
 #, elixir-autogen, elixir-format
 msgid "UI Language"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:515
+#: lib/daily_output_web/live/settings_live.ex:508
 #, elixir-autogen, elixir-format
 msgid "Upper Intermediate"
 msgstr ""
@@ -669,7 +661,7 @@ msgstr ""
 msgid "Used correctly!"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:84
+#: lib/daily_output_web/components/layouts.ex:96
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -689,7 +681,7 @@ msgstr ""
 msgid "Write a message..."
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:63
+#: lib/daily_output_web/components/layouts.ex:75
 #, elixir-autogen, elixir-format
 msgid "Write every day."
 msgstr ""
@@ -717,7 +709,7 @@ msgstr ""
 msgid "You"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:261
+#: lib/daily_output_web/live/settings_live.ex:262
 #, elixir-autogen, elixir-format
 msgid "Your CEFR level. Feedback is calibrated — only errors you should know at this level. From B2, feedback is in the target language."
 msgstr ""
@@ -737,7 +729,7 @@ msgstr ""
 msgid "Your text is being reviewed"
 msgstr ""
 
-#: lib/daily_output_web/components/core_components.ex:74
+#: lib/daily_output_web/components/core_components.ex:76
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr ""
@@ -749,7 +741,7 @@ msgid_plural "days"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/daily_output_web/live/settings_live.ex:290
+#: lib/daily_output_web/live/settings_live.ex:291
 #, elixir-autogen, elixir-format
 msgid "e.g. Work, Shopping, Neighbors..."
 msgstr ""
@@ -884,92 +876,77 @@ msgstr ""
 msgid "Your partner will respond to what you write"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:139
+#: lib/daily_output_web/live/settings_live.ex:134
 #, elixir-autogen, elixir-format
 msgid "Could not enable reminders."
 msgstr ""
 
 #: lib/daily_output/reminders.ex:85
-#: lib/daily_output_web/live/settings_live.ex:154
+#: lib/daily_output_web/live/settings_live.ex:149
 #, elixir-autogen, elixir-format
 msgid "Daily Output"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:375
-#: lib/daily_output_web/live/settings_live.ex:472
+#: lib/daily_output_web/live/settings_live.ex:372
+#: lib/daily_output_web/live/settings_live.ex:465
 #, elixir-autogen, elixir-format
 msgid "Daily Reminder"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:405
+#: lib/daily_output_web/live/settings_live.ex:402
 #, elixir-autogen, elixir-format
 msgid "Enable reminders"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:378
+#: lib/daily_output_web/live/settings_live.ex:375
 #, elixir-autogen, elixir-format
 msgid "Get a nudge at your chosen time if you haven't practiced yet. Works on your phone once the app is installed to your home screen."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:127
+#: lib/daily_output_web/live/settings_live.ex:122
 #, elixir-autogen, elixir-format
 msgid "Invalid time."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:397
+#: lib/daily_output_web/live/settings_live.ex:394
 #, elixir-autogen, elixir-format
 msgid "Off"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:397
+#: lib/daily_output_web/live/settings_live.ex:394
 #, elixir-autogen, elixir-format
 msgid "On"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:430
+#: lib/daily_output_web/live/settings_live.ex:426
 #, elixir-autogen, elixir-format
 msgid "Reminder time"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:126
-#, elixir-autogen, elixir-format
-msgid "Reminder time saved."
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex:145
-#: lib/daily_output_web/live/settings_live.ex:149
+#: lib/daily_output_web/live/settings_live.ex:140
+#: lib/daily_output_web/live/settings_live.ex:144
 #, elixir-autogen, elixir-format
 msgid "Reminders off."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:136
+#: lib/daily_output_web/live/settings_live.ex:131
 #, elixir-autogen, elixir-format
 msgid "Reminders on. We'll nudge you."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:447
+#: lib/daily_output_web/live/settings_live.ex:438
 #, elixir-autogen, elixir-format
 msgid "Timezone"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:118
-#, elixir-autogen, elixir-format
-msgid "Timezone updated."
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex:413
+#: lib/daily_output_web/live/settings_live.ex:410
 #, elixir-autogen, elixir-format
 msgid "Turn off"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:120
+#: lib/daily_output_web/live/settings_live.ex:115
 #, elixir-autogen, elixir-format
 msgid "Unknown timezone."
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex:462
-#, elixir-autogen, elixir-format
-msgid "Use current"
 msgstr ""
 
 #: lib/daily_output/reminders.ex:82
@@ -982,32 +959,32 @@ msgstr ""
 msgid "Your %{n}-day streak ends soon — one quick entry keeps it alive."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:165
+#: lib/daily_output_web/live/settings_live.ex:160
 #, elixir-autogen, elixir-format
 msgid "No notification sent. Make sure reminders are enabled on this device."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:421
+#: lib/daily_output_web/live/settings_live.ex:418
 #, elixir-autogen, elixir-format
 msgid "Send test"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:155
+#: lib/daily_output_web/live/settings_live.ex:150
 #, elixir-autogen, elixir-format
 msgid "Test notification — push is working."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:170
+#: lib/daily_output_web/live/settings_live.ex:165
 #, elixir-autogen, elixir-format
 msgid "Test sent to %{count} device(s)."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:475
+#: lib/daily_output_web/live/settings_live.ex:468
 #, elixir-autogen, elixir-format
 msgid "Reminders are unavailable until push keys are set. Run `mix daily_output.gen_vapid` and add the VAPID_* values to your .env."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex:387
+#: lib/daily_output_web/live/settings_live.ex:384
 #, elixir-autogen, elixir-format
 msgid "Your VAPID_PUBLIC_KEY looks invalid (it must be the longer public key). Regenerate with `mix daily_output.gen_vapid` and restart."
 msgstr ""
@@ -1037,7 +1014,7 @@ msgstr ""
 msgid "Corrections per 100 words, by week. Lower is better ↓"
 msgstr ""
 
-#: lib/daily_output_web/live/progress_live.ex:91
+#: lib/daily_output_web/live/progress_live.ex:97
 #, elixir-autogen, elixir-format
 msgid "Days"
 msgstr ""
@@ -1053,7 +1030,7 @@ msgid "Finish an entry or conversation to start tracking your progress."
 msgstr ""
 
 #: lib/daily_output_web/live/progress_live.ex:48
-#: lib/daily_output_web/live/progress_live.ex:97
+#: lib/daily_output_web/live/progress_live.ex:103
 #, elixir-autogen, elixir-format
 msgid "Focus mastered"
 msgstr ""
@@ -1063,24 +1040,24 @@ msgstr ""
 msgid "Mistakes over time"
 msgstr ""
 
-#: lib/daily_output_web/live/progress_live.ex:94
+#: lib/daily_output_web/live/progress_live.ex:100
 #, elixir-autogen, elixir-format
 msgid "Mistakes/100"
 msgstr ""
 
-#: lib/daily_output_web/components/layouts.ex:34
+#: lib/daily_output_web/components/layouts.ex:46
 #: lib/daily_output_web/live/progress_live.ex:16
 #: lib/daily_output_web/live/progress_live.ex:31
 #, elixir-autogen, elixir-format
 msgid "Progress"
 msgstr ""
 
-#: lib/daily_output_web/live/progress_live.ex:89
+#: lib/daily_output_web/live/progress_live.ex:95
 #, elixir-autogen, elixir-format
 msgid "This week"
 msgstr ""
 
-#: lib/daily_output_web/live/progress_live.ex:92
+#: lib/daily_output_web/live/progress_live.ex:98
 #, elixir-autogen, elixir-format
 msgid "Words"
 msgstr ""
@@ -1088,4 +1065,23 @@ msgstr ""
 #: lib/daily_output_web/live/progress_live.ex:45
 #, elixir-autogen, elixir-format
 msgid "Words written"
+msgstr ""
+
+#: lib/daily_output_web/components/layouts.ex:30
+#, elixir-autogen, elixir-format
+msgid "Menu"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex:454
+#: lib/daily_output_web/live/settings_live.ex:455
+#, elixir-autogen, elixir-format
+msgid "Use current timezone"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex:33
+#: lib/daily_output_web/live/settings_live.ex:113
+#: lib/daily_output_web/live/settings_live.ex:114
+#: lib/daily_output_web/live/settings_live.ex:121
+#, elixir-autogen, elixir-format
+msgid "Saved"
 msgstr ""

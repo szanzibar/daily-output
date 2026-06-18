@@ -5,6 +5,35 @@ defmodule DailyOutputWeb.SettingsLiveTest do
 
   alias DailyOutput.{Push, Settings}
 
+  test "the main form auto-saves on change and toasts", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/settings")
+
+    view
+    |> form("#settings-form", config: %{timer_minutes: "9", language_level: "C1"})
+    |> render_change()
+
+    config = Settings.get_config()
+    assert config.timer_minutes == 9
+    assert config.language_level == "C1"
+    assert_push_event(view, "toast", %{kind: "info"})
+  end
+
+  test "invalid input is rejected and the previous value stays saved", %{conn: conn} do
+    {:ok, config} = Settings.ensure_config()
+    {:ok, _} = Settings.update_config(config, %{timer_minutes: 5})
+
+    {:ok, view, _html} = live(conn, ~p"/settings")
+
+    html =
+      view
+      |> form("#settings-form", config: %{timer_minutes: "0"})
+      |> render_change()
+
+    # zero is out of range → not saved, error shown inline
+    assert Settings.get_config().timer_minutes == 5
+    assert html =~ "less than or equal to" or html =~ "must be"
+  end
+
   test "set_timezone stores a valid timezone", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/settings")
 
@@ -48,13 +77,11 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     assert Push.list_subscriptions() == []
   end
 
-  test "test_notification flashes when nothing could be sent (no VAPID keys in test)", %{
-    conn: conn
-  } do
+  test "test_notification pushes an error toast when nothing could be sent", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/settings")
 
-    html = render_hook(view, "test_notification", %{})
+    render_hook(view, "test_notification", %{})
 
-    assert html =~ "No notification sent" or html =~ "Keine Benachrichtigung"
+    assert_push_event(view, "toast", %{kind: "error"})
   end
 end
