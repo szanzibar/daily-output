@@ -88,11 +88,15 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     {:ok, _} = Push.subscribe(%{endpoint: "https://push.example/known", p256dh: "p", auth: "a"})
     {:ok, view, _html} = live(conn, ~p"/settings")
 
+    # Assert on the (untranslated) data-action attributes, not button text —
+    # the page renders in the config's UI language, which defaults to German.
     html = render_hook(view, "device_status", %{"endpoint" => "https://push.example/known"})
-    assert html =~ "On &mdash; this device" or html =~ "On — this device"
+    assert html =~ ~s(data-action="disable")
+    refute html =~ ~s(data-action="enable")
 
     html = render_hook(view, "device_status", %{"endpoint" => nil})
-    assert html =~ "Enable on this device"
+    assert html =~ ~s(data-action="enable")
+    refute html =~ ~s(data-action="disable")
   end
 
   test "test_notification pushes an error toast when this device isn't subscribed", %{conn: conn} do

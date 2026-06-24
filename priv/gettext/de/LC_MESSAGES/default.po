@@ -867,16 +867,6 @@ msgstr "Tägliche Erinnerung"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "Enable reminders"
-msgstr "Erinnerungen aktivieren"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Get a nudge at your chosen time if you haven't practiced yet. Works on your phone once the app is installed to your home screen."
-msgstr "Erhalte zur gewählten Zeit einen Anstoß, wenn du noch nicht geübt hast. Funktioniert auf dem Handy, sobald die App auf dem Startbildschirm installiert ist."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Invalid time."
 msgstr "Ungültige Zeit."
 
@@ -887,33 +877,13 @@ msgstr "Aus"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "On"
-msgstr "An"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Reminder time"
 msgstr "Erinnerungszeit"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "Reminders off."
-msgstr "Erinnerungen aus."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Reminders on. We'll nudge you."
-msgstr "Erinnerungen an. Wir stupsen dich an."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Timezone"
 msgstr "Zeitzone"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Turn off"
-msgstr "Ausschalten"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -944,21 +914,6 @@ msgstr "Test senden"
 #, elixir-autogen, elixir-format
 msgid "Test notification — push is working."
 msgstr "Test-Benachrichtigung — Push funktioniert."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Test sent to %{count} device(s)."
-msgstr "Test an %{count} Gerät(e) gesendet."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Reminders are unavailable until push keys are set. Run `mix daily_output.gen_vapid` and add the VAPID_* values to your .env."
-msgstr "Erinnerungen sind nicht verfügbar, bis Push-Schlüssel gesetzt sind. Führe `mix daily_output.gen_vapid` aus und trage die VAPID_*-Werte in deine .env ein."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Your VAPID_PUBLIC_KEY looks invalid (it must be the longer public key). Regenerate with `mix daily_output.gen_vapid` and restart."
-msgstr "Dein VAPID_PUBLIC_KEY sieht ungültig aus (es muss der längere öffentliche Schlüssel sein). Erzeuge ihn neu mit `mix daily_output.gen_vapid` und starte neu."
 
 #: lib/daily_output_web/live/home_live.ex
 #, elixir-autogen, elixir-format
@@ -1167,3 +1122,55 @@ msgstr "Wortschatz"
 #, elixir-autogen, elixir-format
 msgid "word order"
 msgstr "Wortstellung"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Checking…"
+msgstr "Wird geprüft…"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Enable on this device"
+msgstr "Auf diesem Gerät aktivieren"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Get a nudge at your chosen time if you haven't practiced yet. Reminders are managed per device — turn them on for each browser or phone where you want them. Works on your phone once the app is installed to your home screen."
+msgstr "Erhalte zur gewählten Zeit einen Anstoß, wenn du noch nicht geübt hast. Erinnerungen werden pro Gerät verwaltet — aktiviere sie auf jedem Browser oder Handy, auf dem du sie haben möchtest. Funktioniert auf dem Handy, sobald die App auf dem Startbildschirm installiert ist."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "On — this device"
+msgstr "An — dieses Gerät"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Reminders active on %{count} device."
+msgid_plural "Reminders active on %{count} devices."
+msgstr[0] "Erinnerungen auf %{count} Gerät aktiv."
+msgstr[1] "Erinnerungen auf %{count} Geräten aktiv."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Reminders are temporarily unavailable — push keys could not be loaded. Check the server logs and restart."
+msgstr "Erinnerungen sind vorübergehend nicht verfügbar — Push-Schlüssel konnten nicht geladen werden. Prüfe die Server-Logs und starte neu."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Reminders off for this device."
+msgstr "Erinnerungen für dieses Gerät aus."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Reminders on for this device."
+msgstr "Erinnerungen für dieses Gerät an."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Test sent to this device."
+msgstr "Test an dieses Gerät gesendet."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Turn off here"
+msgstr "Hier ausschalten"
