@@ -16,8 +16,12 @@ defmodule DailyOutputWeb.SettingsLive do
        form: to_form(changeset),
        topic_input: "",
        push_configured: Push.configured?(),
-       push_key_valid: Push.public_key_valid?(),
-       vapid_public_key: Application.get_env(:daily_output, :vapid_public_key) || ""
+       vapid_public_key: Push.vapid_public_key(),
+       # Per-device push state. :unknown until the browser reports its
+       # subscription via the "device_status" event on hook mount.
+       device_status: :unknown,
+       device_endpoint: nil,
+       device_count: Push.count()
      )}
   end
 
@@ -123,45 +127,60 @@ defmodule DailyOutputWeb.SettingsLive do
     end
   end
 
+  # The browser reports its current push subscription on hook mount (endpoint, or
+  # nil if it isn't subscribed). A device is "on" iff that endpoint is in our DB.
+  def handle_event("device_status", %{"endpoint" => endpoint}, socket) do
+    status = if Push.subscribed?(endpoint), do: :on, else: :off
+
+    {:noreply,
+     assign(socket, device_status: status, device_endpoint: endpoint, device_count: Push.count())}
+  end
+
   def handle_event("enable_reminders", %{"subscription" => subscription}, socket) do
     %{"endpoint" => endpoint, "keys" => %{"p256dh" => p256dh, "auth" => auth}} = subscription
 
     case Push.subscribe(%{endpoint: endpoint, p256dh: p256dh, auth: auth}) do
       {:ok, _} ->
-        persist(socket, %{reminders_enabled: true}, gettext("Reminders on. We'll nudge you."))
+        {:noreply,
+         socket
+         |> assign(device_status: :on, device_endpoint: endpoint, device_count: Push.count())
+         |> toast(gettext("Reminders on for this device."))}
 
       {:error, _} ->
         {:noreply, toast(socket, gettext("Could not enable reminders."), :error)}
     end
   end
 
-  def handle_event("disable_reminders", %{"endpoint" => endpoint}, socket) do
-    Push.delete_by_endpoint(endpoint)
-    persist(socket, %{reminders_enabled: false}, gettext("Reminders off."))
+  def handle_event("disable_reminders", params, socket) do
+    endpoint = params["endpoint"] || socket.assigns.device_endpoint
+    if endpoint, do: Push.delete_by_endpoint(endpoint)
+
+    {:noreply,
+     socket
+     |> assign(device_status: :off, device_count: Push.count())
+     |> toast(gettext("Reminders off for this device."))}
   end
 
-  def handle_event("disable_reminders", _params, socket) do
-    persist(socket, %{reminders_enabled: false}, gettext("Reminders off."))
-  end
+  def handle_event("test_notification", params, socket) do
+    endpoint = params["endpoint"] || socket.assigns.device_endpoint
 
-  def handle_event("test_notification", _params, socket) do
     payload = %{
       title: gettext("Daily Output"),
       body: gettext("Test notification — push is working."),
       url: "/"
     }
 
-    case Push.send_to_all(payload) do
-      0 ->
+    case endpoint && Push.send_to_endpoint(endpoint, payload) do
+      1 ->
+        {:noreply, toast(socket, gettext("Test sent to this device."))}
+
+      _ ->
         {:noreply,
          toast(
            socket,
            gettext("No notification sent. Make sure reminders are enabled on this device."),
            :error
          )}
-
-      count ->
-        {:noreply, toast(socket, gettext("Test sent to %{count} device(s).", count: count))}
     end
   end
 
@@ -374,7 +393,6 @@ defmodule DailyOutputWeb.SettingsLive do
         id="reminders-panel"
         phx-hook="Reminders"
         data-vapid-key={@vapid_public_key}
-        data-enabled={to_string(@config.reminders_enabled)}
         data-timezone={@config.timezone || ""}
         class="border-4 border-ink p-5 space-y-4"
       >
@@ -383,44 +401,39 @@ defmodule DailyOutputWeb.SettingsLive do
         </h2>
         <p class="text-sm text-base-content/60">
           {gettext(
-            "Get a nudge at your chosen time if you haven't practiced yet. Works on your phone once the app is installed to your home screen."
-          )}
-        </p>
-
-        <p
-          :if={!@push_key_valid}
-          class="text-sm font-mono text-bold-red border-l-4 border-bold-red pl-3"
-        >
-          {gettext(
-            "Your VAPID_PUBLIC_KEY looks invalid (it must be the longer public key). Regenerate with `mix daily_output.gen_vapid` and restart."
+            "Get a nudge at your chosen time if you haven't practiced yet. Reminders are managed per device — turn them on for each browser or phone where you want them. Works on your phone once the app is installed to your home screen."
           )}
         </p>
 
         <div class="flex flex-wrap items-center gap-2">
           <span class={[
             "text-xs font-mono px-2 py-1 uppercase",
-            if(@config.reminders_enabled, do: "block-green", else: "bg-base-200")
+            if(@device_status == :on, do: "block-green", else: "bg-base-200")
           ]}>
-            {if @config.reminders_enabled, do: gettext("On"), else: gettext("Off")}
+            {case @device_status do
+              :on -> gettext("On — this device")
+              :off -> gettext("Off")
+              :unknown -> gettext("Checking…")
+            end}
           </span>
           <button
-            :if={!@config.reminders_enabled}
+            :if={@device_status == :off}
             type="button"
             data-action="enable"
             class="brutal-btn px-4 py-2 block-cyan text-sm"
           >
-            {gettext("Enable reminders")}
+            {gettext("Enable on this device")}
           </button>
           <button
-            :if={@config.reminders_enabled}
+            :if={@device_status == :on}
             type="button"
             data-action="disable"
             class="brutal-btn px-4 py-2 bg-base-200 text-sm"
           >
-            {gettext("Turn off")}
+            {gettext("Turn off here")}
           </button>
           <button
-            :if={@config.reminders_enabled}
+            :if={@device_status == :on}
             type="button"
             data-action="test"
             class="brutal-btn px-4 py-2 block-purple text-sm"
@@ -428,6 +441,14 @@ defmodule DailyOutputWeb.SettingsLive do
             {gettext("Send test")}
           </button>
         </div>
+
+        <p :if={@device_count > 0} class="text-xs font-mono text-base-content/60">
+          {ngettext(
+            "Reminders active on %{count} device.",
+            "Reminders active on %{count} devices.",
+            @device_count
+          )}
+        </p>
 
         <p data-role="error" class="hidden text-sm font-mono text-bold-red"></p>
 
@@ -476,7 +497,7 @@ defmodule DailyOutputWeb.SettingsLive do
         </h2>
         <p class="text-sm text-base-content/60">
           {gettext(
-            "Reminders are unavailable until push keys are set. Run `mix daily_output.gen_vapid` and add the VAPID_* values to your .env."
+            "Reminders are temporarily unavailable — push keys could not be loaded. Check the server logs and restart."
           )}
         </p>
       </div>

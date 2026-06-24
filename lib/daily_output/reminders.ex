@@ -21,7 +21,8 @@ defmodule DailyOutput.Reminders do
   def start_link(opts), do: GenServer.start_link(__MODULE__, opts, name: __MODULE__)
 
   @doc """
-  Decides whether a reminder is due. Pure over its inputs so it's trivially testable.
+  Decides whether a reminder is due, ignoring whether any device is subscribed
+  (`maybe_remind/0` gates on that). Pure over its inputs so it's trivially testable.
 
     * `config` — the settings struct
     * `now_local` — current `DateTime` in the user's timezone
@@ -29,8 +30,7 @@ defmodule DailyOutput.Reminders do
     * `day_done?` — whether today's goal is already met
   """
   def due?(config, now_local, today, day_done?) do
-    config.reminders_enabled and
-      not day_done? and
+    not day_done? and
       config.last_reminder_on != today and
       Time.compare(DateTime.to_time(now_local), config.reminder_time) != :lt
   end
@@ -40,7 +40,7 @@ defmodule DailyOutput.Reminders do
     config = Settings.get_config()
     day_done? = FocusTopics.daily_challenge_status().all_done
 
-    if Push.configured?() and due?(config, Clock.now(), Clock.today(), day_done?) do
+    if Push.configured?() and Push.any?() and due?(config, Clock.now(), Clock.today(), day_done?) do
       Push.send_to_all(notification(config))
       {:ok, saved} = Settings.ensure_config()
       Settings.update_config(saved, %{last_reminder_on: Clock.today()})

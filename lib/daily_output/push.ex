@@ -13,25 +13,11 @@ defmodule DailyOutput.Push do
   alias DailyOutput.Repo
   alias DailyOutput.Push.Subscription
 
+  @doc "The public VAPID key browsers need as `applicationServerKey` (\"\" if unset)."
+  def vapid_public_key, do: Application.get_env(:web_push_elixir, :vapid_public_key) || ""
+
   @doc "True when VAPID keys are configured, i.e. push can actually be sent."
-  def configured? do
-    key = Application.get_env(:web_push_elixir, :vapid_public_key)
-    is_binary(key) and key != ""
-  end
-
-  @doc """
-  True when the configured public key is a valid 65-byte P-256 point — what browsers
-  require as `applicationServerKey`. Catches the common "pasted the private key" mistake.
-  """
-  def public_key_valid? do
-    case Application.get_env(:web_push_elixir, :vapid_public_key) do
-      key when is_binary(key) and key != "" ->
-        match?({:ok, <<4, _::binary-size(64)>>}, Base.url_decode64(key, padding: false))
-
-      _ ->
-        false
-    end
-  end
+  def configured?, do: vapid_public_key() != ""
 
   @doc "Stores (or refreshes) a device subscription, keyed by its endpoint."
   def subscribe(attrs) do
@@ -44,6 +30,18 @@ defmodule DailyOutput.Push do
   end
 
   def list_subscriptions, do: Repo.all(Subscription)
+
+  @doc "Number of subscribed devices."
+  def count, do: Repo.aggregate(Subscription, :count)
+
+  @doc "True when at least one device is subscribed (i.e. reminders have somewhere to go)."
+  def any?, do: Repo.exists?(Subscription)
+
+  @doc "True when `endpoint` belongs to a known (subscribed) device."
+  def subscribed?(endpoint) when is_binary(endpoint),
+    do: Repo.exists?(from(s in Subscription, where: s.endpoint == ^endpoint))
+
+  def subscribed?(_), do: false
 
   def delete_by_endpoint(endpoint) do
     Repo.delete_all(from(s in Subscription, where: s.endpoint == ^endpoint))
@@ -63,6 +61,23 @@ defmodule DailyOutput.Push do
       0
     end
   end
+
+  @doc """
+  Sends `payload` to the single device identified by `endpoint`. Used for
+  per-device test notifications. Returns 1 on success, 0 otherwise.
+  """
+  def send_to_endpoint(endpoint, payload) when is_binary(endpoint) and is_map(payload) do
+    with true <- configured?(),
+         sub when not is_nil(sub) <-
+           Repo.one(from(s in Subscription, where: s.endpoint == ^endpoint)),
+         :ok <- send_one(sub, Jason.encode!(payload)) do
+      1
+    else
+      _ -> 0
+    end
+  end
+
+  def send_to_endpoint(_endpoint, _payload), do: 0
 
   defp send_one(subscription, message) do
     body =

@@ -54,6 +54,11 @@ config :phoenix, :json_library, Jason
 # Time zone database for local-time math (reminders, day boundaries)
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
+# Web Push. The VAPID keypair is generated and stored in the DB on first boot
+# (see `DailyOutput.Vapid`). The contact subject (RFC 8292 "sub") defaults to this
+# placeholder; in prod runtime.exs derives it from PHX_HOST as https://<host>.
+config :web_push_elixir, vapid_subject: "mailto:admin@example.com"
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

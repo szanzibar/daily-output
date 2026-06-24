@@ -6,19 +6,10 @@ if config_env() != :test do
 
   config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string)
 
-  # Web Push (optional). Generate keys with `mix generate.vapid.keys` and add them to .env.
-  # Reminders stay off until these are set.
-  vapid_public_key = Dotenvy.env!("VAPID_PUBLIC_KEY", :string, "")
-  vapid_private_key = Dotenvy.env!("VAPID_PRIVATE_KEY", :string, "")
+  # Web Push keys are generated and stored in the DB on first boot — see
+  # `DailyOutput.Vapid`. Nothing to configure here.
 
-  config :web_push_elixir,
-    vapid_public_key: vapid_public_key,
-    vapid_private_key: vapid_private_key,
-    vapid_subject: Dotenvy.env!("VAPID_SUBJECT", :string, "mailto:admin@example.com")
-
-  config :daily_output,
-    vapid_public_key: vapid_public_key,
-    default_timezone: Dotenvy.env!("DEFAULT_TIMEZONE", :string, "Etc/UTC")
+  config :daily_output, default_timezone: Dotenvy.env!("DEFAULT_TIMEZONE", :string, "Etc/UTC")
 end
 
 # config/runtime.exs is executed for all environments, including
@@ -71,6 +62,10 @@ if config_env() == :prod do
       """
 
   config :daily_output, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+
+  # Identify this server to push services (RFC 8292 VAPID "sub"). In prod we use
+  # the public host; dev/test keep the static default in config.exs.
+  config :web_push_elixir, vapid_subject: "https://#{host}"
 
   config :daily_output, DailyOutputWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

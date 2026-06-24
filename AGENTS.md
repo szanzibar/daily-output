@@ -81,9 +81,12 @@ These are the standards that matter here. They override generic habits.
 - **Feedback `annotated_text`** marks corrections as `[[id:original||corrected]]`; `Stats`
   derives words-written and corrections from it (corrections per 100 words is the headline
   "am I improving" metric).
-- **Reminders / push**: Web Push via `web_push_elixir`; VAPID keys come from `.env`
-  (generate with `mix daily_output.gen_vapid`). The service worker (`priv/static/sw.js`) is
-  registered in all environments; iOS requires the PWA be installed to the home screen.
+- **Reminders / push**: Web Push via `web_push_elixir`. The VAPID keypair is generated and
+  stored in the DB on first boot (`DailyOutput.Vapid`) — no setup, no env vars, no override.
+  Reminders are **per device** — a device is "on" iff it holds a push subscription
+  (`push_subscriptions`, one row per device), so there is no global on/off flag. The service
+  worker (`priv/static/sw.js`) is registered in all environments; iOS requires the PWA be
+  installed to the home screen.
 
 ## Phoenix / Tailwind specifics
 

@@ -40,25 +40,30 @@ Goal: if the day's goal isn't met by a configurable time, the user gets a push o
 phone (works with the app closed), with loss-aversion copy.
 
 **Data model**
-- New table `push_subscriptions`: `endpoint`, `p256dh`, `auth`, timestamps. One row per device.
-- `settings`: `reminders_enabled :boolean`, `reminder_time :time` (default 20:00),
-  `timezone :string`, `last_reminder_on :date` (dedupe).
+- New table `push_subscriptions`: `endpoint`, `p256dh`, `auth`, timestamps. One row per device;
+  a device is "on" iff it has a row here (no global enabled flag).
+- New table `vapid_keys`: the auto-generated `public_key`/`private_key` (see Server).
+- `settings`: `reminder_time :time` (default 20:00), `timezone :string`,
+  `last_reminder_on :date` (dedupe).
 
 **Server**
 - Add a maintained web-push dependency (`web_push_elixir`, pure Elixir — no NIF, Docker-safe).
-- VAPID keypair: a `mix daily_output.gen_vapid` task prints a keypair; keys read from env
-  (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). Public key also exposed to the client.
-- `DailyOutput.Push` context: `subscribe/1`, `list_subscriptions/0`, `delete/1`,
-  `send_to_all/1`; prunes subscriptions that return 404/410 (expired).
+- VAPID keypair: `DailyOutput.Vapid` generates one on first boot and stores it in `vapid_keys`,
+  so a bare `docker run` has working push with no setup. The DB is the only source — no env
+  vars, no generator task. Public key is exposed to the client.
+- `DailyOutput.Push` context: `subscribe/1`, `list_subscriptions/0`, `delete_by_endpoint/1`,
+  `send_to_all/1`, `send_to_endpoint/2` (per-device test); prunes subscriptions that return
+  404/410 (expired).
 - `DailyOutput.Reminders` GenServer: ticks each minute; when local time ≥ `reminder_time`,
-  the goal isn't met, reminders are on, and `last_reminder_on` ≠ today → send push, stamp date.
-  Started in the application supervision tree.
+  the goal isn't met, at least one device is subscribed, and `last_reminder_on` ≠ today →
+  send push to all devices, stamp date. Started in the application supervision tree.
 
 **Client**
-- Settings: "Daily reminder" toggle + time picker. Toggle requests `Notification` permission,
-  `pushManager.subscribe({ applicationServerKey })`, POSTs the subscription to the server.
+- Settings: per-device "Daily reminder" controls + time picker. Enabling requests
+  `Notification` permission, `pushManager.subscribe({ applicationServerKey })`, and sends the
+  subscription to the server; the panel reflects *this* device's state and a total-device count.
 - `sw.js`: add `push` (show notification) and `notificationclick` (focus/open `/`) handlers.
-- A small JS hook `PushToggle` to manage permission + subscription lifecycle.
+- The `Reminders` JS hook manages permission + per-device subscription lifecycle.
 
 **Copy:** lead with loss aversion — *"Your 12-day streak ends in 4 hours."* / *"One quick
 entry keeps your streak alive."*
@@ -134,4 +139,5 @@ delight throughout. The `Clock` prerequisite is shared by Phases 1 and 2, so it'
 
 1. **Dependency:** OK to add `web_push_elixir` (pure Elixir)?
 2. **Timezone source:** a single `timezone` setting in the UI (recommended) vs an env-only value?
-3. **VAPID provisioning:** I'll add a generator mix task + `.env` keys — confirm that fits your deploy.
+3. **VAPID provisioning:** ~~generator mix task + `.env` keys~~ — resolved: keys are
+   auto-generated and stored in the DB on first boot. No env vars, no mix task.

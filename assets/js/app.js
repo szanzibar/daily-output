@@ -47,8 +47,11 @@ const Hooks = {
     }
   },
 
-  // Daily-reminder controls: subscribe/unsubscribe to Web Push and detect timezone.
-  // The element carries data-vapid-key and data-timezone.
+  // Daily-reminder controls: subscribe/unsubscribe to Web Push per device and
+  // detect timezone. The element carries data-vapid-key and data-timezone.
+  // Reminder state is per device: this browser is "on" iff it has a push
+  // subscription the server knows about, so we report our endpoint on mount and
+  // the server tells us which buttons to show.
   Reminders: {
     mounted() {
       // Auto-detect timezone on first visit if the server has none yet.
@@ -57,15 +60,22 @@ const Hooks = {
         this.pushEvent("detect_timezone", { timezone: browserTz })
       }
 
-      this.el.querySelector("[data-action=enable]")?.addEventListener("click", () => this.enable())
-      this.el.querySelector("[data-action=disable]")?.addEventListener("click", () => this.disable())
-      this.el.querySelector("[data-action=test]")?.addEventListener("click", () => this.pushEvent("test_notification", {}))
-      this.el.querySelector("[data-action=detect-tz]")?.addEventListener("click", () => {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-        const input = this.el.querySelector("input[name=timezone]")
-        if (input) input.value = tz
-        this.pushEvent("set_timezone", { timezone: tz })
+      // Delegate clicks: the enable/disable/test buttons are rendered
+      // conditionally on the server, so they may not exist yet at mount.
+      this.el.addEventListener("click", (e) => {
+        const action = e.target.closest("[data-action]")?.dataset.action
+        if (action === "enable") this.enable()
+        else if (action === "disable") this.disable()
+        else if (action === "test") this.test()
+        else if (action === "detect-tz") this.detectTz()
       })
+
+      this.reportStatus()
+    },
+
+    // Tell the server whether this browser currently holds a push subscription.
+    async reportStatus() {
+      this.pushEvent("device_status", { endpoint: await this.currentEndpoint() })
     },
 
     async enable() {
@@ -91,6 +101,7 @@ const Hooks = {
           applicationServerKey: urlBase64ToUint8Array(key)
         })
 
+        this.error("")
         this.pushEvent("enable_reminders", { subscription: sub.toJSON() })
       } catch (e) {
         console.error("enable reminders failed:", e)
@@ -110,9 +121,36 @@ const Hooks = {
       }
     },
 
+    // Send the test only to this device.
+    async test() {
+      const endpoint = await this.currentEndpoint()
+      this.pushEvent("test_notification", endpoint ? { endpoint } : {})
+    },
+
+    detectTz() {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      const input = this.el.querySelector("input[name=timezone]")
+      if (input) input.value = tz
+      this.pushEvent("set_timezone", { timezone: tz })
+    },
+
+    // This browser's current push endpoint, or null if it isn't subscribed.
+    async currentEndpoint() {
+      try {
+        if (!("serviceWorker" in navigator)) return null
+        const reg = await navigator.serviceWorker.ready
+        const sub = await reg.pushManager.getSubscription()
+        return sub?.endpoint || null
+      } catch (e) {
+        return null
+      }
+    },
+
     error(message) {
       const el = this.el.querySelector("[data-role=error]")
-      if (el) { el.textContent = message; el.classList.remove("hidden") }
+      if (!el) return
+      el.textContent = message
+      el.classList.toggle("hidden", !message)
     }
   },
 

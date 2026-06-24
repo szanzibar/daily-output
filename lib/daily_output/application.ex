@@ -12,17 +12,30 @@ defmodule DailyOutput.Application do
         DailyOutputWeb.Telemetry,
         DailyOutput.Repo,
         {Ecto.Migrator,
-         repos: Application.fetch_env!(:daily_output, :ecto_repos), skip: skip_migrations?()},
-        {DNSCluster, query: Application.get_env(:daily_output, :dns_cluster_query) || :ignore},
-        {Phoenix.PubSub, name: DailyOutput.PubSub},
-        # Start to serve requests, typically the last entry
-        DailyOutputWeb.Endpoint
-      ] ++ reminders_child()
+         repos: Application.fetch_env!(:daily_output, :ecto_repos), skip: skip_migrations?()}
+      ] ++
+        vapid_child() ++
+        [
+          {DNSCluster, query: Application.get_env(:daily_output, :dns_cluster_query) || :ignore},
+          {Phoenix.PubSub, name: DailyOutput.PubSub},
+          # Start to serve requests, typically the last entry
+          DailyOutputWeb.Endpoint
+        ] ++ reminders_child()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: DailyOutput.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  # Generates/loads the VAPID keypair right after migrations, before we serve
+  # requests. Disabled in tests, which assert on the unconfigured state.
+  defp vapid_child do
+    if Application.get_env(:daily_output, :ensure_vapid, true) do
+      [DailyOutput.Vapid]
+    else
+      []
+    end
   end
 
   defp reminders_child do

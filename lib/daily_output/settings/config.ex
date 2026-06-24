@@ -12,7 +12,6 @@ defmodule DailyOutput.Settings.Config do
     field :min_exchanges, :integer, default: 5
     field :ui_language, :string, default: "auto"
     field :timezone, :string
-    field :reminders_enabled, :boolean, default: false
     field :reminder_time, :time, default: ~T[20:00:00]
     field :last_reminder_on, :date
 
@@ -31,7 +30,6 @@ defmodule DailyOutput.Settings.Config do
       :min_exchanges,
       :ui_language,
       :timezone,
-      :reminders_enabled,
       :reminder_time,
       :last_reminder_on
     ])

@@ -17,8 +17,9 @@ config :daily_output, DailyOutputWeb.Endpoint,
   secret_key_base: "/xD6yxGcMt2uKnXA1oFAmtgWR7UndlZm4oflvTu7oN2aFGFtepvSJMzuoN1wxgwR",
   server: false
 
-# Don't run the reminder scheduler during tests
-config :daily_output, start_reminders: false
+# Don't run the reminder scheduler during tests, and don't auto-generate VAPID
+# keys — the push tests assert on the unconfigured state.
+config :daily_output, start_reminders: false, ensure_vapid: false
 
 # Print only warnings and errors during test
 config :logger, level: :warning

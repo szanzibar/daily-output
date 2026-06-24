@@ -58,7 +58,7 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     assert Settings.get_config().reminder_time == ~T[07:30:00]
   end
 
-  test "enable then disable reminders toggles the flag and subscription", %{conn: conn} do
+  test "enabling subscribes this device; disabling removes it", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/settings")
 
     subscription = %{
@@ -67,17 +67,35 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     }
 
     render_hook(view, "enable_reminders", %{"subscription" => subscription})
-
-    assert Settings.get_config().reminders_enabled
     assert [_] = Push.list_subscriptions()
 
     render_hook(view, "disable_reminders", %{"endpoint" => "https://push.example/xyz"})
-
-    refute Settings.get_config().reminders_enabled
     assert Push.list_subscriptions() == []
   end
 
-  test "test_notification pushes an error toast when nothing could be sent", %{conn: conn} do
+  test "device_status drives this device's on/off display", %{conn: conn} do
+    # The reminders panel only renders when push is configured.
+    {public_key, _} = :crypto.generate_key(:ecdh, :prime256v1)
+
+    Application.put_env(
+      :web_push_elixir,
+      :vapid_public_key,
+      Base.url_encode64(public_key, padding: false)
+    )
+
+    on_exit(fn -> Application.delete_env(:web_push_elixir, :vapid_public_key) end)
+
+    {:ok, _} = Push.subscribe(%{endpoint: "https://push.example/known", p256dh: "p", auth: "a"})
+    {:ok, view, _html} = live(conn, ~p"/settings")
+
+    html = render_hook(view, "device_status", %{"endpoint" => "https://push.example/known"})
+    assert html =~ "On &mdash; this device" or html =~ "On — this device"
+
+    html = render_hook(view, "device_status", %{"endpoint" => nil})
+    assert html =~ "Enable on this device"
+  end
+
+  test "test_notification pushes an error toast when this device isn't subscribed", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/settings")
 
     render_hook(view, "test_notification", %{})

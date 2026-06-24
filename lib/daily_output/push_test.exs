@@ -32,31 +32,30 @@ defmodule DailyOutput.PushTest do
     assert Push.send_to_all(%{title: "Hi", body: "there"}) == 0
   end
 
-  describe "public_key_valid?/0" do
-    test "false when unset" do
-      refute Push.public_key_valid?()
-    end
+  test "any?/count reflect whether any device is subscribed" do
+    refute Push.any?()
+    assert Push.count() == 0
 
-    test "true for a real 65-byte P-256 point, false for a 32-byte (private) key" do
-      {public_key, private_key} = :crypto.generate_key(:ecdh, :prime256v1)
+    {:ok, _} = Push.subscribe(@sub)
 
-      Application.put_env(
-        :web_push_elixir,
-        :vapid_public_key,
-        Base.url_encode64(public_key, padding: false)
-      )
+    assert Push.any?()
+    assert Push.count() == 1
+  end
 
-      on_exit(fn -> Application.delete_env(:web_push_elixir, :vapid_public_key) end)
-      assert Push.public_key_valid?()
+  test "subscribed? is true only for a known endpoint" do
+    refute Push.subscribed?(@sub.endpoint)
+    refute Push.subscribed?(nil)
 
-      # A private key (32 bytes) is the classic "pasted the wrong one" mistake.
-      Application.put_env(
-        :web_push_elixir,
-        :vapid_public_key,
-        Base.url_encode64(private_key, padding: false)
-      )
+    {:ok, _} = Push.subscribe(@sub)
 
-      refute Push.public_key_valid?()
-    end
+    assert Push.subscribed?(@sub.endpoint)
+    refute Push.subscribed?("https://push.example/unknown")
+  end
+
+  test "send_to_endpoint is a no-op (returns 0) when VAPID keys are not configured" do
+    {:ok, _} = Push.subscribe(@sub)
+    refute Push.configured?()
+    assert Push.send_to_endpoint(@sub.endpoint, %{title: "Hi", body: "there"}) == 0
+    assert Push.send_to_endpoint(nil, %{title: "Hi"}) == 0
   end
 end
