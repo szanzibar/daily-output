@@ -296,7 +296,7 @@ defmodule DailyOutputWeb.ConversationLive.Show do
 
       <%!-- Plain chat (no feedback yet) --%>
       <div :if={is_nil(@conversation.feedback)} class="border-4 border-ink p-4">
-        <.chat_history messages={@messages} />
+        <.chat_log messages={@messages} />
       </div>
 
       <.link

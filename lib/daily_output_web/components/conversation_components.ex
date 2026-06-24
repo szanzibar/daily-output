@@ -5,34 +5,6 @@ defmodule DailyOutputWeb.ConversationComponents do
   use Phoenix.Component
   use Gettext, backend: DailyOutputWeb.Gettext
 
-  attr :messages, :list, required: true
-
-  def chat_history(assigns) do
-    ~H"""
-    <div class="chat-history space-y-3">
-      <.chat_bubble :for={msg <- @messages} message={msg} />
-    </div>
-    """
-  end
-
-  attr :message, :map, required: true
-
-  def chat_bubble(assigns) do
-    ~H"""
-    <div class={["chat-bubble-row", if(@message.role == "user", do: "chat-user", else: "chat-ai")]}>
-      <div class="chat-role">
-        {if @message.role == "user", do: gettext("You"), else: gettext("Partner")}
-      </div>
-      <div class={[
-        "chat-bubble",
-        if(@message.role == "user", do: "chat-bubble-user", else: "chat-bubble-ai")
-      ]}>
-        {@message.body}
-      </div>
-    </div>
-    """
-  end
-
   @doc """
   Renders the full conversation as chat bubbles for the live view. User messages that have
   been proofread show their corrections inline via the AnnotatedText hook (clean messages

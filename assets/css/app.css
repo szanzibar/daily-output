@@ -160,26 +160,6 @@ h1, h2, h3 {
   text-transform: uppercase;
 }
 
-/* Stripe pattern utility */
-.bg-stripes {
-  background-image: repeating-linear-gradient(
-    -45deg, transparent, transparent 4px,
-    oklch(88% 0 0) 4px, oklch(88% 0 0) 5px
-  );
-}
-
-.bg-dots {
-  background-image: radial-gradient(circle, oklch(80% 0 0) 1px, transparent 1px);
-  background-size: 12px 12px;
-}
-
-.bg-grid {
-  background-image:
-    linear-gradient(oklch(88% 0 0) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(88% 0 0) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
 /* Thick divider */
 .brutal-hr {
   border: none;

@@ -12,10 +12,6 @@ defmodule DailyOutput.Settings do
     Repo.one(from(c in Config, limit: 1)) || %Config{}
   end
 
-  def get_config! do
-    Repo.one!(from(c in Config, limit: 1))
-  end
-
   def ensure_config do
     case Repo.one(from(c in Config, limit: 1)) do
       nil -> create_config(%{})
@@ -23,7 +19,7 @@ defmodule DailyOutput.Settings do
     end
   end
 
-  def create_config(attrs) do
+  defp create_config(attrs) do
     %Config{}
     |> Config.changeset(attrs)
     |> Repo.insert()

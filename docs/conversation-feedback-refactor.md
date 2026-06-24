@@ -143,6 +143,50 @@ The headline original ask ("score me on improving mistakes *within* the one conv
 - i18n: German filled for all new strings incl. category labels (Genus/Kasus/Verb/…).
 - `mix precommit` green (200 tests + JS).
 
+### Cleanup pass (2026-06-24)
+Whole-codebase dead-code/old-idea sweep (audited with grep-verified findings). Removed ~290
+lines + an empty boilerplate file, `mix precommit` green (197 tests):
+- **Dead functions** (zero non-test callers): `Journal.current_streak/0` (+`count_consecutive_days`,
+  `count_from` — an abandoned streak engine superseded by `FocusTopics.streak_info/0`),
+  `Journal.list_entries/1`, `Journal.change_entry/2`, `FocusTopics.day_kept?/1` +
+  `day_completed?/1`, `Conversations.get_today_conversations/0`, `Conversations.user_message_count/1`,
+  `Conversations.list_messages/1`, `Settings.get_config!/0`. `Settings.create_config` → private.
+  Their tests were removed too.
+- **core_components.ex** 515→358: deleted unused Phoenix-generator components `button/1`,
+  `header/1`, `table/1`, `list/1`, and `translate_errors/2` (only `translate_error/1` is used).
+- **Render unification**: `Show` now uses `chat_log` for the plain (no-feedback) case; deleted
+  the redundant `chat_history/1` + `chat_bubble/1` (their markup is a subset of `chat_log`).
+- **Dead CSS**: removed `.bg-stripes` / `.bg-dots` / `.bg-grid` (zero references).
+- **Boilerplate**: deleted the empty `controllers/page_html.ex` + `page_html/` dir.
+- **Prompt hardening**: added the double-quote ban to the journal `proofread/2` prompt (the
+  other two prompts already had it) — closes the last corruption hole feeding the lenient parser.
+
+Merge decision: **keep `Continue` and `Show` separate** — disjoint event sets and very different
+lifecycles (Continue spawns background AI Tasks + branches versions on mount; Show is read-mostly).
+Merging would yield a fat conditional LiveView for little gain; unifying the *render* path was the
+real win and is done.
+
+### Deferred cleanup candidates (need a decision or a migration — not done)
+- **Retire the `chat_feedback` + `---MSG_BREAK---` legacy batch renderer.** It's the last
+  dual-path renderer, but it's the ONLY way old completed conversations (batch `annotated_text`,
+  no per-message feedback — e.g. dev convos 5–7) show their corrections. Removing it makes those
+  render as plain text (panels still show). Safe to delete once those rows are gone/migrated.
+- **Remove ~93 lines of lenient JSON-recovery in proofreader.ex** (`decode_if_string`,
+  `lenient_parse_json_array`, `lenient_parse_object`, the list/string branches of
+  `decode_focus_result`). Now that all three prompts ban `"`, let it bake, then delete + drop the
+  two recovery tests.
+- **Extract shared CRUD** between `Journal` and `Conversations` (`not_deleted`, soft-delete,
+  `save_feedback`, `version_info`/`get_versions`, latest-per-day, today-record) into a shared
+  module — biggest copy-paste in the contexts.
+- **Extract shared prompt/tool helpers in proofreader.ex** (`feedback_lang/3`, `context_block/1`,
+  `language_conventions_block/1`, `focus_result_schema/0`, `commentary_schema/1`).
+- **Schema columns (need migrations)**: `Entry.duration` (written, never read) and
+  `FocusTopic.source_id` (required + written, never read).
+- **Done-button gating display**: the counter shows `min_exchanges` (5) while the button unlocks
+  at `warmup_exchanges` (2) — coherent behavior, incoherent display.
+- **`assess_conversation` omits the language-conventions block** the other two prompts include —
+  deliberate? (it doesn't correct text, but tips could reference language specifics).
+
 ### Still TODO
 - Full Phase 2 page merge (single LiveView for active+completed, streams, drop `chat_feedback`).
   This is an architectural polish, not a feature gap — `Show` already renders per-message and

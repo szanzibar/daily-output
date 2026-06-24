@@ -158,10 +158,4 @@ defmodule DailyOutput.JournalTest do
       assert Journal.list_recent_entries(14) == []
     end
   end
-
-  describe "current_streak/0" do
-    test "returns 0 with no entries" do
-      assert Journal.current_streak() == 0
-    end
-  end
 end

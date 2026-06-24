@@ -76,6 +76,7 @@ defmodule DailyOutput.AI.Proofreader do
     - Focus on patterns that will help them progress from #{level} toward the next level
 
     IMPORTANT: Write ALL feedback text (annotations, commentary, encouragement) in #{feedback_lang}.
+    In any text NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
     #{context_block}#{focus_block}
     Use the provide_feedback tool to return your response.
     IMPORTANT: The "annotations" and "commentary" fields MUST be JSON arrays, NOT strings.

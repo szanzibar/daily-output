@@ -53,14 +53,6 @@ defmodule DailyOutput.Conversations do
     end
   end
 
-  def list_messages(%Conversation{} = conversation) do
-    from(m in Message,
-      where: m.conversation_id == ^conversation.id,
-      order_by: [asc: m.inserted_at]
-    )
-    |> Repo.all()
-  end
-
   def complete_conversation(%Conversation{} = conversation) do
     conversation
     |> Conversation.changeset(%{completed_at: DateTime.utc_now()})
@@ -178,23 +170,6 @@ defmodule DailyOutput.Conversations do
 
   @doc "Minimum user exchanges that unlock finishing a conversation."
   def warmup_exchanges, do: @warmup_exchanges
-
-  def user_message_count(%Conversation{} = conversation) do
-    from(m in Message,
-      where: m.conversation_id == ^conversation.id and m.role == "user"
-    )
-    |> Repo.aggregate(:count)
-  end
-
-  def get_today_conversations do
-    {today_start, today_end} = Clock.day_range(Clock.today())
-
-    Conversation
-    |> not_deleted()
-    |> where([c], c.inserted_at >= ^today_start and c.inserted_at < ^today_end)
-    |> order_by([c], desc: c.inserted_at)
-    |> Repo.all()
-  end
 
   @doc "Returns the latest conversation for today, if any."
   def get_today_conversation do

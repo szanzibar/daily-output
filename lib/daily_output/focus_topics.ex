@@ -107,12 +107,6 @@ defmodule DailyOutput.FocusTopics do
     end
   end
 
-  @doc "True when `date` counts toward the streak — at least one task done."
-  def day_kept?(date), do: day_status(date) != :none
-
-  @doc "Backwards-compatible check for a fully completed day (both tasks)."
-  def day_completed?(date), do: day_status(date) == :full
-
   @doc "Count of consecutive kept days ending today (freeze-aware)."
   def current_streak, do: streak_info().count
 

@@ -14,16 +14,6 @@ defmodule DailyOutput.Journal do
     from(e in query, where: is_nil(e.deleted_at))
   end
 
-  def list_entries(opts \\ []) do
-    limit = Keyword.get(opts, :limit, 30)
-
-    Entry
-    |> not_deleted()
-    |> order_by([e], desc: e.inserted_at)
-    |> limit(^limit)
-    |> Repo.all()
-  end
-
   @doc """
   Returns the latest entry per day for the last N days, excluding today.
   Groups by date, picks the most recent per day.
@@ -127,10 +117,6 @@ defmodule DailyOutput.Journal do
     |> Repo.update()
   end
 
-  def change_entry(%Entry{} = entry, attrs \\ %{}) do
-    Entry.changeset(entry, attrs)
-  end
-
   def word_count(%Entry{body: nil}), do: 0
 
   def word_count(%Entry{body: body}) do
@@ -156,36 +142,4 @@ defmodule DailyOutput.Journal do
 
   defp count_words(nil), do: 0
   defp count_words(body), do: body |> String.split(~r/\s+/, trim: true) |> length()
-
-  def current_streak do
-    entries =
-      Entry
-      |> not_deleted()
-      |> where([e], not is_nil(e.completed_at))
-      |> select([e], fragment("date(?, 'unixepoch')", e.inserted_at))
-      |> distinct(true)
-      |> order_by([e], desc: e.inserted_at)
-      |> Repo.all()
-
-    count_consecutive_days(entries)
-  end
-
-  defp count_consecutive_days([]), do: 0
-
-  defp count_consecutive_days(dates) do
-    today = Clock.today() |> Date.to_iso8601()
-
-    dates
-    |> Enum.map(&to_string/1)
-    |> count_from(today, 0)
-  end
-
-  defp count_from(dates, expected_date, count) do
-    if expected_date in dates do
-      prev = expected_date |> Date.from_iso8601!() |> Date.add(-1) |> Date.to_iso8601()
-      count_from(dates, prev, count + 1)
-    else
-      count
-    end
-  end
 end

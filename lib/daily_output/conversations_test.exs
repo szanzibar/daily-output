@@ -93,26 +93,6 @@ defmodule DailyOutput.ConversationsTest do
     end
   end
 
-  describe "list_messages/1" do
-    test "returns messages in chronological order" do
-      convo = create_conversation()
-      {:ok, _} = Conversations.add_message(convo, %{role: "user", body: "first"})
-      {:ok, _} = Conversations.add_message(convo, %{role: "assistant", body: "second"})
-      msgs = Conversations.list_messages(convo)
-      assert [%{body: "first"}, %{body: "second"}] = msgs
-    end
-  end
-
-  describe "user_message_count/1" do
-    test "counts only user messages" do
-      convo = create_conversation()
-      {:ok, _} = Conversations.add_message(convo, %{role: "user", body: "a"})
-      {:ok, _} = Conversations.add_message(convo, %{role: "assistant", body: "b"})
-      {:ok, _} = Conversations.add_message(convo, %{role: "user", body: "c"})
-      assert Conversations.user_message_count(convo) == 2
-    end
-  end
-
   describe "complete_conversation/1" do
     test "sets completed_at" do
       convo = create_conversation()
