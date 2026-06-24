@@ -38,6 +38,114 @@ defmodule DailyOutput.AI.ProofreaderTest do
     end
   end
 
+  describe "message_feedback_tool/0" do
+    test "requires annotated_text and annotations, no focus_result or commentary" do
+      tool = Proofreader.message_feedback_tool()
+
+      assert tool.name == "provide_corrections"
+      assert tool.input_schema["required"] == ["annotated_text", "annotations"]
+      refute Map.has_key?(tool.input_schema["properties"], "commentary")
+      refute Map.has_key?(tool.input_schema["properties"], "focus_result")
+    end
+
+    test "each annotation must carry a category from the fixed set" do
+      tool = Proofreader.message_feedback_tool()
+      ann = tool.input_schema["properties"]["annotations"]["items"]
+
+      assert ann["required"] == ["id", "explanation", "category"]
+      assert ann["properties"]["category"]["enum"] == Proofreader.categories()
+      assert "gender" in Proofreader.categories()
+    end
+  end
+
+  describe "assessment_tool/1" do
+    test "is correction-free: no annotated_text or annotations" do
+      tool = Proofreader.assessment_tool(nil)
+
+      assert tool.name == "provide_assessment"
+      refute Map.has_key?(tool.input_schema["properties"], "annotated_text")
+      refute Map.has_key?(tool.input_schema["properties"], "annotations")
+    end
+
+    test "without focus topic, requires only commentary and encouragement" do
+      tool = Proofreader.assessment_tool(nil)
+
+      assert tool.input_schema["required"] == ["commentary", "encouragement"]
+      refute Map.has_key?(tool.input_schema["properties"], "focus_result")
+    end
+
+    test "with focus topic, focus_result is required" do
+      tool = Proofreader.assessment_tool("Nebensatzkonnektoren")
+
+      assert "focus_result" in tool.input_schema["required"]
+      focus_props = tool.input_schema["properties"]["focus_result"]["properties"]
+      assert Map.has_key?(focus_props, "used")
+      assert Map.has_key?(focus_props, "correct")
+      assert Map.has_key?(focus_props, "comment")
+    end
+
+    test "commentary type is constrained to valid values" do
+      tool = Proofreader.assessment_tool(nil)
+      commentary_props = tool.input_schema["properties"]["commentary"]["items"]["properties"]
+      assert commentary_props["type"]["enum"] == ["pattern", "suggestion", "alternative"]
+    end
+
+    test "offers an optional improvement_note field" do
+      tool = Proofreader.assessment_tool(nil)
+      assert Map.has_key?(tool.input_schema["properties"], "improvement_note")
+      refute "improvement_note" in tool.input_schema["required"]
+    end
+  end
+
+  describe "normalize_message_feedback/1" do
+    test "passes through annotated_text and a list of annotations" do
+      input = %{
+        "annotated_text" => "Ich [[1:gehe||ging]] heim.",
+        "annotations" => [%{"id" => 1, "explanation" => "Vergangenheit", "category" => "verb"}]
+      }
+
+      result = Proofreader.normalize_message_feedback(input)
+      assert result["annotated_text"] == "Ich [[1:gehe||ging]] heim."
+      assert [%{"category" => "verb"}] = result["annotations"]
+    end
+
+    test "drops non-map entries from the annotations list" do
+      input = %{
+        "annotated_text" => "Test",
+        "annotations" => [%{"id" => 1, "explanation" => "fix", "category" => "case"}, "junk"]
+      }
+
+      result = Proofreader.normalize_message_feedback(input)
+      assert [%{"id" => 1, "category" => "case"}] = result["annotations"]
+    end
+
+    test "yields no annotations when the field is not a structured list" do
+      # We prevent stringified/mangled output up front; if it slips through we show
+      # nothing for that message rather than rendering garbage.
+      input = %{"annotated_text" => "Test", "annotations" => ~s([{"id":1}])}
+      assert Proofreader.normalize_message_feedback(input)["annotations"] == []
+    end
+
+    test "defaults missing fields to empty" do
+      result = Proofreader.normalize_message_feedback(%{})
+      assert result == %{"annotated_text" => "", "annotations" => []}
+    end
+
+    test "nil stays nil" do
+      assert Proofreader.normalize_message_feedback(nil) == nil
+    end
+
+    test "coerces an unknown category to \"other\"" do
+      result =
+        Proofreader.normalize_message_feedback(%{
+          "annotated_text" => "...",
+          "annotations" => [%{"id" => 1, "explanation" => "x", "category" => "bogus"}]
+        })
+
+      assert [%{"category" => "other"}] = result["annotations"]
+    end
+  end
+
   describe "normalize_feedback/1" do
     test "passes through complete feedback" do
       input = %{
@@ -75,6 +183,39 @@ defmodule DailyOutput.AI.ProofreaderTest do
       assert result["commentary"] == []
       assert result["encouragement"] == ""
       refute Map.has_key?(result, "focus_result")
+      refute Map.has_key?(result, "improvement")
+      refute Map.has_key?(result, "improvement_note")
+    end
+
+    test "preserves the improvement signal and its narrative when present" do
+      input = %{
+        "annotated_text" => "",
+        "annotations" => [],
+        "commentary" => [],
+        "encouragement" => "Gut!",
+        "improvement_note" => "Du hast die Genus-Fehler nicht wiederholt!",
+        "improvement" => %{
+          "resolved_categories" => ["gender"],
+          "repeated_categories" => [],
+          "early_rate" => 20.0,
+          "late_rate" => 5.0
+        }
+      }
+
+      result = Proofreader.normalize_feedback(input)
+      assert result["improvement_note"] == "Du hast die Genus-Fehler nicht wiederholt!"
+      assert result["improvement"]["resolved_categories"] == ["gender"]
+      assert result["improvement"]["late_rate"] == 5.0
+    end
+
+    test "drops an empty improvement_note" do
+      result =
+        Proofreader.normalize_feedback(%{
+          "encouragement" => "x",
+          "improvement_note" => ""
+        })
+
+      refute Map.has_key?(result, "improvement_note")
     end
 
     test "decodes stringified commentary from API response" do

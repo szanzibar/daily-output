@@ -19,12 +19,11 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
             focus_topic_id: original.focus_topic_id
           })
 
-        # Copy all messages to the new conversation
+        # Copy all messages — including their per-message corrections — so the new
+        # version keeps the feedback already earned instead of starting blank.
         msgs =
           Enum.map(original.messages, fn msg ->
-            {:ok, new_msg} =
-              Conversations.add_message(new_convo, %{role: msg.role, body: msg.body})
-
+            {:ok, new_msg} = Conversations.copy_message(new_convo, msg)
             new_msg
           end)
 
@@ -45,8 +44,10 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
           end,
         input: "",
         ai_loading: false,
+        correcting_ids: MapSet.new(),
         feedback: nil,
         feedback_loading: false,
+        improvement: nil,
         error: nil
       )
 
@@ -78,12 +79,23 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
       {:noreply, socket}
     else
       conversation = socket.assigns.conversation
+      prior = socket.assigns.messages
 
       case Conversations.add_message(conversation, %{role: "user", body: message}) do
         {:ok, msg} ->
-          messages = socket.assigns.messages ++ [msg]
-          socket = assign(socket, messages: messages, input: "", ai_loading: true)
-          request_ai_response(socket, messages)
+          messages = prior ++ [msg]
+
+          socket =
+            socket
+            |> assign(messages: messages, input: "", ai_loading: true)
+            |> update(:correcting_ids, &MapSet.put(&1, msg.id))
+
+          # The partner reply and the per-message correction run in parallel: the reply
+          # keeps the chat flowing while corrections land on the just-sent bubble.
+          start_partner_reply(socket, messages)
+          start_message_correction(socket, msg, prior)
+
+          {:noreply, socket}
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, gettext("Could not save message."))}
@@ -98,26 +110,32 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
   def handle_event("complete", _params, socket) do
     conversation = socket.assigns.conversation
     config = socket.assigns.config
-    messages = socket.assigns.messages
+    focus_topic_text = socket.assigns.focus_topic_text
 
-    user_text =
-      messages
-      |> Enum.filter(&(&1.role == "user"))
-      |> Enum.map(& &1.body)
-      |> Enum.join("\n---MSG_BREAK---\n")
+    # Messages were already corrected inline as they were sent, so completion does NOT
+    # re-correct: it runs one end-of-conversation review (focus check + future focus areas
+    # + encouragement), grounded in the corrections each message already carries.
+    transcript =
+      Enum.map(socket.assigns.messages, &%{role: &1.role, body: &1.body, feedback: &1.feedback})
 
-    socket = assign(socket, conversation: conversation, feedback_loading: true)
+    # The "did you stop repeating mistakes?" axis is computed deterministically here; we both
+    # store it for the score panel and feed it to the AI so it can narrate the progress.
+    improvement = Conversations.mistake_analysis(socket.assigns.messages)
+
+    socket =
+      assign(socket, conversation: conversation, feedback_loading: true, improvement: improvement)
 
     pid = self()
 
     Task.start(fn ->
       result =
-        AI.proofread(user_text,
+        AI.assess_conversation(transcript,
           target_language: config.target_language || "de",
           native_language: config.native_language || "en",
           language_level: config.language_level || "B2",
           prompt_context: config.prompt_context || "",
-          focus_topic: socket.assigns.focus_topic_text
+          focus_topic: focus_topic_text,
+          improvement: improvement
         )
 
       send(pid, {:feedback_loaded, result})
@@ -128,7 +146,8 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
 
   @impl true
   def handle_info(:request_ai_reply, socket) do
-    request_ai_response(socket, socket.assigns.messages)
+    start_partner_reply(socket, socket.assigns.messages)
+    {:noreply, socket}
   end
 
   def handle_info(:request_ai_opener, socket) do
@@ -169,7 +188,32 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
      )}
   end
 
+  # A per-message correction came back. Corrections are best-effort: on success we update
+  # just that bubble; on failure we simply drop the "checking" state without disrupting chat.
+  def handle_info({:message_corrected, msg_id, {:ok, feedback}}, socket) do
+    socket = update(socket, :correcting_ids, &MapSet.delete(&1, msg_id))
+
+    case Conversations.save_message_feedback(msg_id, feedback) do
+      {:ok, updated} ->
+        messages =
+          Enum.map(socket.assigns.messages, fn m -> if m.id == msg_id, do: updated, else: m end)
+
+        {:noreply, assign(socket, messages: messages)}
+
+      {:error, _} ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_info({:message_corrected, msg_id, {:error, _reason}}, socket) do
+    {:noreply, update(socket, :correcting_ids, &MapSet.delete(&1, msg_id))}
+  end
+
   def handle_info({:feedback_loaded, {:ok, feedback}}, socket) do
+    # Merge in the deterministic improvement signal computed at completion (the AI only
+    # narrates it); normalize_feedback preserves the "improvement" map for the score panel.
+    feedback = Map.put(feedback, "improvement", socket.assigns.improvement)
+
     case Conversations.save_feedback(socket.assigns.conversation, feedback) do
       {:ok, conversation} ->
         if should_complete_conversation?(conversation) do
@@ -240,7 +284,7 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
     end
   end
 
-  defp request_ai_response(socket, messages) do
+  defp start_partner_reply(socket, messages) do
     config = socket.assigns.config
     pid = self()
 
@@ -256,7 +300,30 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
       send(pid, {:ai_response, result})
     end)
 
-    {:noreply, socket}
+    :ok
+  end
+
+  # Proofreads the just-sent message. `prior` (the turns before it, including the partner
+  # message being answered) is passed as context so the model judges it in context.
+  defp start_message_correction(socket, msg, prior) do
+    config = socket.assigns.config
+    pid = self()
+    context_messages = Enum.map(prior, &%{role: &1.role, body: &1.body})
+
+    Task.start(fn ->
+      result =
+        AI.proofread_message(msg.body,
+          target_language: config.target_language || "de",
+          native_language: config.native_language || "en",
+          language_level: config.language_level || "B2",
+          prompt_context: config.prompt_context || "",
+          context_messages: context_messages
+        )
+
+      send(pid, {:message_corrected, msg.id, result})
+    end)
+
+    :ok
   end
 
   defp user_count(messages) do
@@ -304,12 +371,12 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
       <.retro_loader :if={@feedback_loading} message={gettext("Your conversation is being reviewed")} />
 
       <div :if={!@feedback_loading}>
-        <.chat_history messages={@messages} />
+        <.chat_log messages={@messages} correcting_ids={@correcting_ids} />
 
         <div :if={@ai_loading} class="chat-bubble-row chat-ai mt-3">
           <div class="chat-role">{gettext("Partner")}</div>
           <div class="chat-bubble chat-bubble-ai">
-            <span class="chat-typing" aria-label={gettext("Partner is typing")}>
+            <span class="chat-mini-blocks" aria-label={gettext("Partner is typing")}>
               <span></span><span></span><span></span>
             </span>
           </div>

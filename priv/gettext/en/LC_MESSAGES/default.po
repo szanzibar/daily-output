@@ -1078,3 +1078,88 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Write"
 msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Looks good"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "checking"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Errors / 100 words"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Not enough data yet — keep chatting!"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Progress this conversation"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Still working on"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Stopped repeating"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "agreement"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "case"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "gender"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "other"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "preposition"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "punctuation"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "spelling"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "verb"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "vocabulary"
+msgstr ""
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "word order"
+msgstr ""

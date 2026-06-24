@@ -410,6 +410,47 @@ h1, h2, h3 {
   box-shadow: 3px 3px 0 var(--color-ink);
 }
 
+/* Per-message correction states */
+.chat-checking {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink);
+}
+
+/* Small colourful bouncing blocks — the playful "working on it" cue */
+.chat-mini-blocks {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.chat-mini-blocks span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1.5px solid var(--color-ink);
+  animation: typing-bounce 1s ease-in-out infinite;
+}
+
+.chat-mini-blocks span:nth-child(1) { background: oklch(55% 0.22 264); }
+.chat-mini-blocks span:nth-child(2) { background: oklch(75% 0.20 0); animation-delay: 0.15s; }
+.chat-mini-blocks span:nth-child(3) { background: oklch(88% 0.18 90); animation-delay: 0.3s; }
+
+.chat-perfect {
+  margin-top: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-correct-add);
+}
+
 /* Chat input — auto-expanding textarea */
 .chat-input {
   font-family: var(--font-mono);
@@ -423,6 +464,10 @@ h1, h2, h3 {
   resize: none;
   outline: none;
   overflow: hidden;
+  /* Wrap long lines instead of scrolling horizontally (and break unbroken words). */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  width: 100%;
   min-height: 2.75rem;
   max-height: 12rem;
 }
@@ -439,24 +484,6 @@ h1, h2, h3 {
   align-items: center;
   gap: 1rem;
 }
-
-/* Typing indicator — partner is composing a reply */
-.chat-typing {
-  display: inline-flex;
-  gap: 0.3rem;
-  align-items: center;
-}
-
-.chat-typing span {
-  display: block;
-  width: 0.55rem;
-  height: 0.55rem;
-  background: currentColor;
-  animation: typing-bounce 1s ease-in-out infinite;
-}
-
-.chat-typing span:nth-child(2) { animation-delay: 0.15s; }
-.chat-typing span:nth-child(3) { animation-delay: 0.3s; }
 
 @keyframes typing-bounce {
   0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }

@@ -761,14 +761,14 @@ msgstr "Eintrag konnte nicht gestartet werden."
 #: lib/daily_output_web/live/conversation_live/continue.ex
 #, elixir-autogen, elixir-format
 msgid "Focus topic not used yet. Continue and resubmit to complete the day."
-msgstr ""
+msgstr "Fokusthema noch nicht verwendet. Mach weiter und reiche erneut ein, um den Tag abzuschließen."
 "Fokus-Thema noch nicht verwendet. Mach weiter und reiche erneut ein, um den "
 "Tag abzuschließen."
 
 #: lib/daily_output_web/live/entry_live/edit.ex
 #, elixir-autogen, elixir-format
 msgid "Focus topic not used yet. Edit and resubmit to complete the day."
-msgstr ""
+msgstr "Fokusthema noch nicht verwendet. Bearbeite und reiche erneut ein, um den Tag abzuschließen."
 "Fokus-Thema noch nicht verwendet. Bearbeite und reiche erneut ein, um den Tag "
 "abzuschließen."
 
@@ -1039,7 +1039,7 @@ msgstr "Geschriebene Wörter"
 #: lib/daily_output_web/components/layouts.ex
 #, elixir-autogen, elixir-format
 msgid "Menu"
-msgstr ""
+msgstr "Menü"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -1082,3 +1082,88 @@ msgstr "Noch kein Eintrag heute."
 #, elixir-autogen, elixir-format
 msgid "Write"
 msgstr "Schreiben"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Looks good"
+msgstr "Sieht gut aus"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "checking"
+msgstr "wird geprüft"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Errors / 100 words"
+msgstr "Fehler / 100 Wörter"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Not enough data yet — keep chatting!"
+msgstr "Noch nicht genug Daten — chatte weiter!"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Progress this conversation"
+msgstr "Fortschritt in diesem Gespräch"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Still working on"
+msgstr "Daran arbeiten wir noch"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "Stopped repeating"
+msgstr "Nicht mehr wiederholt"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "agreement"
+msgstr "Kongruenz"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "case"
+msgstr "Kasus"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "gender"
+msgstr "Genus"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "other"
+msgstr "Sonstiges"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "preposition"
+msgstr "Präposition"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "punctuation"
+msgstr "Zeichensetzung"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "spelling"
+msgstr "Rechtschreibung"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "verb"
+msgstr "Verb"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "vocabulary"
+msgstr "Wortschatz"
+
+#: lib/daily_output_web/components/conversation_components.ex
+#, elixir-autogen, elixir-format
+msgid "word order"
+msgstr "Wortstellung"

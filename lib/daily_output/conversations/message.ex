@@ -7,6 +7,9 @@ defmodule DailyOutput.Conversations.Message do
   schema "messages" do
     field :role, :string
     field :body, :string
+    # Per-message proofreading: %{"annotated_text" => ..., "annotations" => [...]}.
+    # Only set on user messages, and only once their correction has come back.
+    field :feedback, :map
 
     belongs_to :conversation, Conversation
 
@@ -18,5 +21,10 @@ defmodule DailyOutput.Conversations.Message do
     |> cast(attrs, [:conversation_id, :role, :body])
     |> validate_required([:conversation_id, :role, :body])
     |> validate_inclusion(:role, ["user", "assistant"])
+  end
+
+  @doc "Changeset for attaching (already-normalized) per-message correction feedback."
+  def feedback_changeset(message, feedback) do
+    change(message, feedback: feedback)
   end
 end

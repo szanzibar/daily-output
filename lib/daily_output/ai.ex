@@ -25,6 +25,10 @@ defmodule DailyOutput.AI do
 
   defdelegate proofread(text, opts), to: Proofreader
 
+  defdelegate proofread_message(text, opts), to: Proofreader
+
+  defdelegate assess_conversation(messages, opts), to: Proofreader
+
   defdelegate conversation_respond(messages, opts), to: ConversationPartner, as: :respond
 
   defdelegate conversation_open(topic, opts), to: ConversationPartner, as: :open

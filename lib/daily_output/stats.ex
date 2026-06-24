@@ -3,12 +3,15 @@ defmodule DailyOutput.Stats do
   Aggregates the feedback the app already produces into progress metrics — the
   "I'm actually improving" view.
 
-  Every completed entry and conversation carries `feedback["annotated_text"]`, where
-  corrections are marked `[[id:original||corrected]]`. From that single field we derive,
-  uniformly across entries and conversations:
+  Corrections are marked `[[N:original||corrected]]`. From that we derive, uniformly across
+  entries and conversations:
 
     * **words written** — the user's text with markers reduced to what they wrote
     * **corrections** — the number of correction markers
+
+  Journal entries carry one `feedback["annotated_text"]`. Conversations are corrected
+  per-message, so we sum each user message's own `feedback` (older conversations that
+  predate per-message corrections fall back to the conversation-level blob).
 
   The headline metric is **corrections per 100 words by week** — when it trends down,
   you're getting better.
@@ -50,11 +53,11 @@ defmodule DailyOutput.Stats do
   # ── internals ──────────────────────────────────────────
 
   defp samples do
-    rows(Entry, :entry) ++ rows(Conversation, :conversation)
+    entry_rows() ++ conversation_rows()
   end
 
-  defp rows(schema, type) do
-    from(r in schema,
+  defp entry_rows do
+    from(r in Entry,
       where: is_nil(r.deleted_at) and not is_nil(r.feedback) and not is_nil(r.completed_at),
       select: {r.inserted_at, r.feedback}
     )
@@ -63,12 +66,52 @@ defmodule DailyOutput.Stats do
       text = feedback["annotated_text"] || ""
 
       %{
-        type: type,
+        type: :entry,
         date: Clock.to_logical_date(inserted_at),
         words: word_count(text),
         corrections: correction_count(text)
       }
     end)
+  end
+
+  defp conversation_rows do
+    from(c in Conversation,
+      where: is_nil(c.deleted_at) and not is_nil(c.feedback) and not is_nil(c.completed_at),
+      preload: [:messages]
+    )
+    |> Repo.all()
+    |> Enum.map(fn convo ->
+      {words, corrections} = conversation_counts(convo)
+
+      %{
+        type: :conversation,
+        date: Clock.to_logical_date(convo.inserted_at),
+        words: words,
+        corrections: corrections
+      }
+    end)
+  end
+
+  # New conversations are corrected per-message: sum each user message's own feedback
+  # (using its body when a message has no feedback). Conversations predating per-message
+  # corrections fall back to the conversation-level annotated_text blob.
+  defp conversation_counts(convo) do
+    user_messages = Enum.filter(convo.messages, &(&1.role == "user"))
+    legacy_text = (convo.feedback || %{})["annotated_text"] || ""
+
+    cond do
+      Enum.any?(user_messages, &is_map(&1.feedback)) ->
+        Enum.reduce(user_messages, {0, 0}, fn msg, {words, corrections} ->
+          text = (is_map(msg.feedback) && msg.feedback["annotated_text"]) || msg.body || ""
+          {words + word_count(text), corrections + correction_count(text)}
+        end)
+
+      legacy_text != "" ->
+        {word_count(legacy_text), correction_count(legacy_text)}
+
+      true ->
+        {sum(user_messages, &word_count(&1.body || "")), 0}
+    end
   end
 
   # Weekly buckets of the last `weeks` rolling 7-day windows, oldest → newest.

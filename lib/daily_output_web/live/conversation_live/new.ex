@@ -172,7 +172,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
               data-no-enter-submit
               data-persist-key="convo-first-message"
               placeholder="z.B. Ich habe gestern einen tollen Film gesehen!"
-              class="input border-3 border-ink w-full font-mono text-sm min-h-[4.5rem] resize-none overflow-hidden"
+              class="chat-input"
             ></textarea>
             <button type="submit" class="brutal-btn self-end px-4 py-2 bg-ink text-paper text-sm">
               {gettext("Go")}
@@ -195,7 +195,7 @@ defmodule DailyOutputWeb.ConversationLive.New do
               data-no-enter-submit
               data-persist-key="convo-open-topic"
               placeholder="z.B. travel plans / Reisepläne"
-              class="input border-3 border-ink w-full font-mono text-sm min-h-[4.5rem] resize-none overflow-hidden"
+              class="chat-input"
             ></textarea>
             <button type="submit" class="brutal-btn self-end px-4 py-2 bg-ink text-paper text-sm">
               {gettext("Go")}

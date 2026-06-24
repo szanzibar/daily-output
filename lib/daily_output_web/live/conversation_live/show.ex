@@ -27,6 +27,9 @@ defmodule DailyOutputWeb.ConversationLive.Show do
           ),
         conversation: conversation,
         messages: messages,
+        # New conversations carry corrections per-message; legacy ones only have the
+        # batch blob in conversation.feedback (rendered via chat_feedback).
+        has_message_feedback: Enum.any?(messages, &(&1.role == "user" and is_map(&1.feedback))),
         version: version,
         total_versions: total,
         versions: versions,
@@ -236,14 +239,25 @@ defmodule DailyOutputWeb.ConversationLive.Show do
               "Conversation with Corrections"
             )}
           </h2>
-          <.chat_feedback messages={@messages} feedback={@conversation.feedback} />
+          <.chat_log :if={@has_message_feedback} messages={@messages} />
+          <.chat_feedback
+            :if={!@has_message_feedback}
+            messages={@messages}
+            feedback={@conversation.feedback}
+          />
         </div>
 
-        <%!-- Focus Result --%>
+        <%!-- Two-axis score: focus point + within-conversation improvement --%>
         <.focus_result_box
           :if={@conversation.feedback["focus_result"]}
           result={@conversation.feedback["focus_result"]}
           focus_mastered={@focus_mastered}
+        />
+
+        <.improvement_panel
+          :if={@conversation.feedback["improvement"]}
+          improvement={@conversation.feedback["improvement"]}
+          note={@conversation.feedback["improvement_note"]}
         />
 
         <div

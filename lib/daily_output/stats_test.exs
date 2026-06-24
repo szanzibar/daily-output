@@ -67,6 +67,39 @@ defmodule DailyOutput.StatsTest do
       assert o.active_days == 0
       assert is_nil(List.last(o.trend).error_rate)
     end
+
+    test "conversations are counted from per-message corrections, not a batch blob" do
+      today = Clock.today()
+
+      {:ok, convo} = Conversations.create_conversation(%{topic: "x", language: "de"})
+
+      {:ok, user_msg} =
+        Conversations.add_message(convo, %{role: "user", body: "Ich gehe heim"})
+
+      {:ok, _} = Conversations.add_message(convo, %{role: "assistant", body: "Schön!"})
+
+      {:ok, _} =
+        Conversations.save_message_feedback(user_msg, %{
+          "annotated_text" => "Ich [[1:gehe||ging]] heim",
+          "annotations" => [%{"id" => 1, "explanation" => "x", "category" => "verb"}]
+        })
+
+      at = DateTime.new!(today, ~T[12:00:00], "Etc/UTC")
+
+      {1, _} =
+        Repo.update_all(
+          from(r in Conversation, where: r.id == ^convo.id),
+          # Assessment-shaped feedback: no annotated_text blob to fall back on.
+          set: [inserted_at: at, completed_at: at, feedback: %{"encouragement" => "x"}]
+        )
+
+      o = Stats.overview()
+
+      # "Ich gehe heim" → 3 words, 1 correction (counted from the message, not the convo).
+      assert o.conversations == 1
+      assert o.total_words == 3
+      assert List.last(o.trend).error_rate == 33.3
+    end
   end
 
   defp complete(schema, date, annotated_text) do
