@@ -34,6 +34,12 @@ defmodule DailyOutputWeb.Layouts do
 
           <nav class="hidden peer-checked:flex sm:flex basis-full sm:basis-auto flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
             <.link
+              navigate={~p"/flashcards"}
+              class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-cyan no-underline text-center"
+            >
+              {gettext("Cards")}
+            </.link>
+            <.link
               navigate={~p"/focus"}
               class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-blue no-underline text-center"
             >

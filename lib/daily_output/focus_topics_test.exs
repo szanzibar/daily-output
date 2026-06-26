@@ -1,9 +1,10 @@
 defmodule DailyOutput.FocusTopicsTest do
   use DailyOutput.DataCase
 
-  alias DailyOutput.{Clock, Conversations, FocusTopics, Journal, Repo}
+  alias DailyOutput.{Clock, Conversations, FocusTopics, Journal, Repo, Settings}
   alias DailyOutput.Conversations.Conversation
   alias DailyOutput.Journal.Entry
+  alias DailyOutput.Flashcards.{Card, Review}
 
   defp create_topic(attrs \\ %{}) do
     {:ok, topic} =
@@ -243,6 +244,35 @@ defmodule DailyOutput.FocusTopicsTest do
   defp full_day_on(date) do
     complete_entry_on(date)
     complete_conversation_on(date)
+    complete_flashcards_on(date)
+  end
+
+  # A full flashcard day = the day's quota (set to 1 here) of distinct cards reviewed.
+  defp complete_flashcards_on(date) do
+    ensure_flashcard_target(1)
+
+    {:ok, card} =
+      %Card{}
+      |> Card.changeset(%{
+        target_text: "Satz #{System.unique_integer([:positive])}",
+        native_text: "Sentence",
+        language: "de",
+        state: "review",
+        due_at: DateTime.add(DateTime.utc_now(), 86_400) |> DateTime.truncate(:second)
+      })
+      |> Repo.insert()
+
+    {:ok, review} =
+      %Review{} |> Review.changeset(%{card_id: card.id, result: true}) |> Repo.insert()
+
+    at = DateTime.new!(date, ~T[12:00:00], "Etc/UTC") |> DateTime.truncate(:second)
+    {1, _} = Repo.update_all(from(r in Review, where: r.id == ^review.id), set: [inserted_at: at])
+    :ok
+  end
+
+  defp ensure_flashcard_target(n) do
+    {:ok, config} = Settings.ensure_config()
+    {:ok, _} = Settings.update_config(config, %{flashcards_per_day: n})
   end
 
   defp backdate({:ok, record}, schema, date) do

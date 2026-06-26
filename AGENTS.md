@@ -31,6 +31,10 @@ These are the standards that matter here. They override generic habits.
 - **Polished, fun, enticing — but never noisy.** Micro-interactions and clear feedback
   (toasts auto-dismiss and the timer resets so the latest action shows). Loading and
   empty states are designed, not afterthoughts.
+- **Inputs never lose what you typed.** Every text field/textarea the user types into must
+  survive a refresh or leaving and coming back. Use the `AutoExpand` hook with a stable
+  `data-persist-key` (restores on mount, saves on input, clears on submit) — see the chat
+  composer and the flashcard answer box. Never ship an input that drops draft text.
 - **Everything user-facing is translated.** Wrap strings in `gettext(...)`. After adding
   or changing strings: `mix gettext.extract && mix gettext.merge priv/gettext`, then fill
   in the German (`de`) `msgstr`s and clear any `fuzzy` flags (fuzzy/empty fall back to the

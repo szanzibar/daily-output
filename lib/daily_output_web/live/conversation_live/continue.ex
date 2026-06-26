@@ -1,7 +1,7 @@
 defmodule DailyOutputWeb.ConversationLive.Continue do
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.{Conversations, Settings, AI, FocusTopics}
+  alias DailyOutput.{Conversations, Settings, AI, FocusTopics, Flashcards}
   alias DailyOutputWeb.Celebration
 
   @impl true
@@ -195,6 +195,9 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
 
     case Conversations.save_message_feedback(msg_id, feedback) do
       {:ok, updated} ->
+        # Best-effort: turn this message's corrections into flashcards in the background.
+        Task.start(fn -> Flashcards.ingest_correction(:message, msg_id, feedback) end)
+
         messages =
           Enum.map(socket.assigns.messages, fn m -> if m.id == msg_id, do: updated, else: m end)
 

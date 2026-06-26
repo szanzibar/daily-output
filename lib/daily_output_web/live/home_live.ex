@@ -5,6 +5,7 @@ defmodule DailyOutputWeb.HomeLive do
   alias DailyOutput.Conversations
   alias DailyOutput.Settings
   alias DailyOutput.FocusTopics
+  alias DailyOutput.Flashcards
 
   @impl true
   def mount(_params, _session, socket) do
@@ -14,6 +15,7 @@ defmodule DailyOutputWeb.HomeLive do
     recent_days = build_recent_days()
     streak = FocusTopics.streak_info()
     challenge = FocusTopics.daily_challenge_status()
+    flashcard_progress = Flashcards.today_progress()
 
     {:ok,
      assign(socket,
@@ -23,11 +25,14 @@ defmodule DailyOutputWeb.HomeLive do
        today_conversation: today_conversation,
        recent_days: recent_days,
        streak: streak,
-       challenge: challenge
+       challenge: challenge,
+       flashcard_progress: flashcard_progress
      )}
   end
 
   defp build_recent_days do
+    card_dates = Flashcards.completed_dates()
+
     entries =
       Journal.list_recent_entries(14)
       |> Enum.map(fn e ->
@@ -67,7 +72,8 @@ defmodule DailyOutputWeb.HomeLive do
     |> Enum.map(fn {date, items} ->
       day_done =
         Enum.any?(items, &(&1.type == :entry and &1.completed)) and
-          Enum.any?(items, &(&1.type == :conversation and &1.completed))
+          Enum.any?(items, &(&1.type == :conversation and &1.completed)) and
+          MapSet.member?(card_dates, date)
 
       {date, items, day_done}
     end)
@@ -121,7 +127,7 @@ defmodule DailyOutputWeb.HomeLive do
           <span class="font-black uppercase text-sm tracking-widest">{gettext("Day complete!")}</span>
         </div>
 
-        <%!-- Entry row --%>
+        <%!-- Entry row: the whole box is clickable (continue if started, otherwise write). --%>
         <.link
           :if={@today_entry}
           navigate={
@@ -132,51 +138,36 @@ defmodule DailyOutputWeb.HomeLive do
           }
           class="block border-b-2 border-ink p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
         >
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div class="flex items-center gap-2">
-              <span class={[
-                "text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink",
-                challenge_bg(@challenge.entry)
-              ]}>
-                {challenge_icon(@challenge.entry)}
-              </span>
-              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">
-                {gettext("Entry")}
-              </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
-              <span
-                :if={@challenge.entry != :none}
-                class="brutal-btn px-3 py-1 block-purple text-xs"
-                onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/entries/new'"
-              >
-                {gettext("+ New")}
-              </span>
-            </div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class={[
+              "text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink",
+              challenge_bg(@challenge.entry)
+            ]}>
+              {challenge_icon(@challenge.entry)}
+            </span>
+            <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">
+              {gettext("Entry")}
+            </span>
           </div>
           <p class="font-mono text-sm text-base-content/70 line-clamp-2">{@today_entry.body}</p>
         </.link>
-        <div :if={is_nil(@today_entry)} class="border-b-2 border-ink p-4">
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink bg-base-200">
-                ○
-              </span>
-              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">
-                {gettext("Entry")}
-              </span>
-            </div>
-            <.link
-              navigate={~p"/entries/new"}
-              class="brutal-btn px-4 py-1.5 block-yellow text-xs no-underline"
-            >
-              {gettext("Write")} &rarr;
-            </.link>
+        <.link
+          :if={is_nil(@today_entry)}
+          navigate={~p"/entries/new"}
+          class="block border-b-2 border-ink p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink bg-base-200">
+              ○
+            </span>
+            <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-yellow">
+              {gettext("Entry")}
+            </span>
           </div>
           <p class="text-sm font-mono text-base-content/40">{gettext("No entry yet today.")}</p>
-        </div>
+        </.link>
 
-        <%!-- Conversation row --%>
+        <%!-- Conversation row: the whole box is clickable (continue if started, otherwise start). --%>
         <.link
           :if={@today_conversation}
           navigate={
@@ -187,57 +178,69 @@ defmodule DailyOutputWeb.HomeLive do
           }
           class="block p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
         >
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div class="flex items-center gap-2">
-              <span class={[
-                "text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink",
-                challenge_bg(@challenge.conversation)
-              ]}>
-                {challenge_icon(@challenge.conversation)}
-              </span>
-              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">
-                {gettext("Conversation")}
-              </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
-              <span
-                :if={@challenge.conversation != :none}
-                class="brutal-btn px-3 py-1 block-purple text-xs"
-                onclick="event.preventDefault(); event.stopPropagation(); window.location.href='/conversations/new'"
-              >
-                {gettext("+ New")}
-              </span>
-            </div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class={[
+              "text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink",
+              challenge_bg(@challenge.conversation)
+            ]}>
+              {challenge_icon(@challenge.conversation)}
+            </span>
+            <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">
+              {gettext("Conversation")}
+            </span>
           </div>
           <p class="font-mono text-sm text-base-content/70 line-clamp-2">
             {@today_conversation.topic || "(Freestyle)"}
           </p>
         </.link>
-        <div :if={is_nil(@today_conversation)} class="p-4">
-          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink bg-base-200">
-                ○
-              </span>
-              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">
-                {gettext("Conversation")}
-              </span>
-            </div>
-            <.link
-              navigate={~p"/conversations/new"}
-              class="brutal-btn px-4 py-1.5 block-pink text-xs no-underline"
-            >
-              {gettext("Start")} &rarr;
-            </.link>
+        <.link
+          :if={is_nil(@today_conversation)}
+          navigate={~p"/conversations/new"}
+          class="block p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink bg-base-200">
+              ○
+            </span>
+            <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-pink">
+              {gettext("Conversation")}
+            </span>
           </div>
           <p class="text-sm font-mono text-base-content/40">
             {gettext("No conversation yet today.")}
           </p>
-        </div>
+        </.link>
+
+        <%!-- Flashcards row --%>
+        <.link
+          navigate={~p"/flashcards"}
+          class="block border-t-2 border-ink p-4 hover:bg-base-200 no-underline text-base-content cursor-pointer"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class={[
+                "text-sm font-mono font-bold px-2 py-0.5 border-2 border-ink",
+                challenge_bg(@challenge.flashcards)
+              ]}>
+                {challenge_icon(@challenge.flashcards)}
+              </span>
+              <span class="text-sm font-black uppercase px-2 py-0.5 border-2 border-ink block-cyan">
+                {gettext("Cards")}
+              </span>
+            </div>
+            <span class="text-sm font-mono font-bold">
+              <%= if @flashcard_progress.goal > 0 do %>
+                {@flashcard_progress.done} / {@flashcard_progress.goal}
+              <% else %>
+                {gettext("Caught up")}
+              <% end %>
+            </span>
+          </div>
+        </.link>
       </div>
 
       <p class="text-xs font-mono text-base-content/50 text-center">
-        {gettext("One task keeps your streak alive. Both makes it a full day.")}
+        {gettext("One task keeps your streak alive. All three make it a full day.")}
       </p>
 
       <%!-- === PAST DAYS === --%>

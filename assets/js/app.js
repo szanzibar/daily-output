@@ -296,6 +296,29 @@ function celebrate(detail = {}) {
 
 window.addEventListener("phx:celebrate", e => celebrate(e.detail))
 
+// A quick, lightweight confetti pop for small wins (a correct flashcard). Fewer blocks,
+// short and snappy, no headline, and self-removing so consecutive answers each get one.
+function confettiBurst() {
+  const overlay = document.createElement("div")
+  overlay.className = "celebrate-overlay"
+  overlay.setAttribute("aria-hidden", "true")
+
+  for (let i = 0; i < 16; i++) {
+    const block = document.createElement("span")
+    block.className = `celebrate-block ${CELEBRATE_COLORS[i % CELEBRATE_COLORS.length]}`
+    block.style.left = `${Math.random() * 100}vw`
+    block.style.animationDelay = `${Math.random() * 0.15}s`
+    block.style.animationDuration = `${0.9 + Math.random() * 0.5}s`
+    block.style.setProperty("--spin", `${(Math.random() < 0.5 ? -1 : 1) * (360 + Math.random() * 360)}deg`)
+    overlay.appendChild(block)
+  }
+
+  document.body.appendChild(overlay)
+  setTimeout(() => overlay.remove(), 1500)
+}
+
+window.addEventListener("phx:confetti", () => confettiBurst())
+
 topbar.config({barColors: {0: "#000"}, shadowColor: "rgba(0, 0, 0, .5)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => {

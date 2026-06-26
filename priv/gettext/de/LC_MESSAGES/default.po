@@ -36,11 +36,6 @@ msgstr "(Gespräch)"
 msgid "(empty)"
 msgstr "(leer)"
 
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "+ New"
-msgstr "+ Neu"
-
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "A daily language practice journal with AI feedback."
@@ -142,6 +137,8 @@ msgid "Built with"
 msgstr "Erstellt mit"
 
 #: lib/daily_output_web/live/entry_live/edit.ex
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -164,6 +161,7 @@ msgid "Configured"
 msgstr "Konfiguriert"
 
 #: lib/daily_output_web/live/conversation_live/show.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Continue"
 msgstr "Weiterführen"
@@ -256,6 +254,7 @@ msgstr "Tag abgeschlossen!"
 
 #: lib/daily_output_web/live/conversation_live/show.ex
 #: lib/daily_output_web/live/entry_live/show.ex
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Löschen"
@@ -275,6 +274,7 @@ msgstr "Entwurf"
 
 #: lib/daily_output_web/live/entry_live/edit.ex
 #: lib/daily_output_web/live/entry_live/show.ex
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #, elixir-autogen, elixir-format
 msgid "Edit"
 msgstr "Bearbeiten"
@@ -530,6 +530,8 @@ msgid "Really delete?"
 msgstr "Wirklich löschen?"
 
 #: lib/daily_output_web/live/entry_live/edit.ex
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr "Speichern"
@@ -565,11 +567,6 @@ msgstr "Etwas ist schiefgelaufen!"
 #, elixir-autogen, elixir-format
 msgid "Speak without a focus topic"
 msgstr "Ohne Fokus-Thema sprechen"
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "Start"
-msgstr "Starten"
 
 #: lib/daily_output_web/components/journal_components.ex
 #, elixir-autogen, elixir-format
@@ -917,11 +914,6 @@ msgstr "Test-Benachrichtigung — Push funktioniert."
 
 #: lib/daily_output_web/live/home_live.ex
 #, elixir-autogen, elixir-format
-msgid "One task keeps your streak alive. Both makes it a full day."
-msgstr "Eine Aufgabe hält deine Serie am Leben. Beide machen den Tag komplett."
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
 msgid "Streak freezes — each one saves a missed day"
 msgstr "Serien-Freezes — jeder rettet einen verpassten Tag"
 
@@ -1032,11 +1024,6 @@ msgstr "Ziel!"
 #, elixir-autogen, elixir-format
 msgid "No entry yet today."
 msgstr "Noch kein Eintrag heute."
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "Write"
-msgstr "Schreiben"
 
 #: lib/daily_output_web/components/conversation_components.ex
 #, elixir-autogen, elixir-format
@@ -1174,3 +1161,151 @@ msgstr "Test an dieses Gerät gesendet."
 #, elixir-autogen, elixir-format
 msgid "Turn off here"
 msgstr "Hier ausschalten"
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} card"
+msgid_plural "%{count} cards"
+msgstr[0] "%{count} Karte"
+msgstr[1] "%{count} Karten"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "All caught up!"
+msgstr "Alles erledigt!"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "All done for today!"
+msgstr "Für heute alles erledigt!"
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Answer (target)"
+msgstr "Antwort (Zielsprache)"
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#, elixir-autogen, elixir-format
+msgid "Card deleted."
+msgstr "Karte gelöscht."
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Card updated."
+msgstr "Karte aktualisiert."
+
+#: lib/daily_output_web/components/layouts.ex
+#: lib/daily_output_web/live/home_live.ex
+#, elixir-autogen, elixir-format
+msgid "Cards"
+msgstr "Karten"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Cards per day"
+msgstr "Karten pro Tag"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#: lib/daily_output_web/live/home_live.ex
+#, elixir-autogen, elixir-format
+msgid "Caught up"
+msgstr "Erledigt"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Check"
+msgstr "Prüfen"
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#, elixir-autogen, elixir-format
+msgid "Delete this card?"
+msgstr "Diese Karte löschen?"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Enter"
+msgstr "Enter"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Flashcards"
+msgstr "Karteikarten"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Home"
+msgstr "Start"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "How many cards make a full flashcard day. New cards are added automatically to fill this target."
+msgstr "Wie viele Karten einen vollen Karteikarten-Tag ausmachen. Neue Karten werden automatisch hinzugefügt, um dieses Ziel zu erreichen."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Manage"
+msgstr "Verwalten"
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#, elixir-autogen, elixir-format
+msgid "Manage Flashcards"
+msgstr "Karteikarten verwalten"
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#, elixir-autogen, elixir-format
+msgid "No flashcards yet. They are created from your corrections."
+msgstr "Noch keine Karteikarten. Sie entstehen aus deinen Korrekturen."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing due right now. Come back tomorrow!"
+msgstr "Im Moment ist nichts fällig. Komm morgen wieder!"
+
+#: lib/daily_output_web/live/home_live.ex
+#, elixir-autogen, elixir-format
+msgid "One task keeps your streak alive. All three make it a full day."
+msgstr "Eine Aufgabe hält deine Serie am Leben. Alle drei machen den Tag komplett."
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Prompt (native)"
+msgstr "Vorgabe (Muttersprache)"
+
+#: lib/daily_output_web/live/flashcard_live/manage.ex
+#, elixir-autogen, elixir-format
+msgid "Study"
+msgstr "Üben"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Today"
+msgstr "Heute"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Translate"
+msgstr "Übersetzen"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Type in %{language}..."
+msgstr "Auf %{language} eingeben..."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "You studied %{count} card(s) today."
+msgstr "Du hast heute %{count} Karte(n) geübt."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Edit card"
+msgstr "Karte bearbeiten"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Not quite — here's the fix"
+msgstr "Nicht ganz — so ist es richtig"

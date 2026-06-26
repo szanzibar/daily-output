@@ -1,7 +1,7 @@
 defmodule DailyOutputWeb.EntryLive.Edit do
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.{Journal, Settings, AI, FocusTopics}
+  alias DailyOutput.{Journal, Settings, AI, FocusTopics, Flashcards}
   alias DailyOutputWeb.Celebration
 
   @default_timer_minutes 5
@@ -218,6 +218,9 @@ defmodule DailyOutputWeb.EntryLive.Edit do
   def handle_info({:feedback_loaded, {:ok, feedback}, entry}, socket) do
     case Journal.save_feedback(entry, feedback) do
       {:ok, entry} ->
+        # Best-effort: turn this entry's corrections into flashcards in the background.
+        Task.start(fn -> Flashcards.ingest_correction(:entry, entry.id, feedback) end)
+
         if should_complete_entry?(entry) do
           case Journal.complete_entry(entry) do
             {:ok, completed_entry} ->

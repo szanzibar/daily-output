@@ -10,6 +10,7 @@ defmodule DailyOutput.Settings.Config do
     field :language_level, :string, default: "B2"
     field :prompt_context, :string, default: ""
     field :min_exchanges, :integer, default: 5
+    field :flashcards_per_day, :integer, default: 15
     field :ui_language, :string, default: "auto"
     field :timezone, :string
     field :reminder_time, :time, default: ~T[20:00:00]
@@ -28,6 +29,7 @@ defmodule DailyOutput.Settings.Config do
       :language_level,
       :prompt_context,
       :min_exchanges,
+      :flashcards_per_day,
       :ui_language,
       :timezone,
       :reminder_time,
@@ -35,6 +37,7 @@ defmodule DailyOutput.Settings.Config do
     ])
     |> validate_required([:timer_minutes, :target_language, :native_language])
     |> validate_number(:timer_minutes, greater_than: 0, less_than_or_equal_to: 60)
+    |> validate_number(:flashcards_per_day, greater_than: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:ui_language, ~w(auto en de))
   end
 end

@@ -322,6 +322,9 @@ h1, h2, h3 {
   font-variant-numeric: tabular-nums;
 }
 
+/* The flashcard reveal reuses the inline-correction styles above
+   (.correction-deleted / .correction-added) for its unified word-level diff. */
+
 /* Streak fire */
 .streak-active {
   color: oklch(65% 0.22 50);

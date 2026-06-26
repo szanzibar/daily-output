@@ -259,6 +259,31 @@ defmodule DailyOutputWeb.SettingsLive do
           </div>
         </div>
 
+        <%!-- Flashcards --%>
+        <div class="border-4 border-ink p-5">
+          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 block-cyan"></span> {gettext("Flashcards")}
+          </h2>
+          <p class="text-sm text-base-content/60 mb-3">
+            {gettext(
+              "How many cards make a full flashcard day. New cards are added automatically to fill this target."
+            )}
+          </p>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+            <label for={@form[:flashcards_per_day].id} class="label">
+              {gettext("Cards per day")}
+            </label>
+            <span></span>
+            <.input
+              field={@form[:flashcards_per_day]}
+              type="number"
+              min="1"
+              max="100"
+              class="w-24 input font-mono text-lg border-3 border-ink"
+            />
+          </div>
+        </div>
+
         <%!-- Languages --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">

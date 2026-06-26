@@ -5,6 +5,7 @@ defmodule DailyOutput.FocusTopics do
 
   import Ecto.Query
   alias DailyOutput.Clock
+  alias DailyOutput.Flashcards
   alias DailyOutput.Repo
   alias DailyOutput.FocusTopics.FocusTopic
   alias DailyOutput.Journal.Entry
@@ -79,30 +80,32 @@ defmodule DailyOutput.FocusTopics do
 
   # ── Daily Challenge & Streak ─────────────────────────
 
-  # You earn one streak freeze per N full days (both tasks), capped, so a missed day
+  # You earn one streak freeze per N full days (all three tasks), capped, so a missed day
   # doesn't reset a hard-won streak to zero.
   @full_days_per_freeze 5
   @max_freezes 3
 
   @doc """
-  Today's challenge status. Entry/conversation complete = has feedback AND completed_at.
-  This allows entries with feedback but unmet focus requirements to remain drafts.
+  Today's challenge status. A task is complete when it's actually done: entry/conversation
+  have feedback AND completed_at; flashcards have met the day's quota. `all_done` (a full
+  day) requires all three.
   """
   def daily_challenge_status do
-    {entry_done, convo_done} = day_completions(Clock.today())
+    {entry_done, convo_done, cards_done} = day_completions(Clock.today())
 
     %{
       entry: if(entry_done, do: :complete, else: :none),
       conversation: if(convo_done, do: :complete, else: :none),
-      all_done: entry_done and convo_done
+      flashcards: if(cards_done, do: :complete, else: :none),
+      all_done: entry_done and convo_done and cards_done
     }
   end
 
-  @doc "The tier reached on `date`: :full (both tasks), :partial (one), or :none."
+  @doc "The tier reached on `date`: :full (all three tasks), :partial (one or two), or :none."
   def day_status(date) do
     case day_completions(date) do
-      {true, true} -> :full
-      {false, false} -> :none
+      {true, true, true} -> :full
+      {false, false, false} -> :none
       _ -> :partial
     end
   end
@@ -122,20 +125,27 @@ defmodule DailyOutput.FocusTopics do
   @doc """
   Streak details with tiered days and streak freezes.
 
-  A day counts if it's at least *partial* (one task done). Missed days are bridged by
-  *freezes*: you earn one per #{@full_days_per_freeze} full days (capped at
-  #{@max_freezes}), and each missed day bridged in your current run spends one. Today
-  not being done yet never zeroes the streak — it just leaves it at risk.
+  A day counts if it's at least *partial* (one of entry/conversation/flashcards done).
+  A *full* day is all three. Missed days are bridged by *freezes*: you earn one per
+  #{@full_days_per_freeze} full days (capped at #{@max_freezes}), and each missed day
+  bridged in your current run spends one. Today not being done yet never zeroes the
+  streak — it just leaves it at risk.
 
   Returns `%{count, freezes_available, today_status}`.
   """
   def streak_info do
     entry_dates = completed_logical_dates(Entry)
     convo_dates = completed_logical_dates(Conversation)
+    card_dates = Flashcards.completed_dates()
 
-    full_days = MapSet.intersection(entry_dates, convo_dates) |> MapSet.size()
+    full_days =
+      entry_dates
+      |> MapSet.intersection(convo_dates)
+      |> MapSet.intersection(card_dates)
+      |> MapSet.size()
+
     earned = min(@max_freezes, div(full_days, @full_days_per_freeze))
-    kept = MapSet.union(entry_dates, convo_dates)
+    kept = entry_dates |> MapSet.union(convo_dates) |> MapSet.union(card_dates)
 
     today = Clock.today()
     start = if MapSet.member?(kept, today), do: today, else: Date.add(today, -1)
@@ -145,7 +155,7 @@ defmodule DailyOutput.FocusTopics do
     %{
       count: count,
       freezes_available: max(0, earned - consumed),
-      today_status: status_from(entry_dates, convo_dates, today)
+      today_status: status_from(entry_dates, convo_dates, card_dates, today)
     }
   end
 
@@ -173,10 +183,13 @@ defmodule DailyOutput.FocusTopics do
     end
   end
 
-  # {entry_done?, conversation_done?} for a single logical day.
+  # {entry_done?, conversation_done?, flashcards_done?} for a single logical day.
   defp day_completions(date) do
     {start, stop} = Clock.day_range(date)
-    {completed_exists?(Entry, start, stop), completed_exists?(Conversation, start, stop)}
+    cards_done = MapSet.member?(Flashcards.completed_dates(), date)
+
+    {completed_exists?(Entry, start, stop), completed_exists?(Conversation, start, stop),
+     cards_done}
   end
 
   defp completed_exists?(schema, start, stop) do
@@ -200,13 +213,12 @@ defmodule DailyOutput.FocusTopics do
     |> MapSet.new()
   end
 
-  defp status_from(entry_dates, convo_dates, date) do
-    entry? = MapSet.member?(entry_dates, date)
-    convo? = MapSet.member?(convo_dates, date)
+  defp status_from(entry_dates, convo_dates, card_dates, date) do
+    done = Enum.count([entry_dates, convo_dates, card_dates], &MapSet.member?(&1, date))
 
     cond do
-      entry? and convo? -> :full
-      entry? or convo? -> :partial
+      done == 3 -> :full
+      done >= 1 -> :partial
       true -> :none
     end
   end

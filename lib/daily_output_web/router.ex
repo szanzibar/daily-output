@@ -23,6 +23,8 @@ defmodule DailyOutputWeb.Router do
       live "/conversations/new", ConversationLive.New
       live "/conversations/:id", ConversationLive.Show
       live "/conversations/:id/continue", ConversationLive.Continue
+      live "/flashcards", FlashcardLive.Study
+      live "/flashcards/manage", FlashcardLive.Manage
       live "/focus", FocusTopicsLive
       live "/progress", ProgressLive
       live "/settings", SettingsLive
