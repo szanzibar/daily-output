@@ -20,7 +20,7 @@ defmodule DailyOutput.Application do
           {Phoenix.PubSub, name: DailyOutput.PubSub},
           # Start to serve requests, typically the last entry
           DailyOutputWeb.Endpoint
-        ] ++ reminders_child()
+        ] ++ reminders_child() ++ backfill_child()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -41,6 +41,21 @@ defmodule DailyOutput.Application do
   defp reminders_child do
     if Application.get_env(:daily_output, :start_reminders, true) do
       [DailyOutput.Reminders]
+    else
+      []
+    end
+  end
+
+  # TEMPORARY: seeds flashcards from existing corrections on first boot (no-op once the
+  # deck is non-empty). Runs in a background Task so it never blocks startup. Delete this
+  # together with DailyOutput.Flashcards.Backfill once it has run in your environment.
+  defp backfill_child do
+    if Application.get_env(:daily_output, :auto_backfill_flashcards, true) do
+      [
+        Supervisor.child_spec({Task, &DailyOutput.Flashcards.Backfill.maybe_run/0},
+          restart: :temporary
+        )
+      ]
     else
       []
     end

@@ -18,8 +18,12 @@ config :daily_output, DailyOutputWeb.Endpoint,
   server: false
 
 # Don't run the reminder scheduler during tests, and don't auto-generate VAPID
-# keys — the push tests assert on the unconfigured state.
-config :daily_output, start_reminders: false, ensure_vapid: false
+# keys — the push tests assert on the unconfigured state. Also skip the one-time
+# flashcard backfill so tests don't make AI calls on boot.
+config :daily_output,
+  start_reminders: false,
+  ensure_vapid: false,
+  auto_backfill_flashcards: false
 
 # Print only warnings and errors during test
 config :logger, level: :warning
