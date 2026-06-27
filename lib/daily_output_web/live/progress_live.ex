@@ -10,18 +10,22 @@ defmodule DailyOutputWeb.ProgressLive do
     # Scale for the trend bars; guard against an all-zero/nil week set.
     rates = overview.trend |> Enum.map(& &1.error_rate) |> Enum.reject(&is_nil/1)
     trend_max = Enum.max([1.0 | rates])
+    time_max = Enum.max([1 | Enum.map(overview.time_days, & &1.total)])
 
     {:ok,
      assign(socket,
        page_title: gettext("Progress"),
        overview: overview,
        trend_max: trend_max,
-       has_data: overview.total_words > 0
+       time_max: time_max,
+       has_data: overview.total_words > 0 or overview.total_time > 0
      )}
   end
 
   defp bar_height(nil, _max), do: 0
   defp bar_height(rate, max), do: max(round(rate / max * 100), 4)
+
+  defp dur(seconds), do: Stats.format_duration(seconds)
 
   @impl true
   def render(assigns) do
@@ -55,6 +59,51 @@ defmodule DailyOutputWeb.ProgressLive do
             value={@overview.conversations}
             class="bg-base-100"
           />
+          <.stat
+            label={gettext("Total time")}
+            value={Stats.format_duration(@overview.total_time)}
+            class="block-pink"
+          />
+        </div>
+
+        <%!-- Time tracking --%>
+        <div class="border-4 border-ink p-5">
+          <h2 class="text-lg font-black uppercase mb-1 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 block-cyan"></span> {gettext("Time")}
+          </h2>
+          <p class="text-xs font-mono text-base-content/60 mb-4">
+            {gettext("Active time per section. Today, then the last 7 days.")}
+          </p>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <.recap label={gettext("Entry today")} value={dur(@overview.time_today.entry)} />
+            <.recap label={gettext("Convo today")} value={dur(@overview.time_today.conversation)} />
+            <.recap label={gettext("Cards today")} value={dur(@overview.time_today.flashcards)} />
+            <.recap label={gettext("Total today")} value={dur(@overview.time_today.total)} />
+          </div>
+
+          <div class="flex items-end gap-1 sm:gap-2 h-40">
+            <div
+              :for={day <- @overview.time_days}
+              class="flex-1 flex flex-col items-center gap-1 h-full justify-end"
+            >
+              <span class="text-[10px] sm:text-xs font-mono font-bold">
+                {if day.total > 0, do: dur(day.total), else: "·"}
+              </span>
+              <div
+                class={[
+                  "w-full border-2 border-ink",
+                  if(day.total > 0, do: "block-cyan", else: "bg-base-200")
+                ]}
+                style={"height: #{bar_height(day.total, @time_max)}%"}
+                title={Calendar.strftime(day.date, "%d.%m")}
+              >
+              </div>
+              <span class="text-[10px] font-mono text-base-content/50">
+                {Calendar.strftime(day.date, "%a")}
+              </span>
+            </div>
+          </div>
         </div>
 
         <%!-- Error-rate trend --%>

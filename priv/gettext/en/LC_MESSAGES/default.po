@@ -1170,11 +1170,6 @@ msgstr[1] ""
 msgid "All caught up!"
 msgstr ""
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "All done for today!"
-msgstr ""
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
@@ -1203,7 +1198,6 @@ msgstr ""
 msgid "Cards per day"
 msgstr ""
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #: lib/daily_output_web/live/home_live.ex
 #, elixir-autogen, elixir-format
 msgid "Caught up"
@@ -1304,4 +1298,84 @@ msgstr ""
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Not quite — here's the fix"
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "AI suggested a clearer translation — review and save."
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Active time per section. Today, then the last 7 days."
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Ask AI for a clearer translation"
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Asking AI for a clearer translation"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Cards today"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Convo today"
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Could not get an AI suggestion. Please try again."
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Daily goal complete!"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Entry today"
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Goal complete"
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Goal reached — keep going for extra practice, or finish anytime."
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Keep going"
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Nice work!"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format, fuzzy
+msgid "Time"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Total time"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Total today"
 msgstr ""

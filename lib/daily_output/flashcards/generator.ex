@@ -110,6 +110,73 @@ defmodule DailyOutput.Flashcards.Generator do
     end
   end
 
+  @doc """
+  Suggests a clearer replacement pair for an existing card the learner can't answer from
+  the prompt alone. Keeps the meaning, but makes the native prompt point unambiguously to
+  the target sentence. Returns `{:ok, %{"target_text", "native_text"}}` or `{:error, _}`.
+  """
+  def improve(card, opts) do
+    target = Keyword.fetch!(opts, :target_language)
+    native = Keyword.fetch!(opts, :native_language)
+    level = Keyword.get(opts, :language_level, "B2")
+    profile = LanguageProfile.resolve(target)
+    native_name = LanguageProfile.resolve(native).language_name
+
+    conventions_block =
+      if profile.conventions == [],
+        do: "",
+        else:
+          "\n\nConventions for #{profile.prompt_name} (target_text MUST follow these):\n#{LanguageProfile.conventions_block(profile)}\n"
+
+    system = """
+    You are improving ONE #{profile.language_name} flashcard for a #{native_name} speaker
+    (CEFR level #{level}). The learner can't tell, from the #{native_name} prompt alone, what
+    #{profile.language_name} sentence is wanted — the pair is too ambiguous or the translation
+    is too loose.#{conventions_block}
+
+    Produce a single, clearer card with the SAME meaning and topic:
+    - "target_text" = a natural, correct #{profile.language_name} sentence (level #{level}, one
+      clear canonical phrasing).
+    - "native_text" = a #{native_name} translation that points clearly and unambiguously to that
+      exact #{profile.language_name} sentence. It is fine to make the #{native_name} a little more
+      explicit or literal so the learner can derive the target, as long as it stays grammatical
+      and natural enough to read.
+
+    Return exactly one card via the provide_flashcards tool.
+    """
+
+    user_content = """
+    Current card:
+    #{profile.language_name}: #{card.target_text}
+    #{native_name}: #{card.native_text}
+    """
+
+    with {:ok, client} <- AI.client() do
+      case AI.chat(client,
+             system: system,
+             messages: [%{role: "user", content: user_content}],
+             tools: [flashcards_tool()],
+             tool_choice: %{type: "tool", name: "provide_flashcards"},
+             max_tokens: 512
+           ) do
+        {:ok, %{"content" => content}} ->
+          case Enum.find(content, &(&1["type"] == "tool_use")) do
+            %{"input" => %{"cards" => [_ | _] = cards}} ->
+              case normalize_cards(cards) do
+                [pair | _] -> {:ok, pair}
+                [] -> {:error, :empty}
+              end
+
+            _ ->
+              {:error, :no_tool_response}
+          end
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
   defp format_mistakes([]), do: "(none)"
 
   defp format_mistakes(mistakes) do

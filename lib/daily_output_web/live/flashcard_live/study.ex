@@ -1,7 +1,7 @@
 defmodule DailyOutputWeb.FlashcardLive.Study do
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.{Flashcards, FocusTopics, Settings}
+  alias DailyOutput.{Flashcards, FocusTopics, Settings, Stats}
   alias DailyOutput.AI.LanguageProfile
   alias DailyOutputWeb.Celebration
 
@@ -10,9 +10,8 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
 
   @impl true
   def mount(_params, _session, socket) do
-    target = Flashcards.daily_target()
-    queue = Flashcards.due_today(target)
     config = Settings.get_config()
+    target = Flashcards.daily_target()
     target_name = LanguageProfile.resolve(config.target_language || "de").language_name
 
     socket =
@@ -20,12 +19,16 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
       |> assign(
         page_title: gettext("Flashcards"),
         target_language_name: target_name,
+        target: target,
         progress: Flashcards.today_progress(),
         input: "",
         diff: nil,
-        edit_form: nil
+        edit_form: nil,
+        more_available: false,
+        # If the day is already fully done, don't re-fire the day celebration mid-session.
+        day_celebrated: FocusTopics.daily_challenge_status().all_done
       )
-      |> load_card(queue)
+      |> load_card(Flashcards.due_today(target))
 
     {:ok, socket}
   end
@@ -36,7 +39,14 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   end
 
   defp load_card(socket, []) do
-    assign(socket, current: nil, queue: [], phase: :done, input: "", diff: nil)
+    assign(socket,
+      current: nil,
+      queue: [],
+      phase: :done,
+      input: "",
+      diff: nil,
+      more_available: Flashcards.due_today(socket.assigns.target) != []
+    )
   end
 
   @impl true
@@ -48,10 +58,14 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     {:ok, updated} = Flashcards.review(card, if(correct?, do: :pass, else: :fail))
     socket = assign(socket, progress: Flashcards.today_progress())
 
+    # If this review just completed the whole day, fire the big celebration once.
+    {socket, day_completed?} = maybe_celebrate_day(socket)
+
     if correct? do
-      # A brief, fun green celebration with a confetti pop, then auto-advance.
       Process.send_after(self(), :advance_after_correct, @correct_pause_ms)
-      {:noreply, socket |> assign(phase: :correct) |> push_event("confetti", %{})}
+      # A small confetti pop for the win — unless the big day celebration already fired.
+      socket = if day_completed?, do: socket, else: push_event(socket, "confetti", %{})
+      {:noreply, assign(socket, phase: :correct)}
     else
       # Show what didn't match and re-drill this card later in the session.
       {:noreply,
@@ -65,6 +79,10 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
 
   def handle_event("continue", _params, socket) do
     {:noreply, advance(socket)}
+  end
+
+  def handle_event("study_more", _params, socket) do
+    {:noreply, load_card(socket, Flashcards.due_today(socket.assigns.target))}
   end
 
   # Fix a bad card on the spot (e.g. an inexact translation) without leaving the session.
@@ -101,6 +119,20 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     end
   end
 
+  # Ask the AI for a clearer translation pair when the prompt is too hard to answer.
+  def handle_event("ai_improve", _params, socket) do
+    card = socket.assigns.current
+    pid = self()
+    Task.start(fn -> send(pid, {:ai_pair, Flashcards.suggest_pair(card)}) end)
+    {:noreply, assign(socket, phase: :improving)}
+  end
+
+  # Accumulated active time on this page, pushed by the TimeTracker hook.
+  def handle_event("track_time", %{"section" => section, "seconds" => seconds}, socket) do
+    Stats.track(section, seconds)
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info(:advance_after_correct, socket) do
     # Guard against a stale tick if the phase changed (e.g. the user navigated away).
@@ -109,23 +141,34 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
       else: {:noreply, socket}
   end
 
-  defp advance(socket) do
-    socket = load_card(socket, socket.assigns.queue)
-    if socket.assigns.phase == :done, do: maybe_celebrate(socket), else: socket
+  # AI suggestion came back: drop into the edit form pre-filled with it for review.
+  def handle_info({:ai_pair, {:ok, pair}}, socket) do
+    form = to_form(Flashcards.change_card(socket.assigns.current, pair))
+
+    {:noreply,
+     socket
+     |> assign(phase: :editing, edit_form: form)
+     |> put_flash(:info, gettext("AI suggested a clearer translation — review and save."))}
   end
 
-  # Finishing cards may complete the whole day — fire the shared celebration if so.
-  defp maybe_celebrate(socket) do
-    if socket.assigns.progress.complete? do
-      challenge = FocusTopics.daily_challenge_status()
-      streak = FocusTopics.streak_info()
+  def handle_info({:ai_pair, {:error, _reason}}, socket) do
+    {:noreply,
+     socket
+     |> assign(phase: :revealed)
+     |> put_flash(:error, gettext("Could not get an AI suggestion. Please try again."))}
+  end
 
-      Celebration.maybe_push(
-        socket,
-        Celebration.after_completion(challenge.all_done, streak.count)
-      )
+  defp advance(socket), do: load_card(socket, socket.assigns.queue)
+
+  # Fire the shared day-complete / streak celebration the moment a review completes the
+  # whole day (no matter which task was last). Returns {socket, fired?}.
+  defp maybe_celebrate_day(socket) do
+    if not socket.assigns.day_celebrated and FocusTopics.daily_challenge_status().all_done do
+      streak = FocusTopics.streak_info()
+      socket = Celebration.maybe_push(socket, Celebration.after_completion(true, streak.count))
+      {assign(socket, day_celebrated: true), true}
     else
-      socket
+      {socket, false}
     end
   end
 
@@ -133,6 +176,10 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   def render(assigns) do
     ~H"""
     <div class="max-w-2xl mx-auto space-y-5">
+      <%!-- Tracks active time on this page; flushed to the server periodically. --%>
+      <div id="flashcard-time-tracker" phx-hook="TimeTracker" data-section="flashcards" class="hidden">
+      </div>
+
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
           {gettext("Flashcards")}
@@ -158,10 +205,12 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
           <.card_correct card={@current} />
         <% :revealed -> %>
           <.card_reveal card={@current} diff={@diff} />
+        <% :improving -> %>
+          <.card_improving card={@current} />
         <% :editing -> %>
           <.card_edit card={@current} form={@edit_form} />
         <% :done -> %>
-          <.session_done progress={@progress} />
+          <.session_done progress={@progress} more_available={@more_available} />
       <% end %>
     </div>
     """
@@ -174,15 +223,18 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   defp progress_bar(assigns) do
     ~H"""
     <div class="border-4 border-ink p-3">
-      <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center justify-between mb-2 gap-2">
         <span class="text-xs font-mono uppercase tracking-widest">{gettext("Today")}</span>
-        <span class="text-xs font-mono font-bold">
-          <%= if @progress.goal > 0 do %>
-            {@progress.done} / {@progress.goal}
-          <% else %>
-            {gettext("Caught up")}
-          <% end %>
-        </span>
+        <%= if @progress.complete? do %>
+          <span
+            data-role="goal-complete"
+            class="text-[10px] font-mono font-black uppercase px-2 py-0.5 border-2 border-ink block-green"
+          >
+            ✓ {gettext("Goal complete")}
+          </span>
+        <% else %>
+          <span class="text-xs font-mono font-bold">{@progress.done} / {@progress.goal}</span>
+        <% end %>
       </div>
       <div class="h-4 border-2 border-ink bg-base-200">
         <div
@@ -191,6 +243,9 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
         >
         </div>
       </div>
+      <p :if={@progress.complete?} class="text-[10px] font-mono text-base-content/50 mt-1">
+        {gettext("Goal reached — keep going for extra practice, or finish anytime.")}
+      </p>
     </div>
     """
   end
@@ -257,19 +312,30 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     ~H"""
     <div class="space-y-4" phx-window-keydown="continue" phx-key="Enter">
       <%!-- Keep the English prompt visible so you can see why your answer was wrong. The
-           pencil lets you fix a bad card (e.g. an inexact translation) on the spot. --%>
+           sparkles ask the AI for a clearer translation; the pencil edits the card. --%>
       <div class="border-4 border-ink block-yellow p-4 sm:p-5">
         <div class="flex items-start justify-between gap-3">
           <p class="text-xl sm:text-2xl font-black leading-tight text-ink">{@card.native_text}</p>
-          <button
-            type="button"
-            phx-click="edit"
-            title={gettext("Edit card")}
-            aria-label={gettext("Edit card")}
-            class="shrink-0 text-ink/50 hover:text-ink p-1"
-          >
-            <.icon name="hero-pencil-square" class="w-5 h-5" />
-          </button>
+          <div class="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              phx-click="ai_improve"
+              title={gettext("Ask AI for a clearer translation")}
+              aria-label={gettext("Ask AI for a clearer translation")}
+              class="text-ink/50 hover:text-ink p-1"
+            >
+              <.icon name="hero-sparkles" class="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              phx-click="edit"
+              title={gettext("Edit card")}
+              aria-label={gettext("Edit card")}
+              class="text-ink/50 hover:text-ink p-1"
+            >
+              <.icon name="hero-pencil-square" class="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -293,6 +359,17 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
         <span class="text-xs font-mono opacity-70">({gettext("Enter")})</span>
       </button>
     </div>
+    """
+  end
+
+  attr :card, :map, required: true
+
+  defp card_improving(assigns) do
+    ~H"""
+    <div class="border-4 border-ink block-yellow p-4 sm:p-5">
+      <p class="text-xl sm:text-2xl font-black leading-tight text-ink">{@card.native_text}</p>
+    </div>
+    <.retro_loader message={gettext("Asking AI for a clearer translation")} />
     """
   end
 
@@ -337,13 +414,21 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   end
 
   attr :progress, :map, required: true
+  attr :more_available, :boolean, required: true
 
   defp session_done(assigns) do
     ~H"""
     <div class="border-4 border-ink block-green p-8 text-center space-y-3">
       <p class="text-5xl">{if @progress.done > 0, do: "🎉", else: "✓"}</p>
       <h2 class="text-2xl font-black uppercase tracking-tighter">
-        {if @progress.done > 0, do: gettext("All done for today!"), else: gettext("All caught up!")}
+        <%= cond do %>
+          <% @progress.complete? and @progress.done > 0 -> %>
+            {gettext("Daily goal complete!")}
+          <% @progress.done > 0 -> %>
+            {gettext("Nice work!")}
+          <% true -> %>
+            {gettext("All caught up!")}
+        <% end %>
       </h2>
       <p class="font-mono text-sm">
         <%= if @progress.done > 0 do %>
@@ -352,9 +437,18 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
           {gettext("Nothing due right now. Come back tomorrow!")}
         <% end %>
       </p>
-      <.link navigate={~p"/"} class="brutal-btn inline-block px-6 py-3 block-yellow no-underline mt-2">
-        {gettext("Home")} &rarr;
-      </.link>
+      <div class="flex flex-wrap gap-2 justify-center pt-2">
+        <button
+          :if={@more_available}
+          phx-click="study_more"
+          class="brutal-btn px-6 py-3 block-blue"
+        >
+          {gettext("Keep going")} &rarr;
+        </button>
+        <.link navigate={~p"/"} class="brutal-btn inline-block px-6 py-3 block-yellow no-underline">
+          {gettext("Home")} &rarr;
+        </.link>
+      </div>
     </div>
     """
   end

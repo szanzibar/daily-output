@@ -7,7 +7,12 @@ defmodule DailyOutputWeb.FlashcardLive.Manage do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(page_title: gettext("Manage Flashcards"), editing_id: nil, form: nil)
+     |> assign(
+       page_title: gettext("Manage Flashcards"),
+       editing_id: nil,
+       improving_id: nil,
+       form: nil
+     )
      |> load_cards()}
   end
 
@@ -47,6 +52,35 @@ defmodule DailyOutputWeb.FlashcardLive.Manage do
      |> assign(editing_id: nil, form: nil)
      |> load_cards()
      |> put_flash(:info, gettext("Card deleted."))}
+  end
+
+  # Ask the AI for a clearer translation pair, then open the edit form pre-filled with it.
+  def handle_event("ai_improve", %{"id" => id}, socket) do
+    card = Flashcards.get_card!(id)
+    pid = self()
+    Task.start(fn -> send(pid, {:ai_pair, card.id, Flashcards.suggest_pair(card)}) end)
+    {:noreply, assign(socket, improving_id: card.id)}
+  end
+
+  @impl true
+  def handle_info({:ai_pair, id, {:ok, pair}}, socket) do
+    card = Flashcards.get_card!(id)
+
+    {:noreply,
+     socket
+     |> assign(
+       editing_id: id,
+       improving_id: nil,
+       form: to_form(Flashcards.change_card(card, pair))
+     )
+     |> put_flash(:info, gettext("AI suggested a clearer translation — review and save."))}
+  end
+
+  def handle_info({:ai_pair, _id, {:error, _reason}}, socket) do
+    {:noreply,
+     socket
+     |> assign(improving_id: nil)
+     |> put_flash(:error, gettext("Could not get an AI suggestion. Please try again."))}
   end
 
   @impl true
@@ -124,22 +158,44 @@ defmodule DailyOutputWeb.FlashcardLive.Manage do
                 </span>
               </div>
               <div class="flex gap-2 shrink-0">
+                <span
+                  :if={@improving_id == card.id}
+                  class="brutal-btn p-2 block-cyan"
+                  aria-label={gettext("Ask AI for a clearer translation")}
+                >
+                  <.icon name="hero-arrow-path" class="w-4 h-4 animate-spin" />
+                </span>
+                <button
+                  :if={@improving_id != card.id}
+                  type="button"
+                  phx-click="ai_improve"
+                  phx-value-id={card.id}
+                  title={gettext("Ask AI for a clearer translation")}
+                  aria-label={gettext("Ask AI for a clearer translation")}
+                  class="brutal-btn p-2 block-cyan"
+                >
+                  <.icon name="hero-sparkles" class="w-4 h-4" />
+                </button>
                 <button
                   type="button"
                   phx-click="edit"
                   phx-value-id={card.id}
-                  class="brutal-btn px-3 py-1.5 block-blue text-xs"
+                  title={gettext("Edit card")}
+                  aria-label={gettext("Edit card")}
+                  class="brutal-btn p-2 block-blue"
                 >
-                  {gettext("Edit")}
+                  <.icon name="hero-pencil-square" class="w-4 h-4" />
                 </button>
                 <button
                   type="button"
                   phx-click="delete"
                   phx-value-id={card.id}
                   data-confirm={gettext("Delete this card?")}
-                  class="brutal-btn px-3 py-1.5 block-red text-xs"
+                  title={gettext("Delete")}
+                  aria-label={gettext("Delete")}
+                  class="brutal-btn p-2 block-red"
                 >
-                  {gettext("Delete")}
+                  <.icon name="hero-trash" class="w-4 h-4" />
                 </button>
               </div>
             </div>

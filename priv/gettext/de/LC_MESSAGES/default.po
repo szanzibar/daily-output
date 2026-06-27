@@ -1174,11 +1174,6 @@ msgstr[1] "%{count} Karten"
 msgid "All caught up!"
 msgstr "Alles erledigt!"
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "All done for today!"
-msgstr "Für heute alles erledigt!"
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
@@ -1207,7 +1202,6 @@ msgstr "Karten"
 msgid "Cards per day"
 msgstr "Karten pro Tag"
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #: lib/daily_output_web/live/home_live.ex
 #, elixir-autogen, elixir-format
 msgid "Caught up"
@@ -1309,3 +1303,83 @@ msgstr "Karte bearbeiten"
 #, elixir-autogen, elixir-format
 msgid "Not quite — here's the fix"
 msgstr "Nicht ganz — so ist es richtig"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "AI suggested a clearer translation — review and save."
+msgstr "Die KI hat eine klarere Übersetzung vorgeschlagen — prüfen und speichern."
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Active time per section. Today, then the last 7 days."
+msgstr "Aktive Zeit pro Bereich. Heute, dann die letzten 7 Tage."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Ask AI for a clearer translation"
+msgstr "Die KI um eine klarere Übersetzung bitten"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Asking AI for a clearer translation"
+msgstr "Frage die KI nach einer klareren Übersetzung"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Cards today"
+msgstr "Karten heute"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Convo today"
+msgstr "Gespräch heute"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Could not get an AI suggestion. Please try again."
+msgstr "Konnte keinen KI-Vorschlag erhalten. Bitte versuche es erneut."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Daily goal complete!"
+msgstr "Tagesziel erreicht!"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Entry today"
+msgstr "Eintrag heute"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Goal complete"
+msgstr "Ziel erreicht"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Goal reached — keep going for extra practice, or finish anytime."
+msgstr "Ziel erreicht — mach für extra Übung weiter oder hör jederzeit auf."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Keep going"
+msgstr "Weitermachen"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Nice work!"
+msgstr "Gut gemacht!"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Time"
+msgstr "Zeit"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Total time"
+msgstr "Gesamtzeit"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Total today"
+msgstr "Gesamt heute"

@@ -23,8 +23,12 @@ defmodule DailyOutput.Stats do
   alias DailyOutput.Journal.Entry
   alias DailyOutput.Conversations.Conversation
   alias DailyOutput.FocusTopics.FocusTopic
+  alias DailyOutput.Stats.TimeLog
 
   @marker ~r/\[\[(\d+):([\s\S]*?)\]\]/
+
+  # Sections we track time for.
+  @time_sections ~w(entry conversation flashcards)
 
   @doc """
   One pass over history → everything the progress page needs:
@@ -41,13 +45,86 @@ defmodule DailyOutput.Stats do
       active_days: samples |> Enum.map(& &1.date) |> Enum.uniq() |> length(),
       focus_mastered: mastered_count(),
       trend: trend(samples, today, weeks),
-      recap: recap(samples, today)
+      recap: recap(samples, today),
+      total_time: total_time(),
+      time_today: time_for_day(today),
+      time_days: time_by_day(7)
     }
   end
 
   @doc "Corrections per 100 words across `text`, or nil when there are no words."
   def error_rate(text) do
     rate(correction_count(text), word_count(text))
+  end
+
+  # ── Time tracking ──────────────────────────────────────
+
+  @doc """
+  Adds `seconds` of active time to today's `section` total (upsert-incremented).
+  Section must be one of #{inspect(@time_sections)}; anything else is ignored.
+  """
+  def track(section, seconds)
+      when is_binary(section) and is_integer(seconds) and seconds > 0 and
+             section in @time_sections do
+    Repo.insert(
+      %TimeLog{day: Clock.today(), section: section, seconds: seconds},
+      on_conflict: from(t in TimeLog, update: [inc: [seconds: ^seconds]]),
+      conflict_target: [:day, :section]
+    )
+  end
+
+  def track(_section, _seconds), do: {:ok, :ignored}
+
+  @doc "Today's time breakdown: `%{entry, conversation, flashcards, total}` (seconds)."
+  def time_today, do: time_for_day(Clock.today())
+
+  @doc "Time breakdown for a logical `date`."
+  def time_for_day(%Date{} = date) do
+    from(t in TimeLog, where: t.day == ^date, select: {t.section, t.seconds})
+    |> Repo.all()
+    |> shape_breakdown()
+  end
+
+  @doc "Per-day time breakdowns for the last `days` days (oldest → newest)."
+  def time_by_day(days) do
+    today = Clock.today()
+    start = Date.add(today, -(days - 1))
+
+    by_day =
+      from(t in TimeLog, where: t.day >= ^start, select: {t.day, t.section, t.seconds})
+      |> Repo.all()
+      |> Enum.group_by(fn {day, _s, _sec} -> day end, fn {_d, s, sec} -> {s, sec} end)
+
+    for date <- Date.range(start, today) do
+      Map.merge(%{date: date}, shape_breakdown(Map.get(by_day, date, [])))
+    end
+  end
+
+  @doc "All-time total tracked time in seconds."
+  def total_time, do: Repo.aggregate(TimeLog, :sum, :seconds) || 0
+
+  @doc "Formats a duration in seconds as a compact `1h 5m` / `12m` / `<1m` string."
+  def format_duration(seconds) when is_integer(seconds) do
+    cond do
+      seconds <= 0 -> "0m"
+      seconds < 60 -> "<1m"
+      true -> format_hm(div(seconds, 3600), div(rem(seconds, 3600), 60))
+    end
+  end
+
+  defp format_hm(0, m), do: "#{m}m"
+  defp format_hm(h, 0), do: "#{h}h"
+  defp format_hm(h, m), do: "#{h}h #{m}m"
+
+  defp shape_breakdown(section_seconds) do
+    by_section = Map.new(section_seconds)
+
+    %{
+      entry: Map.get(by_section, "entry", 0),
+      conversation: Map.get(by_section, "conversation", 0),
+      flashcards: Map.get(by_section, "flashcards", 0),
+      total: section_seconds |> Enum.map(&elem(&1, 1)) |> Enum.sum()
+    }
   end
 
   # ── internals ──────────────────────────────────────────

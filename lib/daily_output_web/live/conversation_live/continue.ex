@@ -107,6 +107,11 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
     {:noreply, assign(socket, input: value)}
   end
 
+  def handle_event("track_time", %{"section" => section, "seconds" => seconds}, socket) do
+    DailyOutput.Stats.track(section, seconds)
+    {:noreply, socket}
+  end
+
   def handle_event("complete", _params, socket) do
     conversation = socket.assigns.conversation
     config = socket.assigns.config
@@ -337,6 +342,15 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto space-y-4">
+      <%!-- Tracks active time spent in this conversation. --%>
+      <div
+        id="conversation-time-tracker"
+        phx-hook="TimeTracker"
+        data-section="conversation"
+        class="hidden"
+      >
+      </div>
+
       <div :if={@focus_topic_text} class="border-4 border-ink p-3 block-blue">
         <span class="text-xs font-mono uppercase tracking-widest">{gettext("Focus:")}</span>
         <.rich_text text={@focus_topic_text} class="text-sm mt-1" />

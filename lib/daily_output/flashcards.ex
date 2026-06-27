@@ -192,6 +192,21 @@ defmodule DailyOutput.Flashcards do
   @doc "Unified word-level diff of the typed answer against the expected one (for the reveal)."
   defdelegate diff(expected, actual), to: Diff, as: :unified
 
+  @doc """
+  Asks the AI for a clearer translation pair for `card` (when the prompt is too ambiguous
+  to answer). Returns `{:ok, %{"target_text", "native_text"}}` or `{:error, reason}` — it
+  does not persist anything; the caller decides whether to apply it.
+  """
+  def suggest_pair(%Card{} = card) do
+    config = Settings.get_config()
+
+    Generator.improve(card,
+      target_language: config.target_language || "de",
+      native_language: config.native_language || "en",
+      language_level: config.language_level || "B2"
+    )
+  end
+
   # ── Progress / streak interface ──────────────────────
 
   @doc """

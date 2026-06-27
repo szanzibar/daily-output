@@ -73,6 +73,11 @@ defmodule DailyOutputWeb.EntryLive.Edit do
     end
   end
 
+  def handle_event("track_time", %{"section" => section, "seconds" => seconds}, socket) do
+    DailyOutput.Stats.track(section, seconds)
+    {:noreply, socket}
+  end
+
   def handle_event("save", _params, socket) do
     body = socket.assigns.body
     entry = socket.assigns.entry
@@ -291,6 +296,8 @@ defmodule DailyOutputWeb.EntryLive.Edit do
   def render(assigns) do
     ~H"""
     <div class="max-w-4xl mx-auto">
+      <%!-- Tracks active time spent writing this entry. --%>
+      <div id="entry-time-tracker" phx-hook="TimeTracker" data-section="entry" class="hidden"></div>
       <%!-- PHASE: Writing/Editing --%>
       <div :if={@phase == :writing}>
         <div :if={@focus_topic_text} class="border-4 border-ink p-3 block-blue mb-4">

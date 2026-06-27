@@ -37,6 +37,52 @@ defmodule DailyOutput.StatsTest do
     end
   end
 
+  describe "time tracking" do
+    test "track/2 accumulates seconds per section for today" do
+      Stats.track("flashcards", 30)
+      Stats.track("flashcards", 45)
+      Stats.track("entry", 60)
+
+      today = Stats.time_today()
+      assert today.flashcards == 75
+      assert today.entry == 60
+      assert today.conversation == 0
+      assert today.total == 135
+    end
+
+    test "track/2 ignores unknown sections and non-positive seconds" do
+      assert {:ok, :ignored} = Stats.track("bogus", 10)
+      assert {:ok, :ignored} = Stats.track("flashcards", 0)
+      assert Stats.time_today().total == 0
+    end
+
+    test "time_by_day/1 returns one ascending row per day including today" do
+      Stats.track("conversation", 20)
+      days = Stats.time_by_day(7)
+
+      assert length(days) == 7
+      assert List.last(days).date == Clock.today()
+      assert List.last(days).conversation == 20
+      assert hd(days).date == Date.add(Clock.today(), -6)
+    end
+
+    test "total_time/0 sums everything" do
+      Stats.track("entry", 10)
+      Stats.track("flashcards", 5)
+      assert Stats.total_time() == 15
+    end
+  end
+
+  describe "format_duration/1" do
+    test "formats hours and minutes compactly" do
+      assert Stats.format_duration(0) == "0m"
+      assert Stats.format_duration(30) == "<1m"
+      assert Stats.format_duration(90) == "1m"
+      assert Stats.format_duration(3600) == "1h"
+      assert Stats.format_duration(3660) == "1h 1m"
+    end
+  end
+
   describe "overview/0" do
     test "aggregates words, sessions, active days, and weekly trend" do
       today = Clock.today()

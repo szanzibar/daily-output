@@ -186,6 +186,50 @@ const Hooks = {
     }
   },
 
+  // Tracks active foreground time on a page and pushes it to the server in batches.
+  // Only counts time while the tab is visible; flushes periodically and on hide/unmount.
+  // Set `data-section` to the section name ("entry" | "conversation" | "flashcards").
+  TimeTracker: {
+    mounted() {
+      this.section = this.el.dataset.section
+      this.accMs = 0
+      this.last = Date.now()
+      this.onVisibility = () => {
+        this.accumulate()
+        this.last = Date.now()
+      }
+      this.onHide = () => {
+        this.accumulate()
+        this.flush()
+      }
+      document.addEventListener("visibilitychange", this.onVisibility)
+      window.addEventListener("pagehide", this.onHide)
+      this.interval = setInterval(() => {
+        this.accumulate()
+        this.flush()
+      }, 20000)
+    },
+    accumulate() {
+      const now = Date.now()
+      if (document.visibilityState === "visible") this.accMs += now - this.last
+      this.last = now
+    },
+    flush() {
+      const secs = Math.floor(this.accMs / 1000)
+      if (secs > 0) {
+        this.pushEvent("track_time", {section: this.section, seconds: secs})
+        this.accMs -= secs * 1000
+      }
+    },
+    destroyed() {
+      this.accumulate()
+      this.flush()
+      clearInterval(this.interval)
+      document.removeEventListener("visibilitychange", this.onVisibility)
+      window.removeEventListener("pagehide", this.onHide)
+    }
+  },
+
   // Renders annotated text — DOM measurement only, logic in annotated_text.js
   AnnotatedText: {
     mounted() { this.render() },
