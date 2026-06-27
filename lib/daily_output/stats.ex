@@ -23,7 +23,7 @@ defmodule DailyOutput.Stats do
   alias DailyOutput.Journal.Entry
   alias DailyOutput.Conversations.Conversation
   alias DailyOutput.FocusTopics.FocusTopic
-  alias DailyOutput.Stats.TimeLog
+  alias DailyOutput.Stats.{ApiUsage, TimeLog}
 
   @marker ~r/\[\[(\d+):([\s\S]*?)\]\]/
 
@@ -48,7 +48,11 @@ defmodule DailyOutput.Stats do
       recap: recap(samples, today),
       total_time: total_time(),
       time_today: time_for_day(today),
-      time_days: time_by_day(7)
+      time_days: time_by_day(7),
+      usage_total: usage_total(),
+      usage_today: usage_today(),
+      usage_week: usage_since(Date.add(today, -6)),
+      usage_by_purpose: usage_by_purpose()
     }
   end
 
@@ -125,6 +129,135 @@ defmodule DailyOutput.Stats do
       flashcards: Map.get(by_section, "flashcards", 0),
       total: section_seconds |> Enum.map(&elem(&1, 1)) |> Enum.sum()
     }
+  end
+
+  # ── API cost tracking ──────────────────────────────────
+
+  # Approximate USD per 1,000,000 tokens, by model tier. Cache reads bill at ~0.1x
+  # input, cache writes (5-minute TTL) at ~1.25x input. The app uses the latest
+  # Sonnet (see DailyOutput.AI), so "sonnet" is the default tier.
+  @pricing %{
+    "opus" => %{input: 5.0, output: 25.0, cache_read: 0.5, cache_write: 6.25},
+    "sonnet" => %{input: 3.0, output: 15.0, cache_read: 0.3, cache_write: 3.75},
+    "haiku" => %{input: 1.0, output: 5.0, cache_read: 0.1, cache_write: 1.25}
+  }
+  @default_tier "sonnet"
+
+  @doc """
+  Records one API call's token usage from the raw Anthropix `response`, tagged with
+  `purpose`. Tolerant: a response without a `"usage"` map is ignored, so this never
+  breaks the calling AI flow.
+  """
+  def record_usage(purpose, %{"usage" => usage} = response) when is_map(usage) do
+    %ApiUsage{
+      purpose: to_string(purpose || "other"),
+      model: response["model"] || "unknown",
+      input_tokens: usage["input_tokens"] || 0,
+      output_tokens: usage["output_tokens"] || 0,
+      cache_read_tokens: usage["cache_read_input_tokens"] || 0,
+      cache_creation_tokens: usage["cache_creation_input_tokens"] || 0
+    }
+    |> Repo.insert()
+  end
+
+  def record_usage(_purpose, _response), do: {:ok, :ignored}
+
+  @doc "Lifetime API spend: `%{cost, input_tokens, output_tokens, calls}` (cost in USD)."
+  def usage_total, do: aggregate_cost(from(u in ApiUsage))
+
+  @doc "Today's API spend (same shape as `usage_total/0`)."
+  def usage_today, do: usage_for_day(Clock.today())
+
+  defp usage_for_day(%Date{} = date) do
+    {start, finish} = Clock.day_range(date)
+
+    aggregate_cost(
+      from(u in ApiUsage, where: u.inserted_at >= ^start and u.inserted_at <= ^finish)
+    )
+  end
+
+  defp usage_since(%Date{} = start_date) do
+    {start, _finish} = Clock.day_range(start_date)
+    aggregate_cost(from(u in ApiUsage, where: u.inserted_at >= ^start))
+  end
+
+  # Sum tokens grouped by model, then price each model group with its own rates.
+  defp aggregate_cost(query) do
+    from(u in query,
+      group_by: u.model,
+      select:
+        {u.model, sum(u.input_tokens), sum(u.output_tokens), sum(u.cache_read_tokens),
+         sum(u.cache_creation_tokens), count(u.id)}
+    )
+    |> Repo.all()
+    |> Enum.reduce(%{cost: 0.0, input_tokens: 0, output_tokens: 0, calls: 0}, fn
+      {model, input, output, cache_read, cache_write, calls}, acc ->
+        %{
+          cost: acc.cost + cost(model, input, output, cache_read, cache_write),
+          input_tokens: acc.input_tokens + (input || 0),
+          output_tokens: acc.output_tokens + (output || 0),
+          calls: acc.calls + calls
+        }
+    end)
+  end
+
+  @doc "Per-feature spend, highest cost first: `[%{purpose, cost, calls}]`."
+  def usage_by_purpose do
+    from(u in ApiUsage,
+      group_by: [u.purpose, u.model],
+      select:
+        {u.purpose, u.model, sum(u.input_tokens), sum(u.output_tokens), sum(u.cache_read_tokens),
+         sum(u.cache_creation_tokens), count(u.id)}
+    )
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0))
+    |> Enum.map(fn {purpose, rows} ->
+      {cost, calls} =
+        Enum.reduce(rows, {0.0, 0}, fn {_p, model, input, output, cr, cw, n}, {c, k} ->
+          {c + cost(model, input, output, cr, cw), k + n}
+        end)
+
+      %{purpose: purpose, cost: cost, calls: calls}
+    end)
+    |> Enum.sort_by(& &1.cost, :desc)
+  end
+
+  defp cost(model, input, output, cache_read, cache_write) do
+    p = pricing_for(model)
+
+    ((input || 0) * p.input + (output || 0) * p.output + (cache_read || 0) * p.cache_read +
+       (cache_write || 0) * p.cache_write) / 1_000_000
+  end
+
+  defp pricing_for(model) do
+    model = model || ""
+
+    tier =
+      cond do
+        String.contains?(model, "opus") -> "opus"
+        String.contains?(model, "haiku") -> "haiku"
+        true -> @default_tier
+      end
+
+    @pricing[tier]
+  end
+
+  @doc "Formats a USD `amount` compactly: `$1.23`, `<$0.01`, or `$0.00`."
+  def format_cost(amount) when is_number(amount) do
+    cond do
+      amount <= 0 -> "$0.00"
+      amount < 0.01 -> "<$0.01"
+      true -> "$" <> :erlang.float_to_binary(amount * 1.0, decimals: 2)
+    end
+  end
+
+  @doc "Formats a token count compactly: `1.2M`, `34.5k`, `812`."
+  def format_tokens(n) when is_integer(n) do
+    cond do
+      n >= 1_000_000 -> "#{Float.round(n / 1_000_000, 1)}M"
+      n >= 1_000 -> "#{Float.round(n / 1_000, 1)}k"
+      true -> Integer.to_string(n)
+    end
   end
 
   # ── internals ──────────────────────────────────────────

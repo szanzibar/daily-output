@@ -187,16 +187,37 @@ const Hooks = {
   },
 
   // Tracks active foreground time on a page and pushes it to the server in batches.
-  // Only counts time while the tab is visible; flushes periodically and on hide/unmount.
-  // Set `data-section` to the section name ("entry" | "conversation" | "flashcards").
+  // Counts a second only when the tab is visible AND the user has interacted (keystroke,
+  // click, tap, or scroll) within the last `idleMs` — so a page left open while you walk
+  // away stops counting after the idle window instead of banking wall-clock time.
+  // Flushes periodically and on hide/unmount. Set `data-section` to
+  // ("entry" | "conversation" | "flashcards").
   TimeTracker: {
+    // How long after the last interaction we keep counting (covers reading/thinking
+    // pauses between actions). Bump this if genuine think-time gets undercounted.
+    idleMs: 60000,
+    activityEvents: ["keydown", "mousedown", "touchstart", "scroll", "input"],
     mounted() {
       this.section = this.el.dataset.section
       this.accMs = 0
       this.last = Date.now()
+      // Treat landing on the page as a fresh interaction (grace from mount).
+      this.lastActivity = Date.now()
+
+      // Seal the elapsed interval with the OLD lastActivity before advancing it, so an
+      // idle gap that preceded this interaction is never retroactively counted active.
+      this.onActivity = () => {
+        this.accumulate()
+        this.lastActivity = Date.now()
+      }
+      this.activityEvents.forEach((evt) => {
+        document.addEventListener(evt, this.onActivity, {passive: true, capture: true})
+      })
+
       this.onVisibility = () => {
         this.accumulate()
-        this.last = Date.now()
+        // Returning to the tab is itself a sign of presence.
+        if (document.visibilityState === "visible") this.lastActivity = Date.now()
       }
       this.onHide = () => {
         this.accumulate()
@@ -211,7 +232,12 @@ const Hooks = {
     },
     accumulate() {
       const now = Date.now()
-      if (document.visibilityState === "visible") this.accMs += now - this.last
+      // Of the interval [last, now], count only the part that was both visible and
+      // within idleMs of the last interaction.
+      if (document.visibilityState === "visible") {
+        const activeEnd = Math.min(now, this.lastActivity + this.idleMs)
+        if (activeEnd > this.last) this.accMs += activeEnd - this.last
+      }
       this.last = now
     },
     flush() {
@@ -225,6 +251,9 @@ const Hooks = {
       this.accumulate()
       this.flush()
       clearInterval(this.interval)
+      this.activityEvents.forEach((evt) => {
+        document.removeEventListener(evt, this.onActivity, {capture: true})
+      })
       document.removeEventListener("visibilitychange", this.onVisibility)
       window.removeEventListener("pagehide", this.onHide)
     }

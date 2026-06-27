@@ -101,6 +101,15 @@ These are the standards that matter here. They override generic habits.
   so restyle fully.
 - Tailwind v4 (no config file) with the `@import "tailwindcss" source(none)` + `@source`
   syntax already in `app.css` — keep it. Never use `@apply`.
+- **Build every screen for both light and dark mode** (dark auto-activates via
+  `prefers-color-scheme` — there is no toggle). `--color-ink`/`--color-paper` and
+  daisyUI's `base-content` flip between themes; the `block-*` accent colors
+  (`block-yellow`, `block-cyan`, `block-green`, …) do **not** — they're fixed brand
+  colors that already set their own readable text color. So never put a theme-flipping
+  text utility (`text-ink`, `text-base-content`) on a `block-*` background: in the
+  opposite theme the text inverts and contrast breaks (e.g. white text on yellow). Let
+  the block's own color show through, and use `opacity-*` to mute a label. Sanity-check
+  new UI in both themes before calling it done.
 - More detailed Elixir/Phoenix/LiveView/Ecto rules follow in the synced block below.
 
 

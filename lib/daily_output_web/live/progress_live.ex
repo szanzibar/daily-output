@@ -18,7 +18,9 @@ defmodule DailyOutputWeb.ProgressLive do
        overview: overview,
        trend_max: trend_max,
        time_max: time_max,
-       has_data: overview.total_words > 0 or overview.total_time > 0
+       has_data:
+         overview.total_words > 0 or overview.total_time > 0 or
+           overview.usage_total.cost > 0
      )}
   end
 
@@ -26,6 +28,21 @@ defmodule DailyOutputWeb.ProgressLive do
   defp bar_height(rate, max), do: max(round(rate / max * 100), 4)
 
   defp dur(seconds), do: Stats.format_duration(seconds)
+
+  defp cost(amount), do: Stats.format_cost(amount)
+
+  defp tokens(%{input_tokens: input, output_tokens: output}),
+    do: Stats.format_tokens(input + output)
+
+  defp purpose_label("proofread"), do: gettext("Proofreading")
+  defp purpose_label("proofread_message"), do: gettext("Chat corrections")
+  defp purpose_label("assessment"), do: gettext("Conversation review")
+  defp purpose_label("conversation"), do: gettext("Conversation partner")
+  defp purpose_label("flashcards"), do: gettext("Flashcards")
+  defp purpose_label("prompts"), do: gettext("Writing prompts")
+  defp purpose_label("openers"), do: gettext("Conversation openers")
+  defp purpose_label("focus_summary"), do: gettext("Focus summaries")
+  defp purpose_label(other), do: other |> String.replace("_", " ") |> String.capitalize()
 
   @impl true
   def render(assigns) do
@@ -63,6 +80,11 @@ defmodule DailyOutputWeb.ProgressLive do
             label={gettext("Total time")}
             value={Stats.format_duration(@overview.total_time)}
             class="block-pink"
+          />
+          <.stat
+            label={gettext("AI spent")}
+            value={cost(@overview.usage_total.cost)}
+            class="block-orange"
           />
         </div>
 
@@ -102,6 +124,40 @@ defmodule DailyOutputWeb.ProgressLive do
               <span class="text-[10px] font-mono text-base-content/50">
                 {Calendar.strftime(day.date, "%a")}
               </span>
+            </div>
+          </div>
+        </div>
+
+        <%!-- AI cost --%>
+        <div class="border-4 border-ink p-5">
+          <h2 class="text-lg font-black uppercase mb-1 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 block-orange"></span> {gettext("AI cost")}
+          </h2>
+          <p class="text-xs font-mono text-base-content/60 mb-4">
+            {gettext("Estimated Anthropic API spend. Today, this week, then all time.")}
+          </p>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <.recap label={gettext("Today")} value={cost(@overview.usage_today.cost)} />
+            <.recap label={gettext("This week")} value={cost(@overview.usage_week.cost)} />
+            <.recap label={gettext("All time")} value={cost(@overview.usage_total.cost)} />
+            <.recap label={gettext("Tokens")} value={tokens(@overview.usage_total)} />
+          </div>
+
+          <div :if={@overview.usage_by_purpose != []} class="space-y-2">
+            <div
+              :for={row <- @overview.usage_by_purpose}
+              class="flex items-baseline justify-between gap-3 border-2 border-ink px-3 py-2"
+            >
+              <span class="text-xs font-mono font-bold uppercase tracking-wide truncate">
+                {purpose_label(row.purpose)}
+              </span>
+              <div class="flex items-baseline gap-3 shrink-0">
+                <span class="text-[10px] font-mono text-base-content/50">
+                  {row.calls} {gettext("calls")}
+                </span>
+                <span class="text-sm font-black">{cost(row.cost)}</span>
+              </div>
             </div>
           </div>
         </div>

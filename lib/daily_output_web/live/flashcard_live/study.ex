@@ -257,10 +257,10 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   defp card_prompt(assigns) do
     ~H"""
     <div class="border-4 border-ink block-yellow p-6 sm:p-8">
-      <p class="text-xs font-mono uppercase tracking-widest mb-2 text-ink/60">
+      <p class="text-xs font-mono uppercase tracking-widest mb-2 opacity-60">
         {gettext("Translate")}
       </p>
-      <p class="text-2xl sm:text-3xl font-black leading-tight text-ink">{@card.native_text}</p>
+      <p class="text-2xl sm:text-3xl font-black leading-tight">{@card.native_text}</p>
     </div>
 
     <form phx-submit="submit" class="space-y-3">
@@ -315,14 +315,14 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
            sparkles ask the AI for a clearer translation; the pencil edits the card. --%>
       <div class="border-4 border-ink block-yellow p-4 sm:p-5">
         <div class="flex items-start justify-between gap-3">
-          <p class="text-xl sm:text-2xl font-black leading-tight text-ink">{@card.native_text}</p>
+          <p class="text-xl sm:text-2xl font-black leading-tight">{@card.native_text}</p>
           <div class="flex items-center gap-1 shrink-0">
             <button
               type="button"
               phx-click="ai_improve"
               title={gettext("Ask AI for a clearer translation")}
               aria-label={gettext("Ask AI for a clearer translation")}
-              class="text-ink/50 hover:text-ink p-1"
+              class="opacity-50 hover:opacity-100 p-1"
             >
               <.icon name="hero-sparkles" class="w-5 h-5" />
             </button>
@@ -331,7 +331,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
               phx-click="edit"
               title={gettext("Edit card")}
               aria-label={gettext("Edit card")}
-              class="text-ink/50 hover:text-ink p-1"
+              class="opacity-50 hover:opacity-100 p-1"
             >
               <.icon name="hero-pencil-square" class="w-5 h-5" />
             </button>
@@ -367,7 +367,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   defp card_improving(assigns) do
     ~H"""
     <div class="border-4 border-ink block-yellow p-4 sm:p-5">
-      <p class="text-xl sm:text-2xl font-black leading-tight text-ink">{@card.native_text}</p>
+      <p class="text-xl sm:text-2xl font-black leading-tight">{@card.native_text}</p>
     </div>
     <.retro_loader message={gettext("Asking AI for a clearer translation")} />
     """

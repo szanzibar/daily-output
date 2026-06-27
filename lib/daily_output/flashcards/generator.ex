@@ -89,6 +89,7 @@ defmodule DailyOutput.Flashcards.Generator do
              messages: [%{role: "user", content: user_content}],
              tools: [flashcards_tool()],
              tool_choice: %{type: "tool", name: "provide_flashcards"},
+             purpose: "flashcards",
              max_tokens: 1536
            ) do
         {:ok, %{"content" => content}} ->
@@ -157,6 +158,7 @@ defmodule DailyOutput.Flashcards.Generator do
              messages: [%{role: "user", content: user_content}],
              tools: [flashcards_tool()],
              tool_choice: %{type: "tool", name: "provide_flashcards"},
+             purpose: "flashcards",
              max_tokens: 512
            ) do
         {:ok, %{"content" => content}} ->

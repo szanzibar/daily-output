@@ -54,6 +54,7 @@ defmodule DailyOutput.AI.TopicGenerator do
 
     with {:ok, client} <- AI.client() do
       case AI.chat(client,
+             purpose: "openers",
              system: system,
              messages: [%{role: "user", content: "Generate 5 conversation openers."}],
              max_tokens: 1024

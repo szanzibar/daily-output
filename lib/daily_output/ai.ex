@@ -13,7 +13,7 @@ defmodule DailyOutput.AI do
     FocusSummarizer
   }
 
-  alias DailyOutput.{Cache, PromptCache}
+  alias DailyOutput.{Cache, PromptCache, Stats}
 
   @model_cache_key "anthropic_sonnet_model"
 
@@ -77,6 +77,9 @@ defmodule DailyOutput.AI do
   end
 
   def chat(client, opts) do
+    # `:purpose` tags the call site for cost tracking; it's ours, not Anthropix's,
+    # so strip it before the request goes out.
+    {purpose, opts} = Keyword.pop(opts, :purpose)
     requested_model = Keyword.get(opts, :model)
     model_result = if is_binary(requested_model), do: {:ok, requested_model}, else: model()
 
@@ -86,10 +89,14 @@ defmodule DailyOutput.AI do
       case Anthropix.chat(client, request_opts) do
         {:error, %Anthropix.APIError{} = api_error} = error ->
           if model_not_found_error?(api_error) do
-            retry_chat_with_refreshed_model(client, opts, model_id, error)
+            retry_chat_with_refreshed_model(client, opts, model_id, purpose, error)
           else
             error
           end
+
+        {:ok, response} = ok ->
+          record_usage(purpose, response)
+          ok
 
         other ->
           other
@@ -154,7 +161,7 @@ defmodule DailyOutput.AI do
 
   defp model_not_found_error?(_), do: false
 
-  defp retry_chat_with_refreshed_model(client, opts, failed_model, original_error) do
+  defp retry_chat_with_refreshed_model(client, opts, failed_model, purpose, original_error) do
     case model(true) do
       {:ok, refreshed_model} ->
         if refreshed_model == failed_model do
@@ -164,12 +171,28 @@ defmodule DailyOutput.AI do
             "AI model '#{failed_model}' not found. Retrying with '#{refreshed_model}'."
           )
 
-          Anthropix.chat(client, Keyword.put(opts, :model, refreshed_model))
+          case Anthropix.chat(client, Keyword.put(opts, :model, refreshed_model)) do
+            {:ok, response} = ok ->
+              record_usage(purpose, response)
+              ok
+
+            other ->
+              other
+          end
         end
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  # Cost tracking must never break the chat flow — swallow and log any failure.
+  defp record_usage(purpose, response) do
+    Stats.record_usage(purpose, response)
+  rescue
+    error ->
+      Logger.warning("Failed to record API usage: #{inspect(error)}")
+      {:error, :usage_not_recorded}
   end
 
   defp pick_latest_sonnet(models) do

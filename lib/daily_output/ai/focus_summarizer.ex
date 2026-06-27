@@ -29,6 +29,7 @@ defmodule DailyOutput.AI.FocusSummarizer do
 
     with {:ok, client} <- AI.client() do
       case AI.chat(client,
+             purpose: "focus_summary",
              system: system,
              messages: [%{role: "user", content: "Summarize this tip:\n\n#{tip_text}"}],
              max_tokens: 256

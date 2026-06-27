@@ -67,6 +67,7 @@ defmodule DailyOutput.AI.ConversationPartner do
 
     with {:ok, client} <- AI.client() do
       case AI.chat(client,
+             purpose: "conversation",
              system: system,
              messages: api_messages,
              max_tokens: 512

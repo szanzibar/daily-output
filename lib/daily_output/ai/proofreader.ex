@@ -112,6 +112,7 @@ defmodule DailyOutput.AI.Proofreader do
              ],
              tools: [feedback_tool(focus_topic)],
              tool_choice: %{type: "tool", name: "provide_feedback"},
+             purpose: "proofread",
              max_tokens: 4096
            ) do
         {:ok, %{"content" => content}} ->
@@ -203,6 +204,7 @@ defmodule DailyOutput.AI.Proofreader do
              messages: [%{role: "user", content: assessment_transcript(messages, profile)}],
              tools: [assessment_tool(focus_topic)],
              tool_choice: %{type: "tool", name: "provide_assessment"},
+             purpose: "assessment",
              max_tokens: 2048
            ) do
         {:ok, %{"content" => content}} ->
@@ -357,6 +359,7 @@ defmodule DailyOutput.AI.Proofreader do
              messages: [%{role: "user", content: user_content}],
              tools: [message_feedback_tool()],
              tool_choice: %{type: "tool", name: "provide_corrections"},
+             purpose: "proofread_message",
              max_tokens: 1024
            ) do
         {:ok, %{"content" => content}} ->

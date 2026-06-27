@@ -40,6 +40,7 @@ defmodule DailyOutput.AI.PromptGenerator do
 
     with {:ok, client} <- AI.client() do
       case AI.chat(client,
+             purpose: "prompts",
              system: system,
              messages: [%{role: "user", content: "Generate 5 writing prompts for today."}],
              max_tokens: 1024
