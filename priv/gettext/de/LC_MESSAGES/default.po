@@ -274,7 +274,6 @@ msgstr "Entwurf"
 
 #: lib/daily_output_web/live/entry_live/edit.ex
 #: lib/daily_output_web/live/entry_live/show.ex
-#: lib/daily_output_web/live/flashcard_live/manage.ex
 #, elixir-autogen, elixir-format
 msgid "Edit"
 msgstr "Bearbeiten"
@@ -1275,6 +1274,7 @@ msgid "Study"
 msgstr "Üben"
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
+#: lib/daily_output_web/live/home_live.ex
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr "Heute"
@@ -1294,6 +1294,7 @@ msgstr "Auf %{language} eingeben..."
 msgid "You studied %{count} card(s) today."
 msgstr "Du hast heute %{count} Karte(n) geübt."
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Edit card"
@@ -1304,6 +1305,7 @@ msgstr "Karte bearbeiten"
 msgid "Not quite — here's the fix"
 msgstr "Nicht ganz — so ist es richtig"
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "AI suggested a clearer translation — review and save."
@@ -1314,6 +1316,7 @@ msgstr "Die KI hat eine klarere Übersetzung vorgeschlagen — prüfen und speic
 msgid "Active time per section. Today, then the last 7 days."
 msgstr "Aktive Zeit pro Bereich. Heute, dann die letzten 7 Tage."
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Ask AI for a clearer translation"
@@ -1334,6 +1337,7 @@ msgstr "Karten heute"
 msgid "Convo today"
 msgstr "Gespräch heute"
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Could not get an AI suggestion. Please try again."
@@ -1383,3 +1387,8 @@ msgstr "Gesamtzeit"
 #, elixir-autogen, elixir-format
 msgid "Total today"
 msgstr "Gesamt heute"
+
+#: lib/daily_output_web/live/home_live.ex
+#, elixir-autogen, elixir-format
+msgid "See time stats"
+msgstr "Zeitstatistiken ansehen"

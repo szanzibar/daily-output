@@ -274,7 +274,6 @@ msgstr ""
 
 #: lib/daily_output_web/live/entry_live/edit.ex
 #: lib/daily_output_web/live/entry_live/show.ex
-#: lib/daily_output_web/live/flashcard_live/manage.ex
 #, elixir-autogen, elixir-format
 msgid "Edit"
 msgstr ""
@@ -1271,6 +1270,7 @@ msgid "Study"
 msgstr ""
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
+#: lib/daily_output_web/live/home_live.ex
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr ""
@@ -1290,6 +1290,7 @@ msgstr ""
 msgid "You studied %{count} card(s) today."
 msgstr ""
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Edit card"
@@ -1300,6 +1301,7 @@ msgstr ""
 msgid "Not quite — here's the fix"
 msgstr ""
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "AI suggested a clearer translation — review and save."
@@ -1310,6 +1312,7 @@ msgstr ""
 msgid "Active time per section. Today, then the last 7 days."
 msgstr ""
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Ask AI for a clearer translation"
@@ -1330,6 +1333,7 @@ msgstr ""
 msgid "Convo today"
 msgstr ""
 
+#: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Could not get an AI suggestion. Please try again."
@@ -1378,4 +1382,9 @@ msgstr ""
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Total today"
+msgstr ""
+
+#: lib/daily_output_web/live/home_live.ex
+#, elixir-autogen, elixir-format
+msgid "See time stats"
 msgstr ""

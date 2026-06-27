@@ -6,6 +6,7 @@ defmodule DailyOutputWeb.HomeLive do
   alias DailyOutput.Settings
   alias DailyOutput.FocusTopics
   alias DailyOutput.Flashcards
+  alias DailyOutput.Stats
 
   @impl true
   def mount(_params, _session, socket) do
@@ -26,7 +27,8 @@ defmodule DailyOutputWeb.HomeLive do
        recent_days: recent_days,
        streak: streak,
        challenge: challenge,
-       flashcard_progress: flashcard_progress
+       flashcard_progress: flashcard_progress,
+       time_today: Stats.time_today()
      )}
   end
 
@@ -102,20 +104,36 @@ defmodule DailyOutputWeb.HomeLive do
           </h1>
         </div>
 
-        <div class="border-4 border-ink p-3 text-center">
-          <div class="text-3xl sm:text-4xl font-black streak-active leading-none">
-            {@streak.count}
+        <%!-- Streak + today's time, side by side on mobile and desktop. --%>
+        <div class="flex gap-3 items-stretch">
+          <div class="border-4 border-ink p-3 text-center flex flex-col justify-center">
+            <div class="text-3xl sm:text-4xl font-black streak-active leading-none">
+              {@streak.count}
+            </div>
+            <div class="text-xs font-mono uppercase tracking-widest">
+              {ngettext("day", "days", @streak.count)} Streak
+            </div>
+            <div
+              :if={@streak.freezes_available > 0}
+              class="text-xs font-mono mt-1"
+              title={gettext("Streak freezes — each one saves a missed day")}
+            >
+              {String.duplicate("❄", @streak.freezes_available)}
+            </div>
           </div>
-          <div class="text-xs font-mono uppercase tracking-widest">
-            {ngettext("day", "days", @streak.count)} Streak
-          </div>
-          <div
-            :if={@streak.freezes_available > 0}
-            class="text-xs font-mono mt-1"
-            title={gettext("Streak freezes — each one saves a missed day")}
+
+          <.link
+            navigate={~p"/progress"}
+            class="border-4 border-ink p-3 text-center flex flex-col justify-center no-underline text-base-content hover:bg-base-200"
+            title={gettext("See time stats")}
           >
-            {String.duplicate("❄", @streak.freezes_available)}
-          </div>
+            <div class="text-3xl sm:text-4xl font-black leading-none">
+              {Stats.format_duration(@time_today.total)}
+            </div>
+            <div class="text-xs font-mono uppercase tracking-widest">
+              {gettext("Today")}
+            </div>
+          </.link>
         </div>
       </div>
 
