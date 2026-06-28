@@ -135,6 +135,101 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
       view |> form("form", %{answer: "falsch"}) |> render_submit()
       assert has_element?(view, "button[phx-click=ai_improve]")
     end
+
+    test "a case-only answer counts as correct but flags the capitalization", %{conn: conn} do
+      new_card("Ich ging nach Hause.", "I went home.")
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      view |> form("form", %{answer: "ich ging nach hause."}) |> render_submit()
+
+      # Treated as a pass (confetti + recorded), with a gentle capitalization nudge that
+      # shows the fixes (locale-independent, like the other UI assertions here).
+      assert_push_event(view, "confetti", %{})
+      assert Flashcards.today_progress().done == 1
+      assert has_element?(view, "[data-role=case-warning]")
+      assert has_element?(view, "[data-role=case-warning] .line-through", "ich")
+    end
+
+    test "a miss narrows the card to fill-in-the-blank on just the wrong word", %{conn: conn} do
+      card = new_card("Ich ging nach Hause.", "I went home.")
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      # One word wrong ("ging" → "gehe"): the card's mask narrows to that word.
+      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
+      assert Repo.get(Card, card.id).blank_indices == [1]
+
+      # Re-drilled this session, it's now a cloze: the right words are shown, the missed
+      # one is an inline blank you fill in.
+      view |> element("button[phx-click=continue]") |> render_click()
+      assert has_element?(view, "textarea.cloze-blank[name='blank[1]']")
+      assert render(view) =~ "nach Hause."
+
+      # Filling that blank correctly passes and holds the mask at the same level.
+      view |> form("#cloze-#{card.id}", %{"blank" => %{"1" => "ging"}}) |> render_submit()
+      assert_push_event(view, "confetti", %{})
+      assert Repo.get(Card, card.id).blank_indices == [1]
+    end
+
+    test "you can step back through answered cards and resume studying", %{conn: conn} do
+      new_card("Ich ging nach Hause.", "I went home.")
+      new_card("Wie geht es dir?", "How are you?")
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      # Nothing answered yet → no Previous affordance.
+      refute has_element?(view, "button[phx-click=prev]")
+
+      # Answer the first card correctly and advance to the second.
+      view |> form("form", %{answer: "Ich ging nach Hause."}) |> render_submit()
+      send(view.pid, :advance_after_correct)
+      assert render(view) =~ "How are you?"
+      assert has_element?(view, "button[phx-click=prev]")
+
+      # Step back: a read-only review of the first card, marked correct.
+      html = view |> element("button[phx-click=prev]") |> render_click()
+      assert has_element?(view, "[data-role=card-review]")
+      assert has_element?(view, "[data-role=review-result][data-result=pass]")
+      assert html =~ "I went home."
+      assert html =~ "Ich ging nach Hause."
+      # While looking back, the live card isn't shown.
+      refute has_element?(view, "textarea[name=answer]")
+
+      # Step forward past the newest entry → back to the live card.
+      view |> element("button[phx-click=next]") |> render_click()
+      assert has_element?(view, "textarea[name=answer]")
+      assert render(view) =~ "How are you?"
+    end
+
+    test "a missed card is marked as missed in the history", %{conn: conn} do
+      new_card("Ich ging nach Hause.", "I went home.")
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
+
+      # The arrow-key handler pushes the same "prev" event the button does.
+      html = render_hook(view, "prev", %{})
+      assert has_element?(view, "[data-role=review-result][data-result=fail]")
+      # Looking back replays the green/red corrections, not just the plain answer.
+      assert html =~ "correction-deleted"
+      assert html =~ "correction-added"
+    end
+
+    test "editing a card's answer text clears its fill-in-the-blank mask", %{conn: conn} do
+      card = new_card("Ich ging nach Hause.", "I went home.")
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
+      assert Repo.get(Card, card.id).blank_indices == [1]
+
+      view |> element("button[phx-click=edit]") |> render_click()
+
+      view
+      |> form("#flashcard-edit-form", %{
+        card: %{native_text: "I went home.", target_text: "Ich fuhr nach Hause."}
+      })
+      |> render_submit()
+
+      assert Repo.get(Card, card.id).blank_indices == nil
+    end
   end
 
   describe "manage page" do

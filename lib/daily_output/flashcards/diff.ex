@@ -5,31 +5,49 @@ defmodule DailyOutput.Flashcards.Diff do
   Returns a single, in-order list of operations that aligns what the user typed with the
   correct answer (from the longest common subsequence of the two word lists):
 
-    * `%{op: :eq, text}`  — a word both got right
-    * `%{op: :del, text}` — a word the user typed that is wrong/extra (struck out)
-    * `%{op: :ins, text}` — the correct word the user missed (shown in green)
+    * `%{op: :eq, text}`   — a word both got right
+    * `%{op: :del, text}`  — a word the user typed that is wrong/extra (struck out)
+    * `%{op: :ins, text}`  — the correct word the user missed (shown in green)
+    * `%{op: :case, text}` — the right word, wrong capitalization (a soft warning, never a
+      hard error); `text` is the correctly-capitalized word
 
   A substitution renders as a `:del` immediately followed by an `:ins` — the wrong word
   struck out with the correct word in green next to it, mirroring the inline corrections
   on the proofreading pages.
 
-  Pure and language-agnostic; the exact pass/fail decision is the caller's (an exact
-  string comparison) — this only powers the highlight.
+  Words are aligned **case-insensitively**, so a missed capital is a `:case` warning rather
+  than a struck-out error — matching the fact that capitalization never counts a card wrong.
+
+  Pure and language-agnostic; the exact pass/fail decision is the caller's — this only
+  powers the highlight.
   """
 
   @doc "Aligned op list unifying the user's `actual` answer with the `expected` answer."
   def unified(expected, actual) when is_binary(expected) and is_binary(actual) do
     exp = tokenize(expected)
     act = tokenize(actual)
-    {act_idx, exp_idx} = lcs_matches(act, exp)
+    {act_idx, exp_idx} = lcs_matches(downcase(act), downcase(exp))
     build_ops(act, exp, Enum.zip(act_idx, exp_idx))
   end
 
-  defp tokenize(text), do: String.split(text, ~r/\s+/, trim: true)
+  @doc "Splits text into words on whitespace (the unit the diff and cloze masks work in)."
+  def tokenize(text), do: String.split(text, ~r/\s+/, trim: true)
+
+  @doc """
+  The set of `expected` word indices the user got right in `actual`, matched
+  **case-insensitively** (so a missed capital never counts as a wrong word).
+
+  Returns a `MapSet` of indices into `tokenize(expected)`. The complement is exactly the
+  words still gotten wrong — the basis for narrowing the fill-in-the-blank mask.
+  """
+  def correct_expected_indices(expected, actual) when is_binary(expected) and is_binary(actual) do
+    {_act_idx, exp_idx} = lcs_matches(downcase(tokenize(actual)), downcase(tokenize(expected)))
+    MapSet.new(exp_idx)
+  end
 
   # Walk the matched (actual, expected) index pairs in order. Between two matches, emit
   # the user's leftover words as deletions, then the correct leftover words as insertions,
-  # then the matched word as equal. Trailing leftovers are flushed at the end.
+  # then the matched word itself. Trailing leftovers are flushed at the end.
   defp build_ops(act, exp, pairs) do
     {ops, i, j} =
       Enum.reduce(pairs, {[], 0, 0}, fn {ai, bj}, {ops, i, j} ->
@@ -37,7 +55,7 @@ defmodule DailyOutput.Flashcards.Diff do
           ops
           |> dels(act, i, ai)
           |> inss(exp, j, bj)
-          |> add(:eq, Enum.at(act, ai))
+          |> add_match(Enum.at(act, ai), Enum.at(exp, bj))
 
         {ops, ai + 1, bj + 1}
       end)
@@ -47,6 +65,13 @@ defmodule DailyOutput.Flashcards.Diff do
     |> inss(exp, j, length(exp))
     |> Enum.reverse()
   end
+
+  # A case-insensitive match: an exact word is `:eq`; a case-only difference is a soft
+  # `:case` warning carrying the correctly-capitalized word.
+  defp add_match(ops, word, word), do: add(ops, :eq, word)
+  defp add_match(ops, _actual, expected), do: add(ops, :case, expected)
+
+  defp downcase(tokens), do: Enum.map(tokens, &String.downcase/1)
 
   defp dels(ops, act, from, to) do
     Enum.reduce(from..(to - 1)//1, ops, fn k, acc -> add(acc, :del, Enum.at(act, k)) end)

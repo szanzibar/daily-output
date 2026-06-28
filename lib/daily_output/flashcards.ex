@@ -14,7 +14,17 @@ defmodule DailyOutput.Flashcards do
   import Ecto.Query
 
   alias DailyOutput.{Clock, Repo, Settings}
-  alias DailyOutput.Flashcards.{Card, CompletedDay, Diff, Generator, Markers, Review, Scheduler}
+
+  alias DailyOutput.Flashcards.{
+    Card,
+    Cloze,
+    CompletedDay,
+    Diff,
+    Generator,
+    Markers,
+    Review,
+    Scheduler
+  }
 
   @default_daily_target 15
 
@@ -233,11 +243,29 @@ defmodule DailyOutput.Flashcards do
   end
 
   @doc """
+  Evaluates a study `answer` for `card` (case-insensitive, with progressive
+  fill-in-the-blank). `answer` is the typed string for a full-answer card, or a
+  `%{index => typed}` map of filled blanks for a cloze card. See `Cloze.evaluate/3`.
+  """
+  def evaluate(%Card{} = card, answer) do
+    Cloze.evaluate(card.target_text, card.blank_indices, answer)
+  end
+
+  @doc "Render segments (shown words / fill-in blanks) for a cloze card. See `Cloze.segments/2`."
+  def cloze_segments(%Card{} = card), do: Cloze.segments(card.target_text, card.blank_indices)
+
+  @doc """
   Records a `:pass`/`:fail` for `card`: logs the review and persists the rescheduled
   card (new `due_at`/interval/ease/state from `Scheduler`). Returns `{:ok, updated_card}`.
+
+  `blank_indices` updates the fill-in-the-blank mask in the same transaction (pass the
+  verdict's `new_blank_indices`); the default leaves it untouched.
   """
-  def review(%Card{} = card, result) when result in [:pass, :fail] do
+  def review(%Card{} = card, result, blank_indices \\ :keep) when result in [:pass, :fail] do
     fields = Scheduler.review(card, result)
+
+    fields =
+      if blank_indices == :keep, do: fields, else: Map.put(fields, :blank_indices, blank_indices)
 
     outcome =
       Repo.transaction(fn ->

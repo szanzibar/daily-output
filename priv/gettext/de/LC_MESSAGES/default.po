@@ -194,6 +194,7 @@ msgid "Conversation — %{date}"
 msgstr "Gespräch — %{date}"
 
 #: lib/daily_output_web/components/journal_components.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Corrections"
 msgstr "Korrekturen"
@@ -1459,3 +1460,48 @@ msgstr "Schreibideen"
 #, elixir-autogen, elixir-format
 msgid "calls"
 msgstr "Aufrufe"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Correct — mind the capitalization"
+msgstr "Richtig — achte auf die Großschreibung"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Fill in the blank"
+msgstr "Lücke ausfüllen"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Answer"
+msgstr "Antwort"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Back to studying"
+msgstr "Zurück zum Lernen"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Correct"
+msgstr "Richtig"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Missed"
+msgstr "Verpasst"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Next"
+msgstr "Weiter"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Previous"
+msgstr "Zurück"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Reviewing"
+msgstr "Rückblick"

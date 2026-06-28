@@ -134,6 +134,7 @@ body {
     --color-ann-id: oklch(70% 0.22 264);
     --color-correct-del: oklch(65% 0.27 29);
     --color-correct-add: oklch(70% 0.20 155);
+    --color-correct-case: oklch(72% 0.13 29);
     --color-ghost: oklch(40% 0 0);
   }
 }
@@ -147,6 +148,7 @@ body {
     --color-ann-id: oklch(55% 0.22 264);
     --color-correct-del: oklch(55% 0.27 29);
     --color-correct-add: oklch(55% 0.20 155);
+    --color-correct-case: oklch(62% 0.14 29);
     --color-ghost: oklch(80% 0 0);
   }
 }
@@ -287,6 +289,15 @@ h1, h2, h3 {
   color: var(--color-correct-add);
   font-weight: 800;
   margin-left: 0.15em;
+}
+
+/* Right word, wrong capitalization: a soft red warning (not a struck-out error), with a
+   dotted underline to read as "watch this" rather than "this is wrong". */
+.correction-case {
+  color: var(--color-correct-case);
+  text-decoration: underline dotted;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
 }
 
 /* Superscript correction number */

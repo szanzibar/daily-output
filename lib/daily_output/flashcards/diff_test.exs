@@ -6,12 +6,24 @@ defmodule DailyOutput.Flashcards.DiffTest do
   defp dels(ops), do: for(%{op: :del, text: t} <- ops, do: t)
   defp inss(ops), do: for(%{op: :ins, text: t} <- ops, do: t)
   defp eqs(ops), do: for(%{op: :eq, text: t} <- ops, do: t)
+  defp cases(ops), do: for(%{op: :case, text: t} <- ops, do: t)
 
   test "identical answers are all equal" do
     ops = Diff.unified("Ich ging nach Hause.", "Ich ging nach Hause.")
     assert eqs(ops) == ["Ich", "ging", "nach", "Hause."]
     assert dels(ops) == []
     assert inss(ops) == []
+  end
+
+  test "a case-only difference is a soft warning, not a struck-out substitution" do
+    ops = Diff.unified("Ich ging nach Hause.", "ich ging nach hause.")
+
+    # The miscapitalized words align (no del/ins) and surface as :case warnings carrying
+    # the correct capitalization.
+    assert dels(ops) == []
+    assert inss(ops) == []
+    assert cases(ops) == ["Ich", "Hause."]
+    assert eqs(ops) == ["ging", "nach"]
   end
 
   test "a substitution is the wrong word struck out then the correct word" do

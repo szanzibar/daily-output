@@ -186,6 +186,66 @@ const Hooks = {
     }
   },
 
+  // Left/Right arrows step through previously-answered cards. Ignored while a field is
+  // focused so the arrows keep moving the text cursor as usual.
+  KeyNav: {
+    mounted() {
+      this.handler = (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return
+        const t = e.target
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
+        if (e.key === "ArrowLeft") {
+          e.preventDefault()
+          this.pushEvent("prev", {})
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault()
+          this.pushEvent("next", {})
+        }
+      }
+      window.addEventListener("keydown", this.handler)
+    },
+    destroyed() {
+      window.removeEventListener("keydown", this.handler)
+    }
+  },
+
+  // Fill-in-the-blank card. Each blank (a <textarea>) starts at a uniform width — so it
+  // never reveals the answer's length — and grows to fit exactly what you type, wrapping
+  // onto a new line and growing in height once it reaches the card's edge rather than
+  // spilling out. Enter behaves like a form (jump to next blank, submit from the last),
+  // and every keystroke is persisted across refresh/navigation like the full-answer box.
+  ClozeNav: {
+    mounted() {
+      this.blanks().forEach((el) => {
+        const min = parseInt(el.dataset.minSize, 10) || 6
+        const grow = () => {
+          // Width fits the text (capped to the card by max-width:100%, which then wraps);
+          // height tracks the wrapped content.
+          el.style.width = Math.max(min, el.value.length) + "ch"
+          el.style.height = "auto"
+          el.style.height = el.scrollHeight + "px"
+        }
+        el.addEventListener("input", grow)
+        // Restore any saved value and persist on every keystroke (clears on submit).
+        if (el.dataset.persistKey) persistField(el)
+        grow() // fit a restored value
+        el.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return
+          e.preventDefault()
+          const blanks = this.blanks()
+          const next = blanks[blanks.indexOf(el) + 1]
+          if (next) next.focus()
+          else this.el.requestSubmit()
+        })
+      })
+      const first = this.blanks()[0]
+      if (first) first.focus()
+    },
+    blanks() {
+      return Array.from(this.el.querySelectorAll("textarea.cloze-blank"))
+    }
+  },
+
   // Tracks active foreground time on a page and pushes it to the server in batches.
   // Counts a second only when the tab is visible AND the user has interacted (keystroke,
   // click, tap, or scroll) within the last `idleMs` — so a page left open while you walk
