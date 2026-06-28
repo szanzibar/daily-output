@@ -1222,6 +1222,7 @@ msgid "Enter"
 msgstr "Enter"
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
+#: lib/daily_output_web/live/progress_live.ex
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Flashcards"
@@ -1275,6 +1276,7 @@ msgstr "Üben"
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #: lib/daily_output_web/live/home_live.ex
+#: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr "Heute"
@@ -1392,3 +1394,68 @@ msgstr "Gesamt heute"
 #, elixir-autogen, elixir-format
 msgid "See time stats"
 msgstr "Zeitstatistiken ansehen"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "AI cost"
+msgstr "KI-Kosten"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "AI spent"
+msgstr "KI-Ausgaben"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "All time"
+msgstr "Gesamt"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Chat corrections"
+msgstr "Chat-Korrekturen"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Conversation openers"
+msgstr "Gesprächseinstiege"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Conversation partner"
+msgstr "Gesprächspartner"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Conversation review"
+msgstr "Gesprächsauswertung"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Estimated Anthropic API spend. Today, this week, then all time."
+msgstr "Geschätzte Anthropic-API-Ausgaben. Heute, diese Woche, dann gesamt."
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Focus summaries"
+msgstr "Fokus-Zusammenfassungen"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Proofreading"
+msgstr "Korrekturlesen"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Tokens"
+msgstr "Tokens"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Writing prompts"
+msgstr "Schreibideen"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "calls"
+msgstr "Aufrufe"

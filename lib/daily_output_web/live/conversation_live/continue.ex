@@ -57,8 +57,21 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
           socket
 
         match?(%{role: "user"}, List.last(messages)) ->
+          last = List.last(messages)
           send(self(), :request_ai_reply)
-          assign(socket, ai_loading: true)
+          socket = assign(socket, ai_loading: true)
+
+          # A conversation the user opened by typing the first message arrives here with
+          # that message saved but not yet corrected: the New wizard seeds it, and the
+          # "send" handler that fires the per-message correction on every later turn never
+          # ran for it. Correct it now (if it has no feedback yet) so the opening turn gets
+          # the same inline corrections as the rest of the chat.
+          if is_nil(last.feedback) do
+            start_message_correction(socket, last, Enum.drop(messages, -1))
+            update(socket, :correcting_ids, &MapSet.put(&1, last.id))
+          else
+            socket
+          end
 
         messages == [] and conversation.topic ->
           send(self(), :request_ai_opener)

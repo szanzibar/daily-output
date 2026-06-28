@@ -16,6 +16,22 @@ defmodule DailyOutputWeb.ConversationLive.ContinueTest do
     end
   end
 
+  test "a user-opened conversation corrects the first message on mount", %{conn: conn} do
+    {:ok, conversation} =
+      Conversations.create_conversation(%{topic: "Wie war dein Tag?", language: "de"})
+
+    # The New wizard seeds the user's opening message and navigates here; that message
+    # never went through the "send" handler, so mount must kick off its correction.
+    # Regression: the opening turn used to be skipped and never corrected.
+    {:ok, _msg} =
+      Conversations.add_message(conversation, %{role: "user", body: "Ich gehe heim"})
+
+    {:ok, _view, html} = live(conn, ~p"/conversations/#{conversation.id}/continue")
+
+    # The first bubble shows the per-message "checking…" indicator → correction is in flight.
+    assert html =~ "chat-checking"
+  end
+
   test "done is hidden below the warm-up floor", %{conn: conn} do
     {:ok, conversation} =
       Conversations.create_conversation(%{topic: "Wie war dein Tag?", language: "de"})
