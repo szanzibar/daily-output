@@ -11,6 +11,8 @@ defmodule DailyOutputWeb.ProgressLive do
     rates = overview.trend |> Enum.map(& &1.error_rate) |> Enum.reject(&is_nil/1)
     trend_max = Enum.max([1.0 | rates])
     time_max = Enum.max([1 | Enum.map(overview.time_days, & &1.total)])
+    # Tiny guard so a quiet week still scales (cost is small floats, not big ints).
+    usage_max = Enum.max([1.0e-9 | Enum.map(overview.usage_days, & &1.total)])
 
     {:ok,
      assign(socket,
@@ -18,6 +20,8 @@ defmodule DailyOutputWeb.ProgressLive do
        overview: overview,
        trend_max: trend_max,
        time_max: time_max,
+       usage_max: usage_max,
+       purpose_colors: purpose_colors(overview.usage_by_purpose),
        has_data:
          overview.total_words > 0 or overview.total_time > 0 or
            overview.usage_total.cost > 0
@@ -27,12 +31,23 @@ defmodule DailyOutputWeb.ProgressLive do
   defp bar_height(nil, _max), do: 0
   defp bar_height(rate, max), do: max(round(rate / max * 100), 4)
 
+  # Stable color per feature for the cost bars + legend, assigned in cost order
+  # (biggest spender first) so the palette stays consistent across the page.
+  @purpose_palette ~w(block-blue block-green block-purple block-pink block-cyan block-yellow block-red block-dark)
+
+  defp purpose_colors(by_purpose) do
+    n = length(@purpose_palette)
+
+    by_purpose
+    |> Enum.with_index()
+    |> Map.new(fn {%{purpose: purpose}, i} -> {purpose, Enum.at(@purpose_palette, rem(i, n))} end)
+  end
+
+  defp purpose_color(colors, purpose), do: Map.get(colors, purpose, "block-dark")
+
   defp dur(seconds), do: Stats.format_duration(seconds)
 
   defp cost(amount), do: Stats.format_cost(amount)
-
-  defp tokens(%{input_tokens: input, output_tokens: output}),
-    do: Stats.format_tokens(input + output)
 
   defp purpose_label("proofread"), do: gettext("Proofreading")
   defp purpose_label("proofread_message"), do: gettext("Chat corrections")
@@ -134,23 +149,59 @@ defmodule DailyOutputWeb.ProgressLive do
             <span class="inline-block w-3 h-3 block-orange"></span> {gettext("AI cost")}
           </h2>
           <p class="text-xs font-mono text-base-content/60 mb-4">
-            {gettext("Estimated Anthropic API spend. Today, this week, then all time.")}
+            {gettext("Estimated Anthropic API spend per day, by feature. The last 7 days.")}
           </p>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            <.recap label={gettext("Today")} value={cost(@overview.usage_today.cost)} />
+          <div class="grid grid-cols-2 gap-3 mb-5">
             <.recap label={gettext("This week")} value={cost(@overview.usage_week.cost)} />
             <.recap label={gettext("All time")} value={cost(@overview.usage_total.cost)} />
-            <.recap label={gettext("Tokens")} value={tokens(@overview.usage_total)} />
           </div>
 
-          <div :if={@overview.usage_by_purpose != []} class="space-y-2">
+          <div class="flex items-end gap-1 sm:gap-2 h-40">
+            <div
+              :for={day <- @overview.usage_days}
+              class="flex-1 flex flex-col items-center gap-1 h-full justify-end"
+            >
+              <span class="text-[10px] sm:text-xs font-mono font-bold">
+                {if day.total > 0, do: cost(day.total), else: "·"}
+              </span>
+              <div
+                class={[
+                  "w-full border-2 border-ink flex flex-col-reverse",
+                  if(day.total > 0, do: "", else: "bg-base-200")
+                ]}
+                style={"height: #{bar_height(day.total, @usage_max)}%"}
+                title={Calendar.strftime(day.date, "%d.%m")}
+              >
+                <div
+                  :for={seg <- day.by_purpose}
+                  class={["w-full", purpose_color(@purpose_colors, seg.purpose)]}
+                  style={"height: #{seg.cost / day.total * 100}%"}
+                  title={"#{purpose_label(seg.purpose)}: #{cost(seg.cost)}"}
+                >
+                </div>
+              </div>
+              <span class="text-[10px] font-mono text-base-content/50">
+                {Calendar.strftime(day.date, "%a")}
+              </span>
+            </div>
+          </div>
+
+          <%!-- Legend — all-time spend per feature, colors match the bars. --%>
+          <div :if={@overview.usage_by_purpose != []} class="space-y-2 mt-5">
             <div
               :for={row <- @overview.usage_by_purpose}
               class="flex items-baseline justify-between gap-3 border-2 border-ink px-3 py-2"
             >
-              <span class="text-xs font-mono font-bold uppercase tracking-wide truncate">
-                {purpose_label(row.purpose)}
+              <span class="flex items-center gap-2 min-w-0">
+                <span class={[
+                  "inline-block w-3 h-3 border border-ink shrink-0",
+                  purpose_color(@purpose_colors, row.purpose)
+                ]}>
+                </span>
+                <span class="text-xs font-mono font-bold uppercase tracking-wide truncate">
+                  {purpose_label(row.purpose)}
+                </span>
               </span>
               <div class="flex items-baseline gap-3 shrink-0">
                 <span class="text-[10px] font-mono text-base-content/50">

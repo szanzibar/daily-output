@@ -52,6 +52,7 @@ defmodule DailyOutput.Stats do
       usage_total: usage_total(),
       usage_today: usage_today(),
       usage_week: usage_since(Date.add(today, -6)),
+      usage_days: usage_by_day(7),
       usage_by_purpose: usage_by_purpose()
     }
   end
@@ -199,6 +200,44 @@ defmodule DailyOutput.Stats do
           calls: acc.calls + calls
         }
     end)
+  end
+
+  @doc """
+  Per-day API spend for the last `days` days (oldest → newest), each split by purpose.
+  Each day: `%{date, total, by_purpose: [%{purpose, cost}]}` (USD, highest cost first).
+  """
+  def usage_by_day(days) do
+    today = Clock.today()
+    start_date = Date.add(today, -(days - 1))
+    {start, _finish} = Clock.day_range(start_date)
+
+    by_day =
+      from(u in ApiUsage,
+        where: u.inserted_at >= ^start,
+        select:
+          {u.inserted_at, u.purpose, u.model, u.input_tokens, u.output_tokens,
+           u.cache_read_tokens, u.cache_creation_tokens}
+      )
+      |> Repo.all()
+      |> Enum.group_by(fn row -> Clock.to_logical_date(elem(row, 0)) end)
+
+    for date <- Date.range(start_date, today) do
+      by_purpose =
+        by_day
+        |> Map.get(date, [])
+        |> Enum.group_by(&elem(&1, 1))
+        |> Enum.map(fn {purpose, rows} ->
+          cost =
+            Enum.reduce(rows, 0.0, fn {_t, _p, model, input, output, cr, cw}, acc ->
+              acc + cost(model, input, output, cr, cw)
+            end)
+
+          %{purpose: purpose, cost: cost}
+        end)
+        |> Enum.sort_by(& &1.cost, :desc)
+
+      %{date: date, by_purpose: by_purpose, total: sum(by_purpose, & &1.cost)}
+    end
   end
 
   @doc "Per-feature spend, highest cost first: `[%{purpose, cost, calls}]`."

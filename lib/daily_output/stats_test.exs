@@ -4,6 +4,7 @@ defmodule DailyOutput.StatsTest do
   alias DailyOutput.{Clock, Conversations, Journal, Repo, Stats}
   alias DailyOutput.Conversations.Conversation
   alias DailyOutput.Journal.Entry
+  alias DailyOutput.Stats.ApiUsage
 
   describe "correction_count/1" do
     test "counts valid markers, ignoring empty and malformed ones" do
@@ -70,6 +71,33 @@ defmodule DailyOutput.StatsTest do
       Stats.track("entry", 10)
       Stats.track("flashcards", 5)
       assert Stats.total_time() == 15
+    end
+  end
+
+  describe "usage_by_day/1" do
+    test "one ascending row per day; today is split by purpose, highest cost first" do
+      today = Clock.today()
+      # sonnet pricing: $3/M input, $15/M output.
+      log_usage("flashcards", "claude-sonnet", input: 1_000_000)
+      log_usage("proofread", "claude-sonnet", output: 1_000_000)
+
+      days = Stats.usage_by_day(7)
+
+      assert length(days) == 7
+      assert hd(days).date == Date.add(today, -6)
+
+      last = List.last(days)
+      assert last.date == today
+      assert_in_delta last.total, 18.0, 0.0001
+
+      assert Enum.map(last.by_purpose, & &1.purpose) == ["proofread", "flashcards"]
+      assert_in_delta hd(last.by_purpose).cost, 15.0, 0.0001
+    end
+
+    test "quiet days have an empty breakdown and a zero total" do
+      days = Stats.usage_by_day(7)
+      assert length(days) == 7
+      assert Enum.all?(days, &(&1.by_purpose == [] and &1.total == 0))
     end
   end
 
@@ -164,5 +192,20 @@ defmodule DailyOutput.StatsTest do
       )
 
     record
+  end
+
+  # Records an API call today, pinning inserted_at so the logical-day bucketing is stable.
+  defp log_usage(purpose, model, tokens) do
+    {:ok, usage} =
+      Repo.insert(%ApiUsage{
+        purpose: purpose,
+        model: model,
+        input_tokens: Keyword.get(tokens, :input, 0),
+        output_tokens: Keyword.get(tokens, :output, 0)
+      })
+
+    at = DateTime.new!(Clock.today(), ~T[12:00:00], "Etc/UTC")
+    Repo.update_all(from(u in ApiUsage, where: u.id == ^usage.id), set: [inserted_at: at])
+    usage
   end
 end

@@ -1277,7 +1277,6 @@ msgstr "Üben"
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #: lib/daily_output_web/live/home_live.ex
-#: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr "Heute"
@@ -1433,11 +1432,6 @@ msgstr "Gesprächsauswertung"
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
-msgid "Estimated Anthropic API spend. Today, this week, then all time."
-msgstr "Geschätzte Anthropic-API-Ausgaben. Heute, diese Woche, dann gesamt."
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
 msgid "Focus summaries"
 msgstr "Fokus-Zusammenfassungen"
 
@@ -1445,11 +1439,6 @@ msgstr "Fokus-Zusammenfassungen"
 #, elixir-autogen, elixir-format
 msgid "Proofreading"
 msgstr "Korrekturlesen"
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Tokens"
-msgstr "Tokens"
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
@@ -1505,3 +1494,9 @@ msgstr "Zurück"
 #, elixir-autogen, elixir-format
 msgid "Reviewing"
 msgstr "Rückblick"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Estimated Anthropic API spend per day, by feature. The last 7 days."
+msgstr ""
+"Geschätzte Anthropic-API-Ausgaben pro Tag, nach Funktion. Die letzten 7 Tage."
