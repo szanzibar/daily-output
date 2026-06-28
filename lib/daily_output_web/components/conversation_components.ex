@@ -83,11 +83,10 @@ defmodule DailyOutputWeb.ConversationComponents do
   The "did you stop repeating mistakes within this conversation?" score panel.
 
   Renders the deterministic improvement signal (`feedback["improvement"]`): the error-rate
-  trend early→late, which mistake categories were resolved vs. still repeating, and the AI's
-  short narrative (`note`). Pairs with `focus_result_box` for the two-axis score.
+  trend early→late and which mistake categories were resolved vs. still repeating. Pairs
+  with `focus_result_box` for the two-axis score.
   """
   attr :improvement, :map, required: true
-  attr :note, :string, default: nil
 
   def improvement_panel(assigns) do
     imp = assigns.improvement
@@ -106,8 +105,6 @@ defmodule DailyOutputWeb.ConversationComponents do
         <span class="inline-block w-3 h-3 block-green"></span>
         {gettext("Progress this conversation")}
       </h2>
-
-      <p :if={@note not in [nil, ""]} class="text-sm mb-3">{@note}</p>
 
       <div
         :if={!is_nil(@early) or !is_nil(@late)}

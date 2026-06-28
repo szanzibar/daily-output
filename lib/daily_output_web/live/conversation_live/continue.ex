@@ -118,8 +118,8 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
     focus_topic_text = socket.assigns.focus_topic_text
 
     # Messages were already corrected inline as they were sent, so completion does NOT
-    # re-correct: it runs one end-of-conversation review (focus check + future focus areas
-    # + encouragement), grounded in the corrections each message already carries.
+    # re-correct: it runs one end-of-conversation review (focus check + future focus areas),
+    # grounded in the corrections each message already carries.
     transcript =
       Enum.map(socket.assigns.messages, &%{role: &1.role, body: &1.body, feedback: &1.feedback})
 
@@ -139,8 +139,7 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
           native_language: config.native_language || "en",
           language_level: config.language_level || "B2",
           prompt_context: config.prompt_context || "",
-          focus_topic: focus_topic_text,
-          improvement: improvement
+          focus_topic: focus_topic_text
         )
 
       send(pid, {:feedback_loaded, result})

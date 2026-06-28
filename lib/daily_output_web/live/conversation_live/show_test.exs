@@ -82,8 +82,6 @@ defmodule DailyOutputWeb.ConversationLive.ShowTest do
     {:ok, conversation} =
       Conversations.save_feedback(conversation, %{
         "commentary" => [],
-        "encouragement" => "Gut!",
-        "improvement_note" => "Du hast die Genus-Fehler nicht wiederholt!",
         "improvement" => %{
           "resolved_categories" => ["gender"],
           "repeated_categories" => ["case"],
@@ -94,8 +92,8 @@ defmodule DailyOutputWeb.ConversationLive.ShowTest do
 
     {:ok, _view, html} = live(conn, ~p"/conversations/#{conversation.id}")
 
+    # The panel renders the deterministic signal only (no AI narration).
     # Assert on locale-independent data so the test holds regardless of UI language.
-    assert html =~ "Du hast die Genus-Fehler nicht wiederholt!"
     assert html =~ "20.0"
     assert html =~ "5.0"
     # Resolved/repeating category labels (German in the default test locale).

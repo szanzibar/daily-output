@@ -75,7 +75,7 @@ defmodule DailyOutput.AI.Proofreader do
     - Don't flag advanced constructions they haven't learned yet
     - Focus on patterns that will help them progress from #{level} toward the next level
 
-    IMPORTANT: Write ALL feedback text (annotations, commentary, encouragement) in #{feedback_lang}.
+    IMPORTANT: Write ALL feedback text (annotations, commentary) in #{feedback_lang}.
     In any text NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
     #{context_block}#{focus_block}
     Use the provide_feedback tool to return your response.
@@ -113,7 +113,7 @@ defmodule DailyOutput.AI.Proofreader do
              tools: [feedback_tool(focus_topic)],
              tool_choice: %{type: "tool", name: "provide_feedback"},
              purpose: "proofread",
-             max_tokens: 4096
+             max_tokens: 2048
            ) do
         {:ok, %{"content" => content}} ->
           case Enum.find(content, &(&1["type"] == "tool_use")) do
@@ -135,16 +135,16 @@ defmodule DailyOutput.AI.Proofreader do
   End-of-conversation review — runs once when the student hits "Done".
 
   Individual messages are already corrected inline as they are sent, so this does NOT
-  re-correct text. It only does the wrap-up work: judge whether the focus concept was
-  used (`focus_result`), distill a few teaching points the student can turn into future
-  focus areas (`commentary`), and write a short encouraging note (`encouragement`).
+  re-correct text. It only does the wrap-up work: distill at most 2 pattern-level teaching
+  points the student can turn into future focus areas (`commentary`), and judge whether the
+  focus concept was used (`focus_result`).
 
   `messages` is the full transcript as a list of `%{role, body, feedback}` — each user
   message's `feedback` (its inline corrections) is summarised into the prompt so the
   review is grounded in the mistakes that actually happened, without re-finding them.
 
-  Returns `{:ok, %{"commentary" => [...], "encouragement" => ..., "focus_result" => ...}}`
-  (no `annotated_text`/`annotations`) or `{:error, reason}`.
+  Returns `{:ok, %{"commentary" => [...], "focus_result" => ...}}`
+  (no `annotated_text`/`annotations`/`encouragement`) or `{:error, reason}`.
   """
   def assess_conversation(messages, opts) do
     target = Keyword.fetch!(opts, :target_language)
@@ -152,15 +152,12 @@ defmodule DailyOutput.AI.Proofreader do
     level = Keyword.get(opts, :language_level, "B2")
     context = Keyword.get(opts, :prompt_context, "")
     focus_topic = Keyword.get(opts, :focus_topic)
-    improvement = Keyword.get(opts, :improvement)
     profile = LanguageProfile.resolve(target)
 
     feedback_lang = if level in ["B2", "C1", "C2"], do: target, else: native
 
     context_block =
       if context != "", do: "\n\nAdditional context about the student:\n#{context}\n", else: ""
-
-    improvement_block = improvement_block(improvement, feedback_lang)
 
     focus_block =
       if focus_topic && focus_topic != "" do
@@ -183,19 +180,14 @@ defmodule DailyOutput.AI.Proofreader do
 
     The student's individual messages were ALREADY corrected inline as they were sent. Do NOT correct or rewrite their text again — that work is done.
 
-    Your job is the end-of-conversation review:
-    - If a focus concept was set, judge whether they used it (focus_result).
-    - Distill 2-4 concrete teaching points ("commentary") the student can turn into future focus areas — grounded in the mistakes they actually made and any patterns repeated across the chat. Prefer patterns over one-offs.
-    - Write one short encouraging note ("encouragement") about how the conversation went.
-    - If an improvement signal is provided below, add a one-sentence "improvement_note" narrating that within-conversation progress.
+    Your only job is to distill future focus areas:
+    - Give at most 2 teaching points ("commentary"), one short sentence each (max ~15 words), grounded in patterns the student actually repeated across the chat. Prefer patterns over one-offs; if nothing pattern-level is worth practising, return fewer or an empty list.
+    - If a focus concept was set, also judge whether they used it (focus_result).
 
-    Calibrate to #{level}: focus on what will move them toward the next level.
-    IMPORTANT: Write ALL text in #{feedback_lang}.
-    In any text NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
-    #{context_block}#{focus_block}#{improvement_block}
-    Use the provide_assessment tool to return your response.
-    IMPORTANT: "commentary" MUST be a JSON array of objects, never a stringified JSON string.
-    commentary "type" must be "pattern", "suggestion", or "alternative".
+    Calibrate to #{level}: pick what will move them toward the next level.
+    Write ALL text in #{feedback_lang}. NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
+    #{context_block}#{focus_block}
+    Use the provide_assessment tool. "commentary" MUST be a JSON array of objects (never a stringified string); each "type" is "pattern", "suggestion", or "alternative".
     """
 
     with {:ok, client} <- AI.client() do
@@ -205,7 +197,7 @@ defmodule DailyOutput.AI.Proofreader do
              tools: [assessment_tool(focus_topic)],
              tool_choice: %{type: "tool", name: "provide_assessment"},
              purpose: "assessment",
-             max_tokens: 2048
+             max_tokens: 512
            ) do
         {:ok, %{"content" => content}} ->
           case Enum.find(content, &(&1["type"] == "tool_use")) do
@@ -222,29 +214,6 @@ defmodule DailyOutput.AI.Proofreader do
       end
     end
   end
-
-  # A compact, already-computed improvement signal the model narrates into improvement_note.
-  defp improvement_block(nil, _lang), do: ""
-
-  defp improvement_block(analysis, lang) do
-    resolved = analysis["resolved_categories"] || []
-    repeated = analysis["repeated_categories"] || []
-
-    """
-
-    Improvement signal already computed for THIS conversation (narrate it in improvement_note):
-    - Mistake categories the student stopped repeating after being corrected: #{fmt_categories(resolved)}
-    - Categories still being repeated: #{fmt_categories(repeated)}
-    - Correction rate per 100 words: early #{fmt_rate(analysis["early_rate"])} → late #{fmt_rate(analysis["late_rate"])}
-    Write improvement_note as one short, honest, encouraging sentence (in #{lang}) about this progress. If there is nothing meaningful to say, use an empty string.
-    """
-  end
-
-  defp fmt_categories([]), do: "(none)"
-  defp fmt_categories(list), do: Enum.join(list, ", ")
-
-  defp fmt_rate(nil), do: "n/a"
-  defp fmt_rate(rate), do: to_string(rate)
 
   # The full transcript, with each student message's already-applied corrections summarised
   # below it (category: explanation) so the review is grounded without re-correcting.
@@ -309,41 +278,20 @@ defmodule DailyOutput.AI.Proofreader do
     system = """
     You are a #{profile.prompt_name} teacher correcting one message a #{native} speaker (CEFR level #{level}) just sent in a casual chat.#{language_conventions_block}
 
-    This is spoken-style conversation, not formal writing. Calibrate to #{level}:
-    - Only flag genuine errors a #{level} student should know better (grammar, agreement, case, gender, word order, verb forms, spelling, clearly wrong word choice)
-    - Do NOT flag casual/colloquial register, contractions, or stylistic choices that are acceptable in speech
-    - Do NOT flag advanced constructions they haven't learned yet
-    - If the message is already correct, return it unchanged with an empty annotations array
+    This is spoken-style chat, not formal writing. Calibrate to #{level}:
+    - Flag only genuine errors a #{level} student should know better (grammar, agreement, case, gender, word order, verb forms, spelling, clearly wrong word choice).
+    - Do NOT flag casual register, contractions, stylistic choices, or constructions above their level. If the message is already correct, return it unchanged with an empty annotations array.
 
-    IMPORTANT: Write ALL explanation text in #{feedback_lang}.
+    Write ALL explanation text in #{feedback_lang}. In explanations NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
     #{context_block}
-    Use the provide_corrections tool to return your response.
-    IMPORTANT: "annotations" MUST be a JSON array of objects, never a stringified JSON string.
+    Use the provide_corrections tool. "annotations" MUST be a JSON array of objects, never a stringified string.
 
-    Getting the marker STRUCTURE right matters more than catching every nuance.
-    Reproduce the ENTIRE original message (preserving line breaks) and mark only real errors.
-
-    A marker is EXACTLY: [[N:original||corrected]]
-    - N is a plain counting number: 1 for the first correction, 2 for the second, and so on.
-      It MUST equal that correction's "id" in the annotations array.
-    - There is EXACTLY ONE colon, right after N. Then the original text, then ||, then the corrected text.
-    - NEVER write the literal letters "id". NEVER put two numbers or two colons before the text.
-      ✗ WRONG: [[id:das||dass]]   ✗ WRONG: [[id:1:das||dass]]   ✗ WRONG: [[1:1:das||dass]]
-      ✓ RIGHT: [[1:das||dass]]
-
-    Every correction is exactly ONE of these three forms — choose the one that matches:
-    - REPLACE a wrong word/phrase: [[1:wrong||right]] — BOTH sides filled, e.g. [[1:das||dass]]
-    - INSERT something missing: [[2:||missing]] — original side EMPTY, e.g. a missing comma is [[2:||,]]
-    - DELETE something extra: [[3:extra||]] — corrected side EMPTY
-
-    So:
-    - A wrong word is always a REPLACE — never leave the right side empty
-    - A missing word or punctuation mark is always an INSERT — leave the original side empty, never repeat the neighbouring word
-    - Mark the SMALLEST span that fixes the error; never restate correct text
-    - Each N is unique; never put ]] inside a marker; use plain text only (no bracket characters)
+    Marker structure matters above all. Reproduce the ENTIRE original message (keep line breaks), marking only real errors. A marker is EXACTLY [[N:original||corrected]]:
+    - N is a plain counting number (1, 2, 3, …) matching that correction's "id"; exactly ONE colon, right after N. Never write the letters "id" or two numbers/colons. ✓ [[1:das||dass]]  ✗ [[id:das||dass]]  ✗ [[1:1:das||dass]]
+    - Each correction is exactly one of: REPLACE a wrong word [[1:wrong||right]] (both sides filled) · INSERT something missing [[2:||,]] (original side empty) · DELETE something extra [[3:extra||]] (corrected side empty).
+    - A wrong word is always a REPLACE (never empty the right side); a missing word/punctuation is always an INSERT (never repeat the neighbour). Mark the SMALLEST span that fixes it; never restate correct text. Each N is unique; never put ]] inside a marker; use plain text only.
 
     Keep each explanation VERY SHORT (5-10 words) — say what is wrong, not a grammar lecture.
-    In explanations NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
     Tag each correction with the single best category from: #{Enum.join(@categories, ", ")}
     """
 
@@ -385,7 +333,7 @@ defmodule DailyOutput.AI.Proofreader do
   defp context_transcript(history, profile) do
     lines =
       history
-      |> Enum.take(-6)
+      |> Enum.take(-4)
       |> Enum.map_join("\n", fn msg ->
         speaker = if msg.role == "user", do: "Student", else: "Partner (#{profile.prompt_name})"
         "#{speaker}: #{msg.body}"
@@ -503,14 +451,10 @@ defmodule DailyOutput.AI.Proofreader do
           },
           "required" => ["type", "text"]
         }
-      },
-      "encouragement" => %{
-        "type" => "string",
-        "description" => "Brief positive note"
       }
     }
 
-    base_required = ["annotated_text", "annotations", "commentary", "encouragement"]
+    base_required = ["annotated_text", "annotations", "commentary"]
 
     {properties, required} =
       if focus_topic && focus_topic != "" do
@@ -565,24 +509,16 @@ defmodule DailyOutput.AI.Proofreader do
             "type" => %{"type" => "string", "enum" => ["pattern", "suggestion", "alternative"]},
             "text" => %{
               "type" => "string",
-              "description" => "A concrete teaching point the student can turn into a focus area"
+              "description" =>
+                "One pattern-level teaching point to turn into a focus area — one short sentence, max ~15 words"
             }
           },
           "required" => ["type", "text"]
         }
-      },
-      "encouragement" => %{
-        "type" => "string",
-        "description" => "One short, specific positive note about the conversation"
-      },
-      "improvement_note" => %{
-        "type" => "string",
-        "description" =>
-          "One sentence narrating the within-conversation improvement signal, or empty string if none was provided"
       }
     }
 
-    base_required = ["commentary", "encouragement"]
+    base_required = ["commentary"]
 
     {properties, required} =
       if focus_topic && focus_topic != "" do
@@ -617,7 +553,7 @@ defmodule DailyOutput.AI.Proofreader do
     %{
       name: "provide_assessment",
       description:
-        "Provide the end-of-conversation review (focus result, teaching points, encouragement). Do NOT correct text.",
+        "Provide the end-of-conversation review (future focus areas + focus result). Do NOT correct text.",
       input_schema: %{"type" => "object", "properties" => properties, "required" => required}
     }
   end

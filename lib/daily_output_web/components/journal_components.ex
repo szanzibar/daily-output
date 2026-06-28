@@ -76,11 +76,6 @@ defmodule DailyOutputWeb.JournalComponents do
 
       <hr class="brutal-hr" />
 
-      <%!-- Encouragement --%>
-      <div :if={@feedback["encouragement"]} class="border-4 border-ink p-5 block-yellow">
-        <p class="font-bold text-base">{@feedback["encouragement"]}</p>
-      </div>
-
       <%!-- Annotated text — rendered by JS hook for precise measurement --%>
       <div class="border-4 border-ink p-4">
         <h2 class="text-lg font-black uppercase mb-4 flex items-center gap-2">

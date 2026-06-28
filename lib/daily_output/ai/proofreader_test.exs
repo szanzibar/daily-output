@@ -8,9 +8,10 @@ defmodule DailyOutput.AI.ProofreaderTest do
       tool = Proofreader.feedback_tool(nil)
 
       assert tool.input_schema["required"] ==
-               ["annotated_text", "annotations", "commentary", "encouragement"]
+               ["annotated_text", "annotations", "commentary"]
 
       refute Map.has_key?(tool.input_schema["properties"], "focus_result")
+      refute Map.has_key?(tool.input_schema["properties"], "encouragement")
     end
 
     test "with focus topic, focus_result is required" do
@@ -67,10 +68,10 @@ defmodule DailyOutput.AI.ProofreaderTest do
       refute Map.has_key?(tool.input_schema["properties"], "annotations")
     end
 
-    test "without focus topic, requires only commentary and encouragement" do
+    test "without focus topic, requires only commentary" do
       tool = Proofreader.assessment_tool(nil)
 
-      assert tool.input_schema["required"] == ["commentary", "encouragement"]
+      assert tool.input_schema["required"] == ["commentary"]
       refute Map.has_key?(tool.input_schema["properties"], "focus_result")
     end
 
@@ -90,10 +91,10 @@ defmodule DailyOutput.AI.ProofreaderTest do
       assert commentary_props["type"]["enum"] == ["pattern", "suggestion", "alternative"]
     end
 
-    test "offers an optional improvement_note field" do
+    test "no longer offers encouragement or improvement_note fields" do
       tool = Proofreader.assessment_tool(nil)
-      assert Map.has_key?(tool.input_schema["properties"], "improvement_note")
-      refute "improvement_note" in tool.input_schema["required"]
+      refute Map.has_key?(tool.input_schema["properties"], "encouragement")
+      refute Map.has_key?(tool.input_schema["properties"], "improvement_note")
     end
   end
 

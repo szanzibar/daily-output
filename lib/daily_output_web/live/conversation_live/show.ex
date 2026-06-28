@@ -226,13 +226,6 @@ defmodule DailyOutputWeb.ConversationLive.Show do
 
       <%!-- Conversation with feedback (unified) or plain chat --%>
       <div :if={@conversation.feedback}>
-        <div
-          :if={@conversation.feedback["encouragement"]}
-          class="border-4 border-ink p-5 block-yellow mb-6"
-        >
-          <p class="font-bold text-base">{@conversation.feedback["encouragement"]}</p>
-        </div>
-
         <div class="border-4 border-ink p-4">
           <h2 class="text-lg font-black uppercase mb-4 flex items-center gap-2">
             <span class="inline-block w-3 h-3 block-red"></span> {gettext(
@@ -257,7 +250,6 @@ defmodule DailyOutputWeb.ConversationLive.Show do
         <.improvement_panel
           :if={@conversation.feedback["improvement"]}
           improvement={@conversation.feedback["improvement"]}
-          note={@conversation.feedback["improvement_note"]}
         />
 
         <div
