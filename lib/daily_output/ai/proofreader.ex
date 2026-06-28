@@ -75,6 +75,10 @@ defmodule DailyOutput.AI.Proofreader do
     - Don't flag advanced constructions they haven't learned yet
     - Focus on patterns that will help them progress from #{level} toward the next level
 
+    Return TWO things:
+    1. Inline corrections — mark every real error in the text (marker rules below).
+    2. "commentary" — AT MOST 2 pattern-level teaching points the student can turn into a future focus area, one short sentence each (max ~15 words). This is a summary of the few highest-value patterns, NOT a restatement of each correction — even for a long entry with many errors, keep it to 1-2. Return none if nothing pattern-level is worth practising.
+
     IMPORTANT: Write ALL feedback text (annotations, commentary) in #{feedback_lang}.
     In any text NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
     #{context_block}#{focus_block}
@@ -98,9 +102,7 @@ defmodule DailyOutput.AI.Proofreader do
     - Each N should be unique — do not reuse the same id for different corrections
     - NEVER put ]] inside a marker — the marker must end with exactly ]]
     - Both original and corrected text should be simple text with no special bracket characters
-    - Keep annotation explanations VERY SHORT (5-10 words)
-    - Put longer explanations and teaching points in "commentary" instead
-    - commentary type can be "pattern", "suggestion", or "alternative"
+    - Keep annotation explanations VERY SHORT (5-10 words) — say what is wrong, not a grammar lecture
     - focus_result booleans must be self-consistent with focus_result comment
     """
 
@@ -447,7 +449,11 @@ defmodule DailyOutput.AI.Proofreader do
               "type" => "string",
               "enum" => ["pattern", "suggestion", "alternative"]
             },
-            "text" => %{"type" => "string", "description" => "Detailed explanation"}
+            "text" => %{
+              "type" => "string",
+              "description" =>
+                "One pattern-level teaching point to turn into a focus area — one short sentence, max ~15 words"
+            }
           },
           "required" => ["type", "text"]
         }

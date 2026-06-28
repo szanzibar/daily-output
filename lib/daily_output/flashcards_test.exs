@@ -2,7 +2,7 @@ defmodule DailyOutput.FlashcardsTest do
   use DailyOutput.DataCase
 
   alias DailyOutput.{Clock, Flashcards, Repo, Settings}
-  alias DailyOutput.Flashcards.{Card, Review}
+  alias DailyOutput.Flashcards.{Card, CompletedDay, Review}
 
   defp new_card(target \\ "Ich ging nach Hause.", native \\ "I went home.") do
     {:ok, card} =
@@ -38,6 +38,34 @@ defmodule DailyOutput.FlashcardsTest do
       }
 
       assert {:ok, 0} = Flashcards.ingest_correction(:entry, 1, feedback)
+      assert Flashcards.count_cards() == 0
+    end
+  end
+
+  describe "ingest_conversation/3" do
+    test "skips when no user message has substantive corrections (no AI call)" do
+      messages = [
+        %{role: "assistant", feedback: nil},
+        %{role: "user", feedback: nil},
+        %{role: "user", feedback: %{"annotated_text" => "Alles gut."}}
+      ]
+
+      assert {:ok, 0} = Flashcards.ingest_conversation(1, messages)
+      assert Flashcards.count_cards() == 0
+    end
+
+    test "skips when the only corrections are capitalization fixes (no AI call)" do
+      messages = [
+        %{
+          role: "user",
+          feedback: %{
+            "annotated_text" => "Das [[1:haus||Haus]] ist schön.",
+            "annotations" => [%{"id" => 1, "category" => "spelling", "explanation" => "capital"}]
+          }
+        }
+      ]
+
+      assert {:ok, 0} = Flashcards.ingest_conversation(1, messages)
       assert Flashcards.count_cards() == 0
     end
   end
@@ -101,6 +129,23 @@ defmodule DailyOutput.FlashcardsTest do
 
       refute Flashcards.today_progress().complete?
       refute MapSet.member?(Flashcards.completed_dates(), Clock.today())
+    end
+
+    test "meeting the quota records a persistent completion for the day" do
+      set_target(1)
+      {:ok, _} = Flashcards.review(new_card(), :pass)
+
+      assert Repo.get_by(CompletedDay, day: Clock.today())
+    end
+
+    test "a completed past day stays complete after the target is raised" do
+      past = Date.add(Clock.today(), -1)
+      Repo.insert!(%CompletedDay{day: past})
+
+      # Raising the cap must NOT retroactively revoke a day that was already earned.
+      set_target(100)
+
+      assert MapSet.member?(Flashcards.completed_dates(), past)
     end
   end
 end

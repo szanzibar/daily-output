@@ -14,7 +14,7 @@ defmodule DailyOutput.Flashcards do
   import Ecto.Query
 
   alias DailyOutput.{Clock, Repo, Settings}
-  alias DailyOutput.Flashcards.{Card, Diff, Generator, Markers, Review, Scheduler}
+  alias DailyOutput.Flashcards.{Card, CompletedDay, Diff, Generator, Markers, Review, Scheduler}
 
   @default_daily_target 15
 
@@ -68,6 +68,68 @@ defmodule DailyOutput.Flashcards do
           inserted =
             cards
             |> Enum.map(&insert_card(&1, target, to_string(source_type), source_id))
+            |> Enum.count(&match?({:ok, %Card{}}, &1))
+
+          {:ok, inserted}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  @doc """
+  Generates flashcards for a whole conversation in a **single** AI call.
+
+  Conversations are corrected per message, but turning each message into cards as it lands
+  means one AI request per corrected turn. This combines every user message's substantive
+  corrections into one `Generator.generate/3` call at conversation completion — one request
+  instead of N. `messages` is the transcript (anything with `.role` and `.feedback`); cards
+  are stored under source_type "conversation".
+
+  Same contract as `ingest_correction/4`: capitalization-only fixes are filtered before any
+  AI call, returns `{:ok, count}` (0 when nothing substantive) or `{:error, reason}`, and is
+  best-effort — wrap it in a `Task` so AI latency never blocks the completion flow.
+  """
+  def ingest_conversation(conversation_id, messages, opts \\ []) do
+    corrections =
+      messages
+      |> Enum.filter(&(&1.role == "user"))
+      |> Enum.flat_map(fn msg ->
+        annotated = (is_map(msg.feedback) && msg.feedback["annotated_text"]) || ""
+
+        case annotated |> Markers.parse() |> Markers.substantive() do
+          [] ->
+            []
+
+          markers ->
+            [
+              {Markers.corrected_text(annotated),
+               build_mistakes(markers, msg.feedback["annotations"])}
+            ]
+        end
+      end)
+
+    if corrections == [] do
+      {:ok, 0}
+    else
+      config = opts[:config] || Settings.get_config()
+      target = config.target_language || "de"
+      native = config.native_language || "en"
+      level = config.language_level || "B2"
+
+      corrected = corrections |> Enum.map_join("\n", &elem(&1, 0))
+      mistakes = Enum.flat_map(corrections, &elem(&1, 1))
+
+      case Generator.generate(corrected, mistakes,
+             target_language: target,
+             native_language: native,
+             language_level: level
+           ) do
+        {:ok, cards} ->
+          inserted =
+            cards
+            |> Enum.map(&insert_card(&1, target, "conversation", conversation_id))
             |> Enum.count(&match?({:ok, %Card{}}, &1))
 
           {:ok, inserted}
@@ -177,16 +239,33 @@ defmodule DailyOutput.Flashcards do
   def review(%Card{} = card, result) when result in [:pass, :fail] do
     fields = Scheduler.review(card, result)
 
-    Repo.transaction(fn ->
-      {:ok, updated} = card |> Card.schedule_changeset(fields) |> Repo.update()
+    outcome =
+      Repo.transaction(fn ->
+        {:ok, updated} = card |> Card.schedule_changeset(fields) |> Repo.update()
 
-      {:ok, _} =
-        %Review{}
-        |> Review.changeset(%{card_id: card.id, result: result == :pass})
-        |> Repo.insert()
+        {:ok, _} =
+          %Review{}
+          |> Review.changeset(%{card_id: card.id, result: result == :pass})
+          |> Repo.insert()
 
-      updated
-    end)
+        updated
+      end)
+
+    # Once this review tips today over the quota, record the day as a settled fact so a later
+    # change to the daily target can never revoke it. Idempotent (the day is unique).
+    if today_progress().complete?, do: mark_completed(Clock.today())
+
+    outcome
+  end
+
+  # Records `date` as a completed flashcard day. Idempotent — re-recording a day is a no-op.
+  defp mark_completed(date) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    Repo.insert_all(CompletedDay, [%{day: date, inserted_at: now}],
+      on_conflict: :nothing,
+      conflict_target: :day
+    )
   end
 
   @doc "Unified word-level diff of the typed answer against the expected one (for the reveal)."
@@ -234,22 +313,18 @@ defmodule DailyOutput.Flashcards do
   @doc """
   The set of logical dates whose flashcard quota was met — consumed by the streak engine.
 
-  Past days count when at least `target` distinct cards were reviewed; today uses the
-  availability-aware `today_progress/0` so a caught-up day still counts.
+  Past days are read from the recorded completions (a settled fact, see `CompletedDay`), so
+  a later change to the daily target can't revoke a day that was already earned. Today is
+  still evaluated live via the availability-aware `today_progress/0` (and recorded the moment
+  it's met), so a caught-up day counts immediately.
   """
   def completed_dates do
-    target = daily_target()
     today = Clock.today()
-
-    past =
-      reviews_by_logical_date()
-      |> Enum.filter(fn {date, count} -> date != today and count >= target end)
-      |> Enum.map(fn {date, _} -> date end)
-      |> MapSet.new()
+    recorded = Repo.all(from(d in CompletedDay, select: d.day)) |> MapSet.new()
 
     if today_progress().complete? and any_reviewed_today?(),
-      do: MapSet.put(past, today),
-      else: past
+      do: MapSet.put(recorded, today),
+      else: recorded
   end
 
   defp any_reviewed_today?, do: distinct_reviewed_on(Clock.today()) > 0
@@ -263,15 +338,6 @@ defmodule DailyOutput.Flashcards do
         select: count(r.card_id, :distinct)
       )
     ) || 0
-  end
-
-  # date => distinct card count, grouped by the app's logical (4am-boundary) date.
-  defp reviews_by_logical_date do
-    Repo.all(from(r in Review, where: not is_nil(r.card_id), select: {r.card_id, r.inserted_at}))
-    |> Enum.group_by(fn {_card_id, at} -> Clock.to_logical_date(at) end, fn {card_id, _} ->
-      card_id
-    end)
-    |> Enum.map(fn {date, card_ids} -> {date, card_ids |> Enum.uniq() |> length()} end)
   end
 
   # ── Management (edit / delete) ───────────────────────

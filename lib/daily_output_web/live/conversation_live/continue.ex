@@ -136,8 +136,8 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
     transcript =
       Enum.map(socket.assigns.messages, &%{role: &1.role, body: &1.body, feedback: &1.feedback})
 
-    # The "did you stop repeating mistakes?" axis is computed deterministically here; we both
-    # store it for the score panel and feed it to the AI so it can narrate the progress.
+    # The "did you stop repeating mistakes?" axis is computed deterministically here and
+    # stored for the score panel.
     improvement = Conversations.mistake_analysis(socket.assigns.messages)
 
     socket =
@@ -157,6 +157,11 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
 
       send(pid, {:feedback_loaded, result})
     end)
+
+    # Build flashcards from the whole conversation's corrections in ONE call (best-effort,
+    # background) — cheaper than the per-message generation it replaces.
+    messages = socket.assigns.messages
+    Task.start(fn -> Flashcards.ingest_conversation(conversation.id, messages) end)
 
     {:noreply, socket}
   end
@@ -212,9 +217,8 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
 
     case Conversations.save_message_feedback(msg_id, feedback) do
       {:ok, updated} ->
-        # Best-effort: turn this message's corrections into flashcards in the background.
-        Task.start(fn -> Flashcards.ingest_correction(:message, msg_id, feedback) end)
-
+        # Flashcards are no longer built here per message — they're generated once from the
+        # whole conversation at completion (see the "complete" handler).
         messages =
           Enum.map(socket.assigns.messages, fn m -> if m.id == msg_id, do: updated, else: m end)
 

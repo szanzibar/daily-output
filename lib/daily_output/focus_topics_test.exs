@@ -4,7 +4,7 @@ defmodule DailyOutput.FocusTopicsTest do
   alias DailyOutput.{Clock, Conversations, FocusTopics, Journal, Repo, Settings}
   alias DailyOutput.Conversations.Conversation
   alias DailyOutput.Journal.Entry
-  alias DailyOutput.Flashcards.{Card, Review}
+  alias DailyOutput.Flashcards.{Card, CompletedDay, Review}
 
   defp create_topic(attrs \\ %{}) do
     {:ok, topic} =
@@ -267,6 +267,9 @@ defmodule DailyOutput.FocusTopicsTest do
 
     at = DateTime.new!(date, ~T[12:00:00], "Etc/UTC") |> DateTime.truncate(:second)
     {1, _} = Repo.update_all(from(r in Review, where: r.id == ^review.id), set: [inserted_at: at])
+
+    # Past-day flashcard completion is now a recorded fact, not re-derived from the review log.
+    Repo.insert!(%CompletedDay{day: date})
     :ok
   end
 
