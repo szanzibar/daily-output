@@ -7,9 +7,9 @@ defmodule DailyOutput.AI.ProofreaderTest do
     test "without focus topic, focus_result is not required" do
       tool = Proofreader.feedback_tool(nil)
 
-      assert tool.input_schema["required"] ==
-               ["annotated_text", "annotations", "commentary"]
-
+      # annotations are derived from the inline markers in annotated_text, not a tool field
+      assert tool.input_schema["required"] == ["annotated_text", "commentary"]
+      refute Map.has_key?(tool.input_schema["properties"], "annotations")
       refute Map.has_key?(tool.input_schema["properties"], "focus_result")
       refute Map.has_key?(tool.input_schema["properties"], "encouragement")
     end
@@ -39,23 +39,110 @@ defmodule DailyOutput.AI.ProofreaderTest do
     end
   end
 
-  describe "message_feedback_tool/0" do
-    test "requires annotated_text and annotations, no focus_result or commentary" do
-      tool = Proofreader.message_feedback_tool()
+  describe "parse_message_feedback/1" do
+    test "keeps markers inline in annotated_text and derives a flat annotations list" do
+      text =
+        "Ich [[gehe||ging||verb||Präteritum für Vergangenheit]] gestern ins Kino und " <>
+          "[[||es||other||Subjekt «es» fehlt]] war schön."
 
-      assert tool.name == "provide_corrections"
-      assert tool.input_schema["required"] == ["annotated_text", "annotations"]
-      refute Map.has_key?(tool.input_schema["properties"], "commentary")
-      refute Map.has_key?(tool.input_schema["properties"], "focus_result")
+      result = Proofreader.parse_message_feedback(text)
+
+      # markers stay inline — the front end reads each marker's own explanation, no id needed
+      assert result["annotated_text"] == text
+
+      assert result["annotations"] == [
+               %{"category" => "verb", "explanation" => "Präteritum für Vergangenheit"},
+               %{"category" => "other", "explanation" => "Subjekt «es» fehlt"}
+             ]
     end
 
-    test "each annotation must carry a category from the fixed set" do
-      tool = Proofreader.message_feedback_tool()
-      ann = tool.input_schema["properties"]["annotations"]["items"]
+    test "no markers means the message was clean (no annotations)" do
+      result = Proofreader.parse_message_feedback("Alles korrekt hier.")
+      assert result == %{"annotated_text" => "Alles korrekt hier.", "annotations" => []}
+    end
 
-      assert ann["required"] == ["id", "explanation", "category"]
-      assert ann["properties"]["category"]["enum"] == Proofreader.categories()
-      assert "gender" in Proofreader.categories()
+    test "explanation may itself contain pipes (it is the last field)" do
+      text = "Test [[a||b||case||use «a | b» not «c»]]"
+      result = Proofreader.parse_message_feedback(text)
+
+      assert result["annotated_text"] == text
+
+      assert result["annotations"] == [
+               %{"category" => "case", "explanation" => "use «a | b» not «c»"}
+             ]
+    end
+
+    test "a 2-field marker still renders and counts as an 'other' correction" do
+      result = Proofreader.parse_message_feedback("Ich [[gehe||ging]] heim.")
+      assert result["annotated_text"] == "Ich [[gehe||ging]] heim."
+      assert result["annotations"] == [%{"category" => "other", "explanation" => ""}]
+    end
+
+    test "no-op markers (before == after) are dropped to plain text" do
+      result =
+        Proofreader.parse_message_feedback(
+          "Ich gehe [[in die Stadt||in die Stadt||preposition||eigentlich korrekt]] heute."
+        )
+
+      assert result["annotated_text"] == "Ich gehe in die Stadt heute."
+      assert result["annotations"] == []
+    end
+
+    test "delete form (empty after) keeps the marker inline and is annotated" do
+      result = Proofreader.parse_message_feedback("Ich [[sehr ||||other||überflüssig]]gut.")
+      assert result["annotated_text"] == "Ich [[sehr ||||other||überflüssig]]gut."
+      assert result["annotations"] == [%{"category" => "other", "explanation" => "überflüssig"}]
+    end
+
+    test "an unknown type normalizes to 'other'" do
+      result = Proofreader.parse_message_feedback("Ich [[hab||habe||conjugation||fix]] es.")
+      assert result["annotations"] == [%{"category" => "other", "explanation" => "fix"}]
+    end
+
+    test "non-binary input yields empty feedback" do
+      assert Proofreader.parse_message_feedback(nil) == %{
+               "annotated_text" => "",
+               "annotations" => []
+             }
+    end
+  end
+
+  describe "parse_message_feedback/2 (guard against the original)" do
+    test "passes through when the markers only use the student's words" do
+      original = "Ich gehe gestern ins Kino."
+      output = "Ich [[gehe||ging||verb||Vergangenheit]] gestern ins Kino."
+
+      result = Proofreader.parse_message_feedback(output, original)
+      assert result["annotated_text"] == output
+      assert [%{"category" => "verb"}] = result["annotations"]
+    end
+
+    test "insertions are fine (empty before adds nothing foreign)" do
+      original = "Ich komme weil ich Zeit habe."
+      output = "Ich komme[[||,||punctuation||Komma vor «weil»]] weil ich Zeit habe."
+      assert Proofreader.parse_message_feedback(output, original)["annotations"] != []
+    end
+
+    test "word-order moves are kept (not flagged as contamination)" do
+      original = "dass ich Deutsch höre bei der Chorprobe"
+
+      output =
+        "dass ich [[Deutsch höre bei der Chorprobe||bei der Chorprobe Deutsch höre||word-order||Verb ans Ende]]"
+
+      result = Proofreader.parse_message_feedback(output, original)
+      assert result["annotated_text"] == output
+      assert result["annotations"] != []
+    end
+
+    test "falls back to uncorrected when the model rambles in prose" do
+      original = "Ich habe in die Stadt gegangen."
+
+      polluted =
+        "Ich [[habe||bin||verb||Perfekt mit sein]] in die Stadt gegangen. " <>
+          "Note: «in die Stadt» is actually correct — accusative for direction."
+
+      result = Proofreader.parse_message_feedback(polluted, original)
+      assert result == %{"annotated_text" => original, "annotations" => []}
     end
   end
 

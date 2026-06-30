@@ -1,7 +1,12 @@
 defmodule DailyOutput.AI.Proofreader do
   @moduledoc """
   AI-powered proofreading with inline correction markers.
-  Uses tool_use for structured output to avoid JSON parsing issues.
+
+  The journal `proofread/2` and `assess_conversation/2` use tool_use for their richer,
+  structured output (commentary, focus_result). The per-message `proofread_message/2` — by
+  far the most frequent call — instead asks for self-contained text markers and parses them
+  (see `parse_message_feedback/1`): no ~700-token tool schema on every chat message, and no
+  separate annotations list for the model to keep in sync.
   """
 
   require Logger
@@ -13,8 +18,70 @@ defmodule DailyOutput.AI.Proofreader do
   # of a conversation, which kinds of mistakes the student repeated vs. stopped making.
   @categories ~w(gender case verb word-order agreement preposition spelling vocabulary punctuation other)
 
+  # A correction marker: [[before||after||type||explanation]]. The model emits these inline
+  # (no tool schema, ~700 input tokens/message cheaper; no separate list to keep in sync).
+  # parse_message_feedback/1 keeps them inline in annotated_text (the front end reads each
+  # marker's own explanation) and also derives a flat annotations list for server-side stats.
+  @marker ~r/\[\[([\s\S]*?)\]\]/
+
   @doc "The fixed set of correction categories used to tag per-message annotations."
   def categories, do: @categories
+
+  # The correction-marker convention, shared by proofread/2 (journal) and proofread_message/2
+  # (chat) so the two never drift. The model wraps each error in a self-contained marker;
+  # parse_message_feedback/1 turns these back into the stored shape (plain markers + a derived
+  # annotations list). Each caller adds its own "reproduce the entire X" framing around this.
+  defp marker_rules(profile) do
+    """
+    Wrap each real error in a self-contained marker with four ||-separated fields:
+
+    [[before||after||type||explanation]]
+
+    before = the student's exact words · after = your correction · type = one of {#{Enum.join(@categories, ", ")}} · explanation = 5-10 words on what was wrong, in #{profile.prompt_name}.
+
+    Make each marker as SMALL as possible: one marker fixes one thing, leaving every already-correct word outside the marker. A deletion, an insertion, and a word swap are separate markers — prefer two or three tiny markers over one wide rewrite. Worked examples:
+
+    - Replace one wrong word — Ich [[hab||habe||verb||1. Person braucht «habe»]] es gesehen.
+    - Insert a missing word — keep before empty, mark only the gap:
+      Ich mag [[||gerne||vocabulary||«gerne» betont die Vorliebe]] Schokolade.
+    - Delete an extra word or mark — keep after empty:
+      Für Glace[[,||||punctuation||vor dem Verb kein Komma]] mag ich Schokolade.
+    - Supply a word the student did not know — when they wrote an English word or a «(…?)» placeholder instead of #{profile.prompt_name}, replace it with the correct word:
+      Hast du [[(ever?)||jemals||vocabulary||«jemals» heisst «ever»]] etwas Ekliges probiert?
+    - Several nearby errors → several small markers, NOT one wide one. For «Für Glace, mag ich sehr Schokolade» mark just the comma and the missing word:
+      Für Glace[[,||||punctuation||hier kein Komma]] mag ich sehr [[||gerne||vocabulary||«gerne» betont die Vorliebe]] Schokolade.
+    A WIDE marker is right in two cases — but even then, stop at the first and last word that already changes; never pull an unchanged word into the marker:
+    - The words truly change position (word order):
+      Manchmal vergesse ich, dass ich [[Deutsch höre bei der Chorprobe||bei der Chorprobe Deutsch höre||word-order||Verb steht am Nebensatz-Ende]].
+    - A whole phrase is so wrong (e.g. a literal English-mixed calque) that no word in it survives — replace just that phrase:
+      Ich habe einen Fehler gemacht, [[ich bin sorry||es tut mir leid||vocabulary||idiomatisch «es tut mir leid»]].
+
+    Markers cover separate spans (a given word sits in at most one marker). Keep the text outside markers identical to the student's — same words, same punctuation, and the SAME line breaks, including blank lines between paragraphs. Write only #{profile.prompt_name} and markers; if a marked span turns out to be correct, delete that marker.\
+    """
+  end
+
+  # Shared prompt text for the focus-concept judgement, used by both the journal review and
+  # the end-of-conversation review. `scope` is the noun for the thing being judged ("entry"
+  # or "conversation"). Empty when no focus concept was set.
+  defp focus_instructions(focus_topic, _scope) when focus_topic in [nil, ""], do: ""
+
+  defp focus_instructions(focus_topic, scope) do
+    """
+
+    The student chose to focus on this concept for this #{scope}: «#{focus_topic}»
+    You MUST include a focus_result. Judge focus usage by meaning, not exact keywords:
+    - used=true if they attempted the concept in any valid variant (inflection, paraphrase, synonym, equivalent connector, minor typo)
+    - used=false only if there is no attempt anywhere in the #{scope}
+    - correct=true only if used=true and the usage is correct in context
+    - if used=false, correct MUST be false; the comment MUST match the booleans, never praising correct usage when used=false
+    """
+  end
+
+  # Shared definition of what "commentary" is, so the journal and conversation reviews ask
+  # for the same thing.
+  defp commentary_instruction do
+    "AT MOST 2 pattern-level teaching points the student can turn into a future focus area, one short sentence each (max ~15 words), grounded in patterns the student actually repeated — a summary of the highest-value patterns, NOT a restatement of each correction. Return fewer or none if nothing pattern-level is worth practising."
+  end
 
   def proofread(text, opts) do
     target = Keyword.fetch!(opts, :target_language)
@@ -31,22 +98,7 @@ defmodule DailyOutput.AI.Proofreader do
         ""
       end
 
-    focus_block =
-      if focus_topic && focus_topic != "" do
-        """
-
-        The student chose to focus on this concept for this exercise: "#{focus_topic}"
-        You MUST include a "focus_result" in your response.
-        Evaluate focus usage by meaning, not by exact keyword matching:
-        - Set used=true if the student attempted the concept in any valid variant (inflection, paraphrase, synonym, equivalent connector, or minor typo)
-        - Set used=false only if there is no attempt anywhere in the text
-        - Set correct=true only if used=true and usage is correct in context
-        - If used=false, correct MUST be false
-        - The comment MUST match the booleans; never praise correct usage when used=false
-        """
-      else
-        ""
-      end
+    focus_block = focus_instructions(focus_topic, "entry")
 
     # B2+ students get all feedback in the target language
     feedback_lang =
@@ -75,35 +127,15 @@ defmodule DailyOutput.AI.Proofreader do
     - Don't flag advanced constructions they haven't learned yet
     - Focus on patterns that will help them progress from #{level} toward the next level
 
-    Return TWO things:
-    1. Inline corrections — mark every real error in the text (marker rules below).
-    2. "commentary" — AT MOST 2 pattern-level teaching points the student can turn into a future focus area, one short sentence each (max ~15 words). This is a summary of the few highest-value patterns, NOT a restatement of each correction — even for a long entry with many errors, keep it to 1-2. Return none if nothing pattern-level is worth practising.
+    Return your response with the provide_feedback tool:
+    1. "annotated_text" — the ENTIRE original entry reproduced verbatim (preserve all line breaks), with each real error wrapped in a correction marker (format below).
+    2. "commentary" — #{commentary_instruction()}
 
-    IMPORTANT: Write ALL feedback text (annotations, commentary) in #{feedback_lang}.
-    In any text NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
+    #{marker_rules(profile)}
+
+    Write ALL text (inside markers and in commentary) in #{feedback_lang}.
     #{context_block}#{focus_block}
-    Use the provide_feedback tool to return your response.
-    IMPORTANT: The "annotations" and "commentary" fields MUST be JSON arrays, NOT strings.
-    Return them as structured arrays of objects, never as a stringified JSON string.
-
-    RULES for annotated_text — getting the marker STRUCTURE right matters above all:
-    - Reproduce the ENTIRE original text, preserving all original line breaks; mark only real errors
-    - A marker is EXACTLY: [[N:original||corrected]]
-      • N is a plain counting number (1, 2, 3, …) and MUST equal that correction's "id" in annotations
-      • There is EXACTLY ONE colon, right after N — never the literal letters "id", never two numbers or colons
-        ✗ WRONG: [[id:das||dass]]   ✗ WRONG: [[id:1:das||dass]]   ✓ RIGHT: [[1:das||dass]]
-    - Every correction is exactly ONE of three forms — choose the one that matches:
-      • REPLACE a wrong word/phrase: [[1:wrong||right]] (BOTH sides filled), e.g. [[1:das||dass]]
-      • INSERT something missing: [[2:||missing]] (original side EMPTY), e.g. a missing comma is [[2:||,]]
-      • DELETE something extra: [[3:extra||]] (corrected side EMPTY)
-    - A wrong word is always a REPLACE — never leave the right side empty
-    - A missing word or punctuation is always an INSERT — leave the original side empty, never repeat the neighbouring word
-    - Mark the SMALLEST span that fixes the error; do NOT rewrite correct text
-    - Each N should be unique — do not reuse the same id for different corrections
-    - NEVER put ]] inside a marker — the marker must end with exactly ]]
-    - Both original and corrected text should be simple text with no special bracket characters
-    - Keep annotation explanations VERY SHORT (5-10 words) — say what is wrong, not a grammar lecture
-    - focus_result booleans must be self-consistent with focus_result comment
+    The "commentary" field MUST be a JSON array of objects, never a stringified string.
     """
 
     with {:ok, client} <- AI.client() do
@@ -120,7 +152,15 @@ defmodule DailyOutput.AI.Proofreader do
         {:ok, %{"content" => content}} ->
           case Enum.find(content, &(&1["type"] == "tool_use")) do
             %{"input" => input} when is_map(input) ->
-              {:ok, normalize_feedback(input)}
+              # annotated_text carries the shared inline markers; derive annotations from them
+              # (guarded against the entry) so journal and chat share one correction path.
+              marked =
+                if is_binary(input["annotated_text"]) and input["annotated_text"] != "",
+                  do: input["annotated_text"],
+                  else: text
+
+              corrections = parse_message_feedback(marked, text)
+              {:ok, normalize_feedback(Map.merge(input, corrections))}
 
             _ ->
               Logger.error("Proofreader: no tool_use block in response: #{inspect(content)}")
@@ -161,21 +201,7 @@ defmodule DailyOutput.AI.Proofreader do
     context_block =
       if context != "", do: "\n\nAdditional context about the student:\n#{context}\n", else: ""
 
-    focus_block =
-      if focus_topic && focus_topic != "" do
-        """
-
-        The student chose to focus on this concept for this conversation: "#{focus_topic}"
-        You MUST include a "focus_result" in your response.
-        Judge focus usage by meaning, not exact keywords:
-        - used=true if they attempted the concept in any valid variant (inflection, paraphrase, synonym, equivalent connector, minor typo)
-        - used=false only if there is no attempt anywhere in the conversation
-        - correct=true only if used=true and the usage is correct in context
-        - if used=false, correct MUST be false; the comment MUST match the booleans
-        """
-      else
-        ""
-      end
+    focus_block = focus_instructions(focus_topic, "conversation")
 
     system = """
     You are a #{profile.prompt_name} teacher reviewing a finished casual conversation a #{native} speaker (CEFR level #{level}) just had.
@@ -183,13 +209,13 @@ defmodule DailyOutput.AI.Proofreader do
     The student's individual messages were ALREADY corrected inline as they were sent. Do NOT correct or rewrite their text again — that work is done.
 
     Your only job is to distill future focus areas:
-    - Give at most 2 teaching points ("commentary"), one short sentence each (max ~15 words), grounded in patterns the student actually repeated across the chat. Prefer patterns over one-offs; if nothing pattern-level is worth practising, return fewer or an empty list.
+    - "commentary": #{commentary_instruction()}
     - If a focus concept was set, also judge whether they used it (focus_result).
 
     Calibrate to #{level}: pick what will move them toward the next level.
-    Write ALL text in #{feedback_lang}. NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
+    Write ALL text in #{feedback_lang}.
     #{context_block}#{focus_block}
-    Use the provide_assessment tool. "commentary" MUST be a JSON array of objects (never a stringified string); each "type" is "pattern", "suggestion", or "alternative".
+    Use the provide_assessment tool. "commentary" MUST be a JSON array of objects, never a stringified string; each "type" is "pattern", "suggestion", or "alternative".
     """
 
     with {:ok, client} <- AI.client() do
@@ -284,17 +310,14 @@ defmodule DailyOutput.AI.Proofreader do
     - Flag only genuine errors a #{level} student should know better (grammar, agreement, case, gender, word order, verb forms, spelling, clearly wrong word choice).
     - Do NOT flag casual register, contractions, stylistic choices, or constructions above their level. If the message is already correct, return it unchanged with an empty annotations array.
 
-    Write ALL explanation text in #{feedback_lang}. In explanations NEVER use the double-quote character (") — use «guillemets» or 'single quotes'.
+    Write ALL explanation text in #{feedback_lang}.
     #{context_block}
-    Use the provide_corrections tool. "annotations" MUST be a JSON array of objects, never a stringified string.
+    OUTPUT FORMAT — output ONLY the corrected message, nothing else (no preamble, no JSON, no separate list).
+    Reproduce the ENTIRE original message verbatim (keep all line breaks). #{marker_rules(profile)}
+    If the message has no errors, return it completely unchanged with no markers.
 
-    Marker structure matters above all. Reproduce the ENTIRE original message (keep line breaks), marking only real errors. A marker is EXACTLY [[N:original||corrected]]:
-    - N is a plain counting number (1, 2, 3, …) matching that correction's "id"; exactly ONE colon, right after N. Never write the letters "id" or two numbers/colons. ✓ [[1:das||dass]]  ✗ [[id:das||dass]]  ✗ [[1:1:das||dass]]
-    - Each correction is exactly one of: REPLACE a wrong word [[1:wrong||right]] (both sides filled) · INSERT something missing [[2:||,]] (original side empty) · DELETE something extra [[3:extra||]] (corrected side empty).
-    - A wrong word is always a REPLACE (never empty the right side); a missing word/punctuation is always an INSERT (never repeat the neighbour). Mark the SMALLEST span that fixes it; never restate correct text. Each N is unique; never put ]] inside a marker; use plain text only.
-
-    Keep each explanation VERY SHORT (5-10 words) — say what is wrong, not a grammar lecture.
-    Tag each correction with the single best category from: #{Enum.join(@categories, ", ")}
+    Example:
+    Ich [[gehe||ging||verb||Präteritum für Vergangenheit]] gestern ins Kino und [[||es||other||Subjekt «es» fehlt]] war schön.
     """
 
     transcript = context_transcript(history, profile)
@@ -307,19 +330,19 @@ defmodule DailyOutput.AI.Proofreader do
       case AI.chat(client,
              system: system,
              messages: [%{role: "user", content: user_content}],
-             tools: [message_feedback_tool()],
-             tool_choice: %{type: "tool", name: "provide_corrections"},
              purpose: "proofread_message",
              max_tokens: 1024
            ) do
-        {:ok, %{"content" => content}} ->
-          case Enum.find(content, &(&1["type"] == "tool_use")) do
-            %{"input" => input} when is_map(input) ->
-              {:ok, normalize_message_feedback(input)}
+        {:ok, %{"content" => content}} when is_list(content) ->
+          case content
+               |> Enum.filter(&(&1["type"] == "text"))
+               |> Enum.map_join("", & &1["text"]) do
+            "" ->
+              Logger.error("proofread_message: empty text response: #{inspect(content)}")
+              {:error, :no_text_response}
 
-            _ ->
-              Logger.error("proofread_message: no tool_use block: #{inspect(content)}")
-              {:error, :no_tool_response}
+            output ->
+              {:ok, normalize_message_feedback(parse_message_feedback(output, text))}
           end
 
         {:error, reason} ->
@@ -335,7 +358,7 @@ defmodule DailyOutput.AI.Proofreader do
   defp context_transcript(history, profile) do
     lines =
       history
-      |> Enum.take(-4)
+      |> Enum.take(-2)
       |> Enum.map_join("\n", fn msg ->
         speaker = if msg.role == "user", do: "Student", else: "Partner (#{profile.prompt_name})"
         "#{speaker}: #{msg.body}"
@@ -344,43 +367,110 @@ defmodule DailyOutput.AI.Proofreader do
     "Conversation so far (for context only — do NOT correct these):\n#{lines}\n\n"
   end
 
-  @doc false
-  def message_feedback_tool do
-    %{
-      name: "provide_corrections",
-      description: "Provide inline corrections for the student's latest chat message",
-      input_schema: %{
-        "type" => "object",
-        "properties" => %{
-          "annotated_text" => %{
-            "type" => "string",
-            "description" =>
-              "The full original message with [[N:original||corrected]] markers on errors"
-          },
-          "annotations" => %{
-            "type" => "array",
-            "items" => %{
-              "type" => "object",
-              "properties" => %{
-                "id" => %{"type" => "integer"},
-                "explanation" => %{
-                  "type" => "string",
-                  "description" => "Very brief fix reason (5-10 words max)"
-                },
-                "category" => %{
-                  "type" => "string",
-                  "enum" => @categories,
-                  "description" => "The single best category for this error"
-                }
-              },
-              "required" => ["id", "explanation", "category"]
-            }
-          }
-        },
-        "required" => ["annotated_text", "annotations"]
-      }
-    }
+  @doc """
+  Parses a proofread response into `%{"annotated_text", "annotations"}`.
+
+  The model emits self-contained markers `[[before||after||type||explanation]]`. We keep them
+  inline in `annotated_text` (the front end reads each marker's own explanation, so there is no
+  id to match) and also derive a flat `annotations` list (`type` + `explanation`) for the
+  server-side stats that count which mistakes repeat. No-op markers (before == after — the model
+  flagging then keeping text) are dropped back to plain text.
+  """
+  def parse_message_feedback(text) when is_binary(text) do
+    %{"annotated_text" => render_markers(text), "annotations" => derive_annotations(text)}
   end
+
+  def parse_message_feedback(_), do: %{"annotated_text" => "", "annotations" => []}
+
+  @doc """
+  Parses `output` and guards it against the known `original` message.
+
+  The one way the model misbehaves on ambiguous sentences is rambling/retracting in prose
+  (e.g. «actually this is correct…»), which injects a run of words the student never wrote.
+  We reduce every marker to its `before` side and reject only when several consecutive words
+  are foreign to `original`; isolated duplicates or spacing artifacts from many corrections are
+  fine, so a long, heavily-marked entry is not thrown away over one quirk.
+  """
+  def parse_message_feedback(output, original) when is_binary(output) and is_binary(original) do
+    parsed = parse_message_feedback(output)
+
+    if uncontaminated?(parsed["annotated_text"], original) do
+      parsed
+    else
+      Logger.warning(
+        "proofread: output injected prose the student never wrote; showing it uncorrected. output=#{inspect(output)}"
+      )
+
+      %{"annotated_text" => original, "annotations" => []}
+    end
+  end
+
+  # Keep real markers inline, verbatim; drop a no-op marker (before == after) to plain text.
+  defp render_markers(text) do
+    @marker
+    |> Regex.replace(text, fn whole, inner ->
+      case marker_parts(inner) do
+        {before, after_, _type, _expl} when before == after_ -> before
+        _ -> whole
+      end
+    end)
+    |> String.trim()
+  end
+
+  defp derive_annotations(text) do
+    @marker
+    |> Regex.scan(text)
+    |> Enum.flat_map(fn [_, inner] ->
+      case marker_parts(inner) do
+        {before, after_, type, explanation} when before != after_ ->
+          [%{"category" => normalize_category(type), "explanation" => String.trim(explanation)}]
+
+        _ ->
+          []
+      end
+    end)
+  end
+
+  # Inner of a marker -> {before, after, type, explanation}, or :malformed when there's no ||.
+  # Missing trailing fields default so a 2- or 3-field marker still parses.
+  defp marker_parts(inner) do
+    case String.split(inner, "||", parts: 4) do
+      [before, after_, type, explanation] -> {before, after_, type, explanation}
+      [before, after_, type] -> {before, after_, type, ""}
+      [before, after_] -> {before, after_, "other", ""}
+      _ -> :malformed
+    end
+  end
+
+  # Reduce markers to the student's original words; clean output has no run of foreign words.
+  # Injected prose is a contiguous run of words absent from the source; isolated artifacts are not.
+  @max_foreign_run 3
+  defp uncontaminated?(annotated_text, original) do
+    source = MapSet.new(words(original))
+
+    reduced =
+      Regex.replace(@marker, annotated_text, fn whole, inner ->
+        case marker_parts(inner) do
+          {before, _after, _type, _expl} -> before
+          :malformed -> whole
+        end
+      end)
+
+    longest_foreign_run(words(reduced), source) <= @max_foreign_run
+  end
+
+  defp longest_foreign_run(words, source) do
+    {max, _run} =
+      Enum.reduce(words, {0, 0}, fn word, {max, run} ->
+        if MapSet.member?(source, word),
+          do: {max, 0},
+          else: {max(max, run + 1), run + 1}
+      end)
+
+    max
+  end
+
+  defp words(text), do: text |> String.downcase() |> String.split(~r/\s+/, trim: true)
 
   @doc """
   Normalizes per-message feedback to `%{"annotated_text", "annotations"}`.
@@ -421,140 +511,29 @@ defmodule DailyOutput.AI.Proofreader do
 
   @doc false
   def feedback_tool(focus_topic) do
-    base_properties = %{
+    base = %{
       "annotated_text" => %{
         "type" => "string",
-        "description" => "Full original text with [[N:original||corrected]] markers on errors"
+        "description" =>
+          "The full original entry reproduced verbatim (keep all line breaks), with [[before||after||type||explanation]] markers on errors"
       },
-      "annotations" => %{
-        "type" => "array",
-        "items" => %{
-          "type" => "object",
-          "properties" => %{
-            "id" => %{"type" => "integer"},
-            "explanation" => %{
-              "type" => "string",
-              "description" => "Very brief fix reason (5-10 words max)"
-            }
-          },
-          "required" => ["id", "explanation"]
-        }
-      },
-      "commentary" => %{
-        "type" => "array",
-        "items" => %{
-          "type" => "object",
-          "properties" => %{
-            "type" => %{
-              "type" => "string",
-              "enum" => ["pattern", "suggestion", "alternative"]
-            },
-            "text" => %{
-              "type" => "string",
-              "description" =>
-                "One pattern-level teaching point to turn into a focus area — one short sentence, max ~15 words"
-            }
-          },
-          "required" => ["type", "text"]
-        }
-      }
+      "commentary" => commentary_schema()
     }
 
-    base_required = ["annotated_text", "annotations", "commentary"]
-
     {properties, required} =
-      if focus_topic && focus_topic != "" do
-        focus_prop = %{
-          "focus_result" => %{
-            "type" => "object",
-            "properties" => %{
-              "used" => %{
-                "type" => "boolean",
-                "description" =>
-                  "Did the student attempt this concept anywhere in the text? true for inflections/paraphrases/synonyms; exact keyword match is not required"
-              },
-              "correct" => %{
-                "type" => "boolean",
-                "description" =>
-                  "If used=true, did they use it correctly in context? Must be false when used=false"
-              },
-              "comment" => %{
-                "type" => "string",
-                "description" =>
-                  "Brief encouraging feedback consistent with used/correct booleans"
-              }
-            },
-            "required" => ["used", "correct", "comment"]
-          }
-        }
-
-        {Map.merge(base_properties, focus_prop), base_required ++ ["focus_result"]}
-      else
-        {base_properties, base_required}
-      end
+      with_focus_result(base, ["annotated_text", "commentary"], focus_topic)
 
     %{
       name: "provide_feedback",
       description: "Provide proofreading feedback on the student's journal entry",
-      input_schema: %{
-        "type" => "object",
-        "properties" => properties,
-        "required" => required
-      }
+      input_schema: %{"type" => "object", "properties" => properties, "required" => required}
     }
   end
 
   @doc false
   def assessment_tool(focus_topic) do
-    base_properties = %{
-      "commentary" => %{
-        "type" => "array",
-        "items" => %{
-          "type" => "object",
-          "properties" => %{
-            "type" => %{"type" => "string", "enum" => ["pattern", "suggestion", "alternative"]},
-            "text" => %{
-              "type" => "string",
-              "description" =>
-                "One pattern-level teaching point to turn into a focus area — one short sentence, max ~15 words"
-            }
-          },
-          "required" => ["type", "text"]
-        }
-      }
-    }
-
-    base_required = ["commentary"]
-
     {properties, required} =
-      if focus_topic && focus_topic != "" do
-        focus_prop = %{
-          "focus_result" => %{
-            "type" => "object",
-            "properties" => %{
-              "used" => %{
-                "type" => "boolean",
-                "description" =>
-                  "Did the student attempt this concept anywhere? true for inflections/paraphrases/synonyms; exact keyword match is not required"
-              },
-              "correct" => %{
-                "type" => "boolean",
-                "description" =>
-                  "If used=true, did they use it correctly in context? Must be false when used=false"
-              },
-              "comment" => %{
-                "type" => "string",
-                "description" => "Brief feedback consistent with used/correct booleans"
-              }
-            },
-            "required" => ["used", "correct", "comment"]
-          }
-        }
-
-        {Map.merge(base_properties, focus_prop), base_required ++ ["focus_result"]}
-      else
-        {base_properties, base_required}
-      end
+      with_focus_result(%{"commentary" => commentary_schema()}, ["commentary"], focus_topic)
 
     %{
       name: "provide_assessment",
@@ -562,6 +541,57 @@ defmodule DailyOutput.AI.Proofreader do
         "Provide the end-of-conversation review (future focus areas + focus result). Do NOT correct text.",
       input_schema: %{"type" => "object", "properties" => properties, "required" => required}
     }
+  end
+
+  # commentary + focus_result are identical for the journal review (feedback_tool) and the
+  # end-of-conversation review (assessment_tool), so both build from these shared fragments.
+  defp commentary_schema do
+    %{
+      "type" => "array",
+      "items" => %{
+        "type" => "object",
+        "properties" => %{
+          "type" => %{"type" => "string", "enum" => ["pattern", "suggestion", "alternative"]},
+          "text" => %{
+            "type" => "string",
+            "description" =>
+              "One pattern-level teaching point to turn into a focus area — one short sentence, max ~15 words"
+          }
+        },
+        "required" => ["type", "text"]
+      }
+    }
+  end
+
+  defp focus_result_schema do
+    %{
+      "type" => "object",
+      "properties" => %{
+        "used" => %{
+          "type" => "boolean",
+          "description" =>
+            "Did the student attempt this concept anywhere? true for inflections/paraphrases/synonyms; exact keyword match is not required"
+        },
+        "correct" => %{
+          "type" => "boolean",
+          "description" =>
+            "If used=true, did they use it correctly in context? Must be false when used=false"
+        },
+        "comment" => %{
+          "type" => "string",
+          "description" => "Brief feedback consistent with used/correct booleans"
+        }
+      },
+      "required" => ["used", "correct", "comment"]
+    }
+  end
+
+  defp with_focus_result(properties, required, focus_topic) do
+    if focus_topic && focus_topic != "" do
+      {Map.put(properties, "focus_result", focus_result_schema()), required ++ ["focus_result"]}
+    else
+      {properties, required}
+    end
   end
 
   @doc """

@@ -4,46 +4,59 @@
  */
 
 /**
- * Parse [[id:orig||corrected]] markers from raw annotated text.
- * Returns an array of {type: "text", text} and {type: "correction", id, original, corrected, explanation}.
+ * Parse correction markers from raw annotated text.
+ *
+ * Current format is [[before||after||type||explanation]] — each marker carries its own
+ * explanation inline, so corrections need no id. Legacy entries use [[N:before||after]] with a
+ * numeric id and look the explanation up in annMap. Corrections get a sequential `index` so the
+ * renderer can pair each note with its correction by order.
+ *
+ * Returns an array of {type:"text", text} and {type:"correction", index, original, corrected, explanation}.
  */
 export function parseMarkers(raw, annMap = {}) {
   const segments = [];
-  const regex = /\[\[(\d+):([\s\S]*?)\]\]/g;
+  const regex = /\[\[([\s\S]*?)\]\]/g;
   let lastIdx = 0;
   let match;
+  let index = 0;
 
   while ((match = regex.exec(raw)) !== null) {
     if (match.index > lastIdx) {
       segments.push({ type: 'text', text: raw.slice(lastIdx, match.index) });
     }
 
-    const id = parseInt(match[1], 10);
-    const inner = match[2];
-    const sepIdx = inner.indexOf('||');
+    let inner = match[1];
 
-    if (sepIdx === -1) {
-      // Malformed — no || delimiter, show as plain text
+    // Legacy markers carry a numeric "N:" id prefix; the explanation lives in annMap.
+    const legacy = inner.match(/^(\d+):/);
+    const legacyId = legacy ? parseInt(legacy[1], 10) : null;
+    if (legacy) inner = inner.slice(legacy[0].length);
+
+    const parts = inner.split('||');
+
+    if (parts.length < 2) {
+      // No || delimiter — malformed, show as plain text
       segments.push({ type: 'text', text: match[0] });
       lastIdx = regex.lastIndex;
       continue;
     }
 
-    const orig = inner.slice(0, sepIdx);
-    const corr = inner.slice(sepIdx + 2);
+    const original = parts[0];
+    const corrected = parts[1];
 
-    if (!orig && !corr) {
+    if ((!original && !corrected) || original === corrected) {
+      // both-empty or no-op (flagged then kept) — drop to plain text
+      if (original) segments.push({ type: 'text', text: original });
       lastIdx = regex.lastIndex;
       continue;
     }
 
-    segments.push({
-      type: 'correction',
-      id,
-      original: orig,
-      corrected: corr,
-      explanation: annMap[id] || '',
-    });
+    // New format carries the explanation as the last field; legacy looks it up by id.
+    const explanation =
+      parts.length >= 4 ? parts.slice(3).join('||') : legacyId !== null ? annMap[legacyId] || '' : '';
+
+    segments.push({ type: 'correction', index, original, corrected, explanation });
+    index++;
     lastIdx = regex.lastIndex;
   }
 
@@ -91,38 +104,39 @@ function tokenCharWidth(tok) {
 
 /**
  * Word-wrap tokens into lines of at most maxChars characters.
- * Each line has: segments[] and corrections[] (IDs only — positioning is done via DOM measurement).
+ * Each line has: segments[] and corrections[] (indexes only — positioning is done via DOM measurement).
+ * A newline always ends the current line, so consecutive newlines preserve blank lines between paragraphs.
  */
 export function wrapLines(tokens, maxChars) {
   const lines = [];
   let curLine = { segments: [], corrections: [], charPos: 0 };
-
-  const pushLine = () => {
-    if (curLine.segments.length > 0) lines.push(curLine);
+  const newLine = () => {
     curLine = { segments: [], corrections: [], charPos: 0 };
   };
 
   for (const tok of tokens) {
     if (tok.type === 'newline') {
-      pushLine();
+      lines.push(curLine); // push even if empty → blank lines survive
+      newLine();
       continue;
     }
 
     const tokLen = tokenCharWidth(tok);
 
     if (curLine.charPos > 0 && curLine.charPos + tokLen > maxChars) {
-      pushLine();
+      lines.push(curLine);
+      newLine();
     }
 
     if (tok.type === 'correction') {
-      curLine.corrections.push({ id: tok.id, explanation: tok.explanation });
+      curLine.corrections.push({ index: tok.index, explanation: tok.explanation });
     }
 
     curLine.segments.push(tok);
     curLine.charPos += tokLen;
   }
 
-  pushLine();
+  if (curLine.segments.length > 0) lines.push(curLine);
   return lines;
 }
 
@@ -144,18 +158,22 @@ export function buildHtml(lines) {
     html += `<div class="ann-line">`;
     html += `<div class="ann-text-line">`;
 
+    if (line.segments.length === 0) {
+      // blank paragraph line — keep it visible
+      html += '&nbsp;';
+    }
+
     for (const seg of line.segments) {
       if (seg.type === 'text') {
         html += escapeHtml(seg.text);
       } else {
-        html += `<span class="correction-inline" data-correction-id="${seg.id}">`;
+        html += `<span class="correction-inline" data-correction-index="${seg.index}">`;
         if (seg.original) {
           html += `<span class="correction-deleted">${escapeHtml(seg.original)}</span>`;
         }
         if (seg.corrected) {
           html += `<span class="correction-added">${escapeHtml(seg.corrected)}</span>`;
         }
-        html += `<sup class="correction-id">${seg.id}</sup>`;
         html += `</span>`;
       }
     }
@@ -163,8 +181,7 @@ export function buildHtml(lines) {
     html += `</div>`;
 
     for (const c of line.corrections) {
-      html += `<div class="ann-note" data-note-for="${c.id}">`;
-      html += `<span class="ann-note-id">${c.id}</span> `;
+      html += `<div class="ann-note" data-note-for="${c.index}">`;
       html += `${escapeHtml(c.explanation)}`;
       html += `</div>`;
     }
@@ -181,10 +198,10 @@ export function buildHtml(lines) {
  */
 export function positionNotes(container) {
   for (const note of container.querySelectorAll('.ann-note')) {
-    const id = note.dataset.noteFor;
+    const index = note.dataset.noteFor;
     const line = note.closest('.ann-line');
     const textLine = line.querySelector('.ann-text-line');
-    const correction = line.querySelector(`.correction-inline[data-correction-id="${id}"]`);
+    const correction = line.querySelector(`.correction-inline[data-correction-index="${index}"]`);
 
     if (!correction || !textLine) continue;
 

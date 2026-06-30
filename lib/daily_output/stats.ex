@@ -25,7 +25,10 @@ defmodule DailyOutput.Stats do
   alias DailyOutput.FocusTopics.FocusTopic
   alias DailyOutput.Stats.{ApiUsage, TimeLog}
 
-  @marker ~r/\[\[(\d+):([\s\S]*?)\]\]/
+  # Current markers are [[before||after||type||explanation]]; older stored entries use the
+  # legacy [[N:before||after]] (with a numeric id). One capture grabs the inner of either,
+  # and marker_before_after/1 strips the legacy id so both count the same way.
+  @marker ~r/\[\[([\s\S]*?)\]\]/
 
   # Sections we track time for.
   @time_sections ~w(entry conversation flashcards)
@@ -420,22 +423,31 @@ defmodule DailyOutput.Stats do
   def correction_count(text) do
     @marker
     |> Regex.scan(text || "")
-    |> Enum.count(fn [_, _id, inner] ->
-      case String.split(inner, "||", parts: 2) do
-        [orig, corr] -> orig != "" or corr != ""
-        _ -> false
+    |> Enum.count(fn [_, inner] ->
+      case marker_before_after(inner) do
+        {before, after_} -> before != after_
+        :malformed -> false
       end
     end)
   end
 
-  # Replace each marker with the original (what the user wrote) for word counting.
+  # Replace each marker with the student's original text for word counting.
   defp strip_markers(text) do
-    Regex.replace(@marker, text || "", fn whole, _id, inner ->
-      case String.split(inner, "||", parts: 2) do
-        [orig, _corr] -> orig
-        _ -> whole
+    Regex.replace(@marker, text || "", fn whole, inner ->
+      case marker_before_after(inner) do
+        {before, _after} -> before
+        :malformed -> whole
       end
     end)
+  end
+
+  # Marker inner -> {before, after}, tolerating the legacy "N:" id prefix. A marker with no ||
+  # delimiter is :malformed (skipped/left as-is).
+  defp marker_before_after(inner) do
+    case String.split(Regex.replace(~r/^\d+:/, inner, ""), "||") do
+      [_single] -> :malformed
+      [before | rest] -> {before, List.first(rest) || ""}
+    end
   end
 
   defp within?(date, start, finish) do

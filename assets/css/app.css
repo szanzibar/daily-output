@@ -313,16 +313,8 @@ h1, h2, h3 {
   text-underline-offset: 2px;
 }
 
-/* Superscript correction number */
-.correction-id {
-  font-size: 0.55em;
-  color: var(--color-ann-id);
-  font-weight: 900;
-  vertical-align: super;
-  margin-left: 1px;
-}
-
-/* Annotation note: margin-left aligns with correction, max-width constrains wrapping */
+/* Annotation note: margin-left aligns with correction, max-width constrains wrapping.
+   Notes pair with their correction by DOM position (positionNotes), so no number is shown. */
 .ann-note {
   font-size: 0.72rem;
   line-height: 1.3;
@@ -331,12 +323,6 @@ h1, h2, h3 {
   font-style: italic;
   overflow-wrap: break-word;
   word-wrap: break-word;
-}
-
-.ann-note-id {
-  font-style: normal;
-  font-weight: 900;
-  color: var(--color-ann-id);
 }
 
 /* Timer display */
