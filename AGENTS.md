@@ -101,8 +101,9 @@ These are the standards that matter here. They override generic habits.
   so restyle fully.
 - Tailwind v4 (no config file) with the `@import "tailwindcss" source(none)` + `@source`
   syntax already in `app.css` — keep it. Never use `@apply`.
-- **Build every screen for both light and dark mode** (dark auto-activates via
-  `prefers-color-scheme` — there is no toggle). `--color-ink`/`--color-paper` and
+- **Build every screen for both light and dark mode** (default follows `prefers-color-scheme`;
+  user can override to light/dark via the Appearance setting, which sets `data-theme` on `<html>`).
+  `--color-ink`/`--color-paper` and
   daisyUI's `base-content` flip between themes; the `block-*` accent colors
   (`block-yellow`, `block-cyan`, `block-green`, …) do **not** — they're fixed brand
   colors that already set their own readable text color. So never put a theme-flipping

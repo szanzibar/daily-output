@@ -122,16 +122,29 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Dark mode: flip ink/paper and surface colors via CSS variables */
+/* Light/dark custom variables — light is the default */
+:root {
+  --color-surface: white;
+  --color-surface-raised: oklch(94% 0 0);
+  --color-border-subtle: oklch(88% 0 0);
+  --color-ann-text: oklch(45% 0.15 264);
+  --color-ann-id: oklch(55% 0.22 264);
+  --color-correct-del: oklch(55% 0.27 29);
+  --color-correct-add: oklch(55% 0.20 155);
+  --color-correct-case: oklch(62% 0.14 29);
+  --color-ghost: oklch(80% 0 0);
+}
+
+/* Dark vars — applied when OS prefers dark (unless forced light) OR explicit dark theme */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="brutalist-light"]) {
     --color-ink: oklch(92% 0 0);
     --color-paper: oklch(14% 0.01 260);
     --color-surface: oklch(20% 0.01 260);
     --color-surface-raised: oklch(22% 0.01 260);
     --color-border-subtle: oklch(30% 0.01 260);
-    --color-ann-text: oklch(65% 0.15 264);
-    --color-ann-id: oklch(70% 0.22 264);
+    --color-ann-text: oklch(78% 0.08 264);
+    --color-ann-id: oklch(82% 0.15 264);
     --color-correct-del: oklch(65% 0.27 29);
     --color-correct-add: oklch(70% 0.20 155);
     --color-correct-case: oklch(72% 0.13 29);
@@ -139,18 +152,18 @@ body {
   }
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --color-surface: white;
-    --color-surface-raised: oklch(94% 0 0);
-    --color-border-subtle: oklch(88% 0 0);
-    --color-ann-text: oklch(45% 0.15 264);
-    --color-ann-id: oklch(55% 0.22 264);
-    --color-correct-del: oklch(55% 0.27 29);
-    --color-correct-add: oklch(55% 0.20 155);
-    --color-correct-case: oklch(62% 0.14 29);
-    --color-ghost: oklch(80% 0 0);
-  }
+:root[data-theme="brutalist-dark"] {
+  --color-ink: oklch(92% 0 0);
+  --color-paper: oklch(14% 0.01 260);
+  --color-surface: oklch(20% 0.01 260);
+  --color-surface-raised: oklch(22% 0.01 260);
+  --color-border-subtle: oklch(30% 0.01 260);
+  --color-ann-text: oklch(78% 0.08 264);
+  --color-ann-id: oklch(82% 0.15 264);
+  --color-correct-del: oklch(65% 0.27 29);
+  --color-correct-add: oklch(70% 0.20 155);
+  --color-correct-case: oklch(72% 0.13 29);
+  --color-ghost: oklch(40% 0 0);
 }
 
 /* Giant bold headings — Arial Black / heavy sans */

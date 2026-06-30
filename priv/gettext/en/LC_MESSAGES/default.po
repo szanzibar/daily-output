@@ -1495,3 +1495,28 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Estimated Anthropic API spend per day, by feature. The last 7 days."
 msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Appearance"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Color theme"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Dark"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Follow OS"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Light"
+msgstr ""

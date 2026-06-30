@@ -410,6 +410,20 @@ defmodule DailyOutputWeb.SettingsLive do
             class="w-full select border-3 border-ink font-mono"
           />
         </div>
+
+        <%!-- Theme --%>
+        <div class="border-4 border-ink p-5">
+          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 block-dark"></span> {gettext("Appearance")}
+          </h2>
+          <.input
+            field={@form[:theme]}
+            type="select"
+            label={gettext("Color theme")}
+            options={theme_options()}
+            class="w-full select border-3 border-ink font-mono"
+          />
+        </div>
       </.form>
 
       <%!-- Daily reminder --%>
@@ -564,6 +578,14 @@ defmodule DailyOutputWeb.SettingsLive do
       {"B2 — " <> gettext("Upper Intermediate"), "B2"},
       {"C1 — " <> gettext("Advanced"), "C1"},
       {"C2 — " <> gettext("Near Native"), "C2"}
+    ]
+  end
+
+  defp theme_options do
+    [
+      {gettext("Follow OS"), "auto"},
+      {gettext("Light"), "light"},
+      {gettext("Dark"), "dark"}
     ]
   end
 

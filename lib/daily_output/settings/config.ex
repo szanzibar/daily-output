@@ -15,6 +15,7 @@ defmodule DailyOutput.Settings.Config do
     field :timezone, :string
     field :reminder_time, :time, default: ~T[20:00:00]
     field :last_reminder_on, :date
+    field :theme, :string, default: "auto"
 
     timestamps(type: :utc_datetime)
   end
@@ -33,11 +34,13 @@ defmodule DailyOutput.Settings.Config do
       :ui_language,
       :timezone,
       :reminder_time,
-      :last_reminder_on
+      :last_reminder_on,
+      :theme
     ])
     |> validate_required([:timer_minutes, :target_language, :native_language])
     |> validate_number(:timer_minutes, greater_than: 0, less_than_or_equal_to: 60)
     |> validate_number(:flashcards_per_day, greater_than: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:ui_language, ~w(auto en de))
+    |> validate_inclusion(:theme, ~w(auto light dark))
   end
 end

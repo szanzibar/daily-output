@@ -14,7 +14,15 @@ defmodule DailyOutputWeb.Locale do
       end
 
     Gettext.put_locale(DailyOutputWeb.Gettext, locale)
-    {:cont, Phoenix.Component.assign(socket, :locale, locale)}
+
+    theme =
+      case config && config.theme do
+        "light" -> "brutalist-light"
+        "dark" -> "brutalist-dark"
+        _ -> nil
+      end
+
+    {:cont, Phoenix.Component.assign(socket, locale: locale, theme: theme)}
   end
 
   defp auto_locale(nil), do: "en"
