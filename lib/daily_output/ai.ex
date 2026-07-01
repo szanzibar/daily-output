@@ -76,6 +76,30 @@ defmodule DailyOutput.AI do
     end
   end
 
+  @doc """
+  Concatenates the text from an Anthropic response's content blocks, skipping
+  non-text blocks. Thinking-enabled models (sonnet-5 thinks by default) emit a
+  `thinking` block before the `text` block, so callers must not assume `content`
+  starts with text. Returns "" when there is no text block.
+  """
+  def text_content(%{"content" => blocks}) when is_list(blocks) do
+    blocks
+    |> Enum.filter(&(&1["type"] == "text"))
+    |> Enum.map_join("", & &1["text"])
+  end
+
+  @doc """
+  Returns the `input` map of the first `tool_use` block in a response, or `nil`
+  when there is none. Like `text_content/1`, this keeps the Anthropic response
+  shape out of callers.
+  """
+  def tool_use(%{"content" => blocks}) when is_list(blocks) do
+    case Enum.find(blocks, &(&1["type"] == "tool_use")) do
+      %{"input" => input} -> input
+      _ -> nil
+    end
+  end
+
   def chat(client, opts) do
     # `:purpose` tags the call site for cost tracking; it's ours, not Anthropix's,
     # so strip it before the request goes out.

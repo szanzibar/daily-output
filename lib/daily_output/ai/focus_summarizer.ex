@@ -34,8 +34,8 @@ defmodule DailyOutput.AI.FocusSummarizer do
              messages: [%{role: "user", content: "Summarize this tip:\n\n#{tip_text}"}],
              max_tokens: 256
            ) do
-        {:ok, %{"content" => [%{"text" => text} | _]}} ->
-          {:ok, String.trim(text)}
+        {:ok, %{"content" => _} = response} ->
+          {:ok, String.trim(AI.text_content(response))}
 
         {:error, reason} ->
           {:error, reason}

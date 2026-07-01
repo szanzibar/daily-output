@@ -59,8 +59,8 @@ defmodule DailyOutput.AI.TopicGenerator do
              messages: [%{role: "user", content: "Generate 5 conversation openers."}],
              max_tokens: 1024
            ) do
-        {:ok, %{"content" => [%{"text" => text} | _]}} ->
-          parse_openers(text)
+        {:ok, %{"content" => _} = response} ->
+          parse_openers(AI.text_content(response))
 
         {:error, reason} ->
           {:error, reason}

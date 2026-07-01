@@ -45,8 +45,8 @@ defmodule DailyOutput.AI.PromptGenerator do
              messages: [%{role: "user", content: "Generate 5 writing prompts for today."}],
              max_tokens: 1024
            ) do
-        {:ok, %{"content" => [%{"text" => text} | _]}} ->
-          parse_prompts(text)
+        {:ok, %{"content" => _} = response} ->
+          parse_prompts(AI.text_content(response))
 
         {:error, reason} ->
           {:error, reason}

@@ -21,8 +21,9 @@ defmodule DailyOutput.AI.LanguageProfile do
       locale_context: "in Switzerland",
       settings_context: "Schweizer Hochdeutsch",
       conventions: [
+        "Always write in Standard German (Schweizer Hochdeutsch). Never reply in Swiss German dialect (Mundart / Schwiizerdütsch), even in casual conversation",
         "Never use ß — always use ss (for example: \"dass\" not \"daß\", \"Strasse\" not \"Straße\")",
-        "Prefer Swiss standard terms naturally when suitable (Velo, Poulet, Natel, Trottoir, parkieren, etc.)",
+        "Prefer Swiss standard terms naturally when suitable (Velo, Poulet, Trottoir, parkieren, etc.)",
         "Use Swiss conventions for dates, numbers, and spelling where they differ from Germany usage"
       ]
     }

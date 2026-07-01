@@ -160,9 +160,9 @@ defmodule DailyOutput.AI.Proofreader do
              # 2048 and truncate the *later* corrections — which reads as "fewer corrections".
              max_tokens: 4096
            ) do
-        {:ok, %{"content" => content}} ->
-          case Enum.find(content, &(&1["type"] == "tool_use")) do
-            %{"input" => input} when is_map(input) ->
+        {:ok, %{"content" => content} = response} ->
+          case AI.tool_use(response) do
+            input when is_map(input) ->
               # annotated_text carries the shared inline markers; derive annotations from them
               # (guarded against the entry) so journal and chat share one correction path.
               marked =
@@ -238,9 +238,9 @@ defmodule DailyOutput.AI.Proofreader do
              purpose: "assessment",
              max_tokens: 512
            ) do
-        {:ok, %{"content" => content}} ->
-          case Enum.find(content, &(&1["type"] == "tool_use")) do
-            %{"input" => input} when is_map(input) ->
+        {:ok, %{"content" => content} = response} ->
+          case AI.tool_use(response) do
+            input when is_map(input) ->
               {:ok, normalize_feedback(input)}
 
             _ ->
@@ -346,10 +346,8 @@ defmodule DailyOutput.AI.Proofreader do
              # still emit the correction; output is billed by real usage, so short calls cost the same.
              max_tokens: 4096
            ) do
-        {:ok, %{"content" => content}} when is_list(content) ->
-          case content
-               |> Enum.filter(&(&1["type"] == "text"))
-               |> Enum.map_join("", & &1["text"]) do
+        {:ok, %{"content" => content} = response} when is_list(content) ->
+          case AI.text_content(response) do
             "" ->
               Logger.error("proofread_message: empty text response: #{inspect(content)}")
               {:error, :no_text_response}

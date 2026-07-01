@@ -72,8 +72,8 @@ defmodule DailyOutput.AI.ConversationPartner do
              messages: api_messages,
              max_tokens: 512
            ) do
-        {:ok, %{"content" => [%{"text" => text} | _]}} ->
-          {:ok, String.trim(text)}
+        {:ok, %{"content" => _} = response} ->
+          {:ok, String.trim(AI.text_content(response))}
 
         {:error, reason} ->
           {:error, reason}

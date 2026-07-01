@@ -92,12 +92,12 @@ defmodule DailyOutput.Flashcards.Generator do
              purpose: "flashcards",
              max_tokens: 1536
            ) do
-        {:ok, %{"content" => content}} ->
-          case Enum.find(content, &(&1["type"] == "tool_use")) do
-            %{"input" => %{"cards" => cards}} when is_list(cards) ->
+        {:ok, %{"content" => content} = response} ->
+          case AI.tool_use(response) do
+            %{"cards" => cards} when is_list(cards) ->
               {:ok, normalize_cards(cards)}
 
-            %{"input" => input} when is_map(input) ->
+            input when is_map(input) ->
               {:ok, []}
 
             _ ->
@@ -161,9 +161,9 @@ defmodule DailyOutput.Flashcards.Generator do
              purpose: "flashcards",
              max_tokens: 512
            ) do
-        {:ok, %{"content" => content}} ->
-          case Enum.find(content, &(&1["type"] == "tool_use")) do
-            %{"input" => %{"cards" => [_ | _] = cards}} ->
+        {:ok, %{"content" => _} = response} ->
+          case AI.tool_use(response) do
+            %{"cards" => [_ | _] = cards} ->
               case normalize_cards(cards) do
                 [pair | _] -> {:ok, pair}
                 [] -> {:error, :empty}

@@ -11,6 +11,8 @@ defmodule DailyOutput.AI.LanguageProfileTest do
     assert profile.settings_context == "Schweizer Hochdeutsch"
     assert profile.conventions != []
     assert LanguageProfile.conventions_block(profile) =~ "Never use ß"
+    # Guard against the AI replying in Swiss dialect (Mundart) instead of Hochdeutsch.
+    assert LanguageProfile.conventions_block(profile) =~ "Never reply in Swiss German dialect"
   end
 
   test "normalizes regional German code" do
