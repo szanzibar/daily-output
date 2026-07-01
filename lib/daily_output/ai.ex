@@ -63,9 +63,14 @@ defmodule DailyOutput.AI do
     end
   end
 
-  # ReqLLM is stateless (no persistent client), so the "client" callers hold is just
-  # the API key. Keeping the {:ok, client} contract avoids touching every call site.
-  def client, do: get_api_key()
+  # AI is "ready" if any provider key is configured; chat/2 resolves the specific
+  # provider + key per call (it can vary by purpose — see resolve_model/2). The {:ok, _}
+  # contract is kept so call sites don't change.
+  def client do
+    if match?({:ok, _}, get_api_key(:anthropic)) or match?({:ok, _}, get_api_key(:zai)),
+      do: {:ok, :ready},
+      else: {:error, :api_key_not_set}
+  end
 
   def model(force_refresh \\ false) do
     if force_refresh do
@@ -102,21 +107,22 @@ defmodule DailyOutput.AI do
     end
   end
 
-  def chat(api_key, opts) do
-    # `:purpose` tags the call site for cost tracking; it's ours, not the API's,
-    # so strip it before the request goes out.
+  def chat(_client, opts) do
+    # `:purpose` tags the call site for cost tracking; it's ours, not the API's, so strip
+    # it before the request goes out. It also selects the model/provider for low-stakes
+    # paths (see resolve_model/2), so the matching key is resolved per call.
     {purpose, opts} = Keyword.pop(opts, :purpose)
-    requested_model = Keyword.get(opts, :model)
-    model_result = if is_binary(requested_model), do: {:ok, requested_model}, else: model()
 
-    with {:ok, model_id} <- model_result do
-      case req_llm_chat(api_key, model_id, opts) do
+    with {:ok, provider, model_id} <- resolve_model(purpose, opts),
+         {:ok, api_key} <- get_api_key(provider) do
+      case req_llm_chat(provider, api_key, model_id, opts) do
         {:ok, response} = ok ->
           record_usage(purpose, response)
           ok
 
         {:error, error_struct} = error ->
-          if model_not_found_error?(error_struct) do
+          # Only the Anthropic path auto-discovers, so only it can recover a stale id.
+          if provider == :anthropic and model_not_found_error?(error_struct) do
             retry_chat_with_refreshed_model(api_key, opts, model_id, purpose, error)
           else
             error
@@ -125,8 +131,55 @@ defmodule DailyOutput.AI do
     end
   end
 
+  # Resolve this call's model as {provider, model_id}. Precedence:
+  #   1. a per-call `:model` spec (rare),
+  #   2. a per-purpose override (`:ai_model_overrides` routes low-stakes paths like
+  #      flashcards/prompts/openers to a cheaper model; correction paths have no override),
+  #   3. the global `:ai_model` spec,
+  #   4. otherwise discover the latest Anthropic Sonnet (the historical default).
+  # A spec is "provider:model", e.g. "zai:glm-5.2" or "anthropic:claude-sonnet-4-6".
+  defp resolve_model(purpose, opts) do
+    spec =
+      Keyword.get(opts, :model) ||
+        purpose_override(purpose) ||
+        Application.get_env(:daily_output, :ai_model)
+
+    case spec do
+      spec when is_binary(spec) ->
+        case parse_spec(spec) do
+          {provider, model_id} -> {:ok, provider, model_id}
+          :error -> {:error, {:bad_model_spec, spec}}
+        end
+
+      _ ->
+        with {:ok, model_id} <- model(), do: {:ok, :anthropic, model_id}
+    end
+  end
+
+  defp purpose_override(nil), do: nil
+
+  defp purpose_override(purpose) do
+    :daily_output
+    |> Application.get_env(:ai_model_overrides, %{})
+    |> Map.get(to_string(purpose))
+  end
+
+  @providers %{"anthropic" => :anthropic, "zai" => :zai}
+  defp parse_spec(spec) do
+    case String.split(spec, ":", parts: 2) do
+      [provider, id] when id != "" ->
+        case Map.fetch(@providers, provider) do
+          {:ok, atom} -> {atom, id}
+          :error -> :error
+        end
+
+      _ ->
+        :error
+    end
+  end
+
   # Translate our Anthropic-style opts into a ReqLLM call and reshape the result back.
-  defp req_llm_chat(api_key, model_id, opts) do
+  defp req_llm_chat(provider, api_key, model_id, opts) do
     context = build_context(Keyword.get(opts, :system), Keyword.get(opts, :messages, []))
 
     req_opts =
@@ -134,22 +187,21 @@ defmodule DailyOutput.AI do
       |> put_opt(:max_tokens, Keyword.get(opts, :max_tokens))
       |> put_opt(:tools, to_req_tools(Keyword.get(opts, :tools)))
       |> put_opt(:tool_choice, Keyword.get(opts, :tool_choice))
-      |> Keyword.merge(thinking_opt())
+      |> put_thinking(provider)
 
-    case ReqLLM.generate_text(model_spec(model_id), context, req_opts) do
+    case ReqLLM.generate_text(model_spec(provider, model_id), context, req_opts) do
       {:ok, response} -> {:ok, anthropic_shape(response, model_id)}
       error -> error
     end
   end
 
-  # Resolve to a model struct so ReqLLM doesn't re-resolve the "anthropic:<id>" string and
-  # log an "unverified model" warning on every call — our models are auto-discovered and
-  # routinely newer than ReqLLM's static catalog. Falls back to the string spec if the
-  # provider can't build one.
-  defp model_spec(model_id) do
-    case ReqLLM.model(%{provider: :anthropic, id: model_id}) do
+  # Resolve to a model struct so ReqLLM doesn't re-resolve the "provider:<id>" string and
+  # log an "unverified model" warning on every call — our models are routinely newer than
+  # ReqLLM's static catalog. Falls back to the string spec if the provider can't build one.
+  defp model_spec(provider, model_id) do
+    case ReqLLM.model(%{provider: provider, id: model_id}) do
       {:ok, model} -> model
-      _ -> "anthropic:" <> model_id
+      _ -> "#{provider}:#{model_id}"
     end
   end
 
@@ -191,18 +243,24 @@ defmodule DailyOutput.AI do
   defp put_opt(opts, _key, nil), do: opts
   defp put_opt(opts, key, value), do: Keyword.put(opts, key, value)
 
-  # Disable model reasoning by default so it doesn't spend output tokens thinking — this
-  # is the whole reason for the ReqLLM swap (Anthropix couldn't send `thinking`).
-  # ponytail: config knob because the model is auto-discovered; if a future model rejects
-  # an explicit "disabled" (e.g. always-on models), set `config :daily_output, :ai_thinking, false`
-  # to omit the field, or to a map to send a specific config — no code change.
+  # Disable model reasoning by default so it doesn't spend output tokens thinking — the
+  # whole reason for the ReqLLM swap. Placement differs by provider: Anthropic reads a
+  # top-level `thinking:`; z.ai reads it under `provider_options`. Set
+  # `config :daily_output, :ai_thinking, false` to omit it (fallback for a model that
+  # rejects an explicit "disabled"), or to a map to send a specific config — no code change.
   @default_thinking %{type: "disabled"}
-  defp thinking_opt do
+  defp put_thinking(opts, provider) do
     case Application.get_env(:daily_output, :ai_thinking, @default_thinking) do
-      thinking when is_map(thinking) -> [thinking: thinking]
-      _ -> []
+      thinking when is_map(thinking) -> place_thinking(opts, provider, thinking)
+      _ -> opts
     end
   end
+
+  defp place_thinking(opts, :zai, thinking) do
+    Keyword.update(opts, :provider_options, [thinking: thinking], &Keyword.put(&1, :thinking, thinking))
+  end
+
+  defp place_thinking(opts, _provider, thinking), do: Keyword.put(opts, :thinking, thinking)
 
   # Reshape a %ReqLLM.Response{} into the Anthropic-native map the rest of the app reads
   # (text_content/1, tool_use/1, Stats.record_usage/2), so nothing downstream changed.
@@ -256,7 +314,7 @@ defmodule DailyOutput.AI do
   end
 
   defp fetch_models do
-    with {:ok, api_key} <- get_api_key() do
+    with {:ok, api_key} <- get_api_key(:anthropic) do
       req =
         Req.new(
           url: "https://api.anthropic.com/v1/models",
@@ -279,14 +337,18 @@ defmodule DailyOutput.AI do
     end
   end
 
-  defp get_api_key do
-    case Application.get_env(:daily_output, :anthropic_api_key) ||
-           System.get_env("ANTHROPIC_API_KEY") do
-      nil -> {:error, :api_key_not_set}
-      "" -> {:error, :api_key_not_set}
-      key -> {:ok, key}
-    end
+  defp get_api_key(:zai) do
+    fetch_key(System.get_env("ZAI_API_KEY") || Application.get_env(:daily_output, :zai_api_key))
   end
+
+  defp get_api_key(_anthropic) do
+    fetch_key(
+      Application.get_env(:daily_output, :anthropic_api_key) || System.get_env("ANTHROPIC_API_KEY")
+    )
+  end
+
+  defp fetch_key(key) when is_binary(key) and key != "", do: {:ok, key}
+  defp fetch_key(_), do: {:error, :api_key_not_set}
 
   # A 404 from /v1/messages means the model id is unknown — the trigger to re-discover.
   defp model_not_found_error?(%ReqLLM.Error.API.Response{status: 404}), do: true
@@ -302,7 +364,7 @@ defmodule DailyOutput.AI do
             "AI model '#{failed_model}' not found. Retrying with '#{refreshed_model}'."
           )
 
-          case req_llm_chat(api_key, refreshed_model, opts) do
+          case req_llm_chat(:anthropic, api_key, refreshed_model, opts) do
             {:ok, response} = ok ->
               record_usage(purpose, response)
               ok

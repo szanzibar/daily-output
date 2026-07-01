@@ -90,10 +90,9 @@ defmodule DailyOutput.Flashcards.Generator do
              tools: [flashcards_tool()],
              tool_choice: %{type: "tool", name: "provide_flashcards"},
              purpose: "flashcards",
-             # sonnet-5 thinks by default and max_tokens is a ceiling (not a billed cost), so a
-             # whole conversation's worth of corrections needs headroom for the thinking block
-             # PLUS the tool_use output — 1536 truncated the tool call mid-stream, yielding zero
-             # cards. Matches the proofreader's batched budget.
+             # max_tokens is a ceiling, not a billed cost. A whole conversation's worth of
+             # cards can be long, and 1536 once truncated the tool call mid-stream (zero
+             # cards), so keep headroom. (This path routes to GLM via :ai_model_overrides.)
              max_tokens: 4096
            ) do
         {:ok, %{"content" => content} = response} ->

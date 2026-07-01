@@ -4,7 +4,15 @@ import Config
 if config_env() != :test do
   Dotenvy.source!([".env", System.get_env()])
 
-  config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string)
+  # Both keys are optional so the app boots with whichever provider you've configured.
+  config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string, "")
+  config :daily_output, :zai_api_key, Dotenvy.env!("ZAI_API_KEY", :string, "")
+
+  # "provider:model" spec (e.g. "zai:glm-5.2"); blank = discover the latest Anthropic Sonnet.
+  case Dotenvy.env!("AI_MODEL", :string, "") do
+    "" -> :ok
+    spec -> config :daily_output, :ai_model, spec
+  end
 
   # Web Push keys are generated and stored in the DB on first boot — see
   # `DailyOutput.Vapid`. Nothing to configure here.

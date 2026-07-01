@@ -9,79 +9,88 @@ defmodule DailyOutputWeb.ConversationLive.Continue do
     original = Conversations.get_conversation!(id)
     config = Settings.get_config()
 
-    # If it has feedback, branch into a new conversation with the same messages
-    {conversation, messages} =
-      if original.feedback do
-        {:ok, new_convo} =
-          Conversations.create_conversation(%{
-            topic: original.topic,
-            language: original.language,
-            focus_topic_id: original.focus_topic_id
-          })
+    # Continuing a COMPLETED conversation (one with feedback) forks it into a fresh copy so
+    # the earned corrections carry over. That create MUST happen exactly once — only on the
+    # WebSocket connect — and then we redirect to the fork, which has no feedback and so
+    # won't fork again. Doing the create unguarded in mount duplicated the conversation on
+    # the dead render, the connect, AND every refresh (LiveView mounts twice per load).
+    if original.feedback && connected?(socket) do
+      {:ok, fork} = fork_conversation(original)
+      {:ok, push_navigate(socket, to: ~p"/conversations/#{fork.id}/continue")}
+    else
+      # The real continue (no feedback), or the dead render of a soon-to-be-forked
+      # conversation (the connect above will fork + redirect). Never create anything here.
+      messages = original.messages
 
-        # Copy all messages — including their per-message corrections — so the new
-        # version keeps the feedback already earned instead of starting blank.
-        msgs =
-          Enum.map(original.messages, fn msg ->
-            {:ok, new_msg} = Conversations.copy_message(new_convo, msg)
-            new_msg
-          end)
+      socket =
+        assign(socket,
+          page_title: gettext("Continue Conversation"),
+          config: config,
+          conversation: original,
+          messages: messages,
+          focus_topic_text:
+            if original.focus_topic_id do
+              FocusTopics.get_topic!(original.focus_topic_id).text
+            end,
+          input: "",
+          ai_loading: false,
+          correcting_ids: MapSet.new(),
+          feedback: nil,
+          feedback_loading: false,
+          improvement: nil,
+          error: nil
+        )
 
-        {new_convo, msgs}
-      else
-        {original, original.messages}
-      end
-
-    socket =
-      assign(socket,
-        page_title: gettext("Continue Conversation"),
-        config: config,
-        conversation: conversation,
-        messages: messages,
-        focus_topic_text:
-          if conversation.focus_topic_id do
-            FocusTopics.get_topic!(conversation.focus_topic_id).text
-          end,
-        input: "",
-        ai_loading: false,
-        correcting_ids: MapSet.new(),
-        feedback: nil,
-        feedback_loading: false,
-        improvement: nil,
-        error: nil
-      )
-
-    socket =
-      cond do
-        not connected?(socket) ->
-          socket
-
-        match?(%{role: "user"}, List.last(messages)) ->
-          last = List.last(messages)
-          send(self(), :request_ai_reply)
-          socket = assign(socket, ai_loading: true)
-
-          # A conversation the user opened by typing the first message arrives here with
-          # that message saved but not yet corrected: the New wizard seeds it, and the
-          # "send" handler that fires the per-message correction on every later turn never
-          # ran for it. Correct it now (if it has no feedback yet) so the opening turn gets
-          # the same inline corrections as the rest of the chat.
-          if is_nil(last.feedback) do
-            start_message_correction(socket, last, Enum.drop(messages, -1))
-            update(socket, :correcting_ids, &MapSet.put(&1, last.id))
-          else
+      socket =
+        cond do
+          not connected?(socket) ->
             socket
-          end
 
-        messages == [] and conversation.topic ->
-          send(self(), :request_ai_opener)
-          assign(socket, ai_loading: true)
+          match?(%{role: "user"}, List.last(messages)) ->
+            last = List.last(messages)
+            send(self(), :request_ai_reply)
+            socket = assign(socket, ai_loading: true)
 
-        true ->
-          socket
-      end
+            # A conversation the user opened by typing the first message arrives here with
+            # that message saved but not yet corrected: the New wizard seeds it, and the
+            # "send" handler that fires the per-message correction on every later turn never
+            # ran for it. Correct it now (if it has no feedback yet) so the opening turn gets
+            # the same inline corrections as the rest of the chat.
+            if is_nil(last.feedback) do
+              start_message_correction(socket, last, Enum.drop(messages, -1))
+              update(socket, :correcting_ids, &MapSet.put(&1, last.id))
+            else
+              socket
+            end
 
-    {:ok, socket}
+          messages == [] and original.topic ->
+            send(self(), :request_ai_opener)
+            assign(socket, ai_loading: true)
+
+          true ->
+            socket
+        end
+
+      {:ok, socket}
+    end
+  end
+
+  # Fork a completed conversation into a fresh one, copying every message (including its
+  # per-message corrections) so the fork keeps the feedback already earned. Called exactly
+  # once per continue (guarded by connected?/redirect in mount/3).
+  defp fork_conversation(original) do
+    {:ok, fork} =
+      Conversations.create_conversation(%{
+        topic: original.topic,
+        language: original.language,
+        focus_topic_id: original.focus_topic_id
+      })
+
+    Enum.each(original.messages, fn msg ->
+      {:ok, _} = Conversations.copy_message(fork, msg)
+    end)
+
+    {:ok, fork}
   end
 
   @impl true

@@ -3,7 +3,8 @@ defmodule DailyOutputWeb.ConversationLive.ContinueTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.{Clock, Conversations, FocusTopics}
+  alias DailyOutput.{Clock, Conversations, FocusTopics, Repo}
+  alias DailyOutput.Conversations.Conversation
 
   # Seed alternating messages ending on the partner, so mounting Continue doesn't kick
   # off a real AI request (which the auto-reply path would do for a trailing user turn).
@@ -197,15 +198,43 @@ defmodule DailyOutputWeb.ConversationLive.ContinueTest do
       {conversation, user_msg} = seed_correctable()
       {:ok, _} = Conversations.save_message_feedback(user_msg, @sample_correction)
 
-      # A completed-with-feedback conversation: opening /continue branches into a new version.
+      # A completed-with-feedback conversation: opening /continue forks into a fresh version
+      # once (on connect) and redirects to the fork's own URL, so a refresh can't re-fork.
       {:ok, _} =
         Conversations.save_feedback(conversation, %{"commentary" => [], "encouragement" => "Gut!"})
 
-      {:ok, view, _html} = live(conn, ~p"/conversations/#{conversation.id}/continue")
+      assert {:error, {:live_redirect, %{to: fork_path}}} =
+               live(conn, ~p"/conversations/#{conversation.id}/continue")
+
+      refute fork_path == ~p"/conversations/#{conversation.id}/continue"
+
+      {:ok, view, _html} = live(conn, fork_path)
 
       # The copied user message carries its corrections over (rendered via AnnotatedText),
-      # so the new version is not a blank slate.
+      # so the fork is not a blank slate.
       assert has_element?(view, ~s([id^="annotated-msg-"]))
+    end
+
+    test "forking creates exactly one copy and the fork is refresh-safe (no duplication)",
+         %{conn: conn} do
+      # Regression: the fork-create used to run unguarded in mount/3, so it fired on the
+      # dead render, the connect, AND every refresh — duplicating the conversation each time.
+      {conversation, user_msg} = seed_correctable()
+      {:ok, _} = Conversations.save_message_feedback(user_msg, @sample_correction)
+      {:ok, _} = Conversations.save_feedback(conversation, %{"commentary" => []})
+
+      before = Repo.aggregate(Conversation, :count)
+
+      # One full page load (dead render + connect) must create exactly ONE fork.
+      assert {:error, {:live_redirect, %{to: fork_path}}} =
+               live(conn, ~p"/conversations/#{conversation.id}/continue")
+
+      assert Repo.aggregate(Conversation, :count) == before + 1
+
+      # The fork has no feedback, so loading/refreshing it must not fork again.
+      {:ok, _view, _html} = live(conn, fork_path)
+      {:ok, _view, _html} = live(conn, fork_path)
+      assert Repo.aggregate(Conversation, :count) == before + 1
     end
   end
 end

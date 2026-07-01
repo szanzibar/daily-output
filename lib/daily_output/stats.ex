@@ -137,13 +137,16 @@ defmodule DailyOutput.Stats do
 
   # ── API cost tracking ──────────────────────────────────
 
-  # Approximate USD per 1,000,000 tokens, by model tier. Cache reads bill at ~0.1x
-  # input, cache writes (5-minute TTL) at ~1.25x input. The app uses the latest
-  # Sonnet (see DailyOutput.AI), so "sonnet" is the default tier.
+  # Approximate USD per 1,000,000 tokens, by model tier. Cache reads bill cheaper than
+  # input; cache writes at ~1.25x input. The active model is set in config (see
+  # DailyOutput.AI); "sonnet" is the default tier when a model id matches nothing else.
+  # z.ai's GLM has no cache-write price published (cached storage is free for now), so
+  # cache_write is set to the input rate as a safe placeholder — we don't use caching yet.
   @pricing %{
     "opus" => %{input: 5.0, output: 25.0, cache_read: 0.5, cache_write: 6.25},
     "sonnet" => %{input: 3.0, output: 15.0, cache_read: 0.3, cache_write: 3.75},
-    "haiku" => %{input: 1.0, output: 5.0, cache_read: 0.1, cache_write: 1.25}
+    "haiku" => %{input: 1.0, output: 5.0, cache_read: 0.1, cache_write: 1.25},
+    "glm" => %{input: 1.4, output: 4.4, cache_read: 0.26, cache_write: 1.4}
   }
   @default_tier "sonnet"
 
@@ -278,6 +281,7 @@ defmodule DailyOutput.Stats do
       cond do
         String.contains?(model, "opus") -> "opus"
         String.contains?(model, "haiku") -> "haiku"
+        String.contains?(model, "glm") -> "glm"
         true -> @default_tier
       end
 

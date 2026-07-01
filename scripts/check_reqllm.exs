@@ -14,6 +14,27 @@
 alias DailyOutput.{Repo, AI}
 import Ecto.Query
 
+# Optionally benchmark a specific model: pass a "provider:model" spec, e.g.
+#   mix run scripts/check_reqllm.exs zai:glm-5.2
+System.argv()
+|> Enum.find(&(&1 =~ ~r/^[a-z_]+:.+/))
+|> case do
+  nil -> :ok
+  spec -> Application.put_env(:daily_output, :ai_model, spec)
+end
+
+# Override thinking for this run: THINKING=on|off (default: whatever config says)
+case System.get_env("THINKING") do
+  t when t in ["on", "enabled", "1"] ->
+    Application.put_env(:daily_output, :ai_thinking, %{type: "enabled"})
+
+  t when t in ["off", "disabled", "0"] ->
+    Application.put_env(:daily_output, :ai_thinking, %{type: "disabled"})
+
+  _ ->
+    :ok
+end
+
 start_id = Repo.aggregate(from(u in "api_usages"), :max, :id) || 0
 
 usage_since = fn id ->
@@ -29,10 +50,9 @@ run = fn label, fun ->
   {fun.(), usage_since.(before), label}
 end
 
-case AI.model() do
-  {:ok, model} -> IO.puts("=== ReqLLM live check ===\nmodel (discovered): #{model}\n")
-  other -> IO.puts("=== ReqLLM live check ===\n⚠ model discovery failed: #{inspect(other)}\n")
-end
+active_model = Application.get_env(:daily_output, :ai_model) || "(auto-discover latest Anthropic Sonnet)"
+thinking = Application.get_env(:daily_output, :ai_thinking, %{type: "disabled"})
+IO.puts("=== ReqLLM live check ===\nmodel: #{active_model}\nthinking: #{inspect(thinking)}\n")
 
 # [1] Plain path — the frequent, previously-expensive one. Thinking must be OFF.
 {r1, rows1, _} =
