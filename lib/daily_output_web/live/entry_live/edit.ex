@@ -223,12 +223,15 @@ defmodule DailyOutputWeb.EntryLive.Edit do
   def handle_info({:feedback_loaded, {:ok, feedback}, entry}, socket) do
     case Journal.save_feedback(entry, feedback) do
       {:ok, entry} ->
-        # Best-effort: turn this entry's corrections into flashcards in the background.
-        Task.start(fn -> Flashcards.ingest_correction(:entry, entry.id, feedback) end)
-
         if should_complete_entry?(entry) do
           case Journal.complete_entry(entry) do
             {:ok, completed_entry} ->
+              # Card only the finalized entry — each resubmit spawns a NEW entry version, so
+              # carding every feedback pass duplicated cards for mistakes carried across drafts.
+              Task.start(fn ->
+                Flashcards.ingest_correction(:entry, completed_entry.id, feedback)
+              end)
+
               {:noreply, push_navigate(socket, to: completion_path(completed_entry.id))}
 
             {:error, _changeset} ->

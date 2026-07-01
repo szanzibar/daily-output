@@ -32,10 +32,7 @@ defmodule DailyOutput.FlashcardsTest do
     end
 
     test "skips a correction that is only a capitalization fix (no AI call)" do
-      feedback = %{
-        "annotated_text" => "Das [[1:haus||Haus]] ist schön.",
-        "annotations" => [%{"id" => 1, "category" => "spelling", "explanation" => "capital"}]
-      }
+      feedback = %{"annotated_text" => "Das [[haus||Haus||spelling||capital]] ist schön."}
 
       assert {:ok, 0} = Flashcards.ingest_correction(:entry, 1, feedback)
       assert Flashcards.count_cards() == 0
@@ -58,10 +55,22 @@ defmodule DailyOutput.FlashcardsTest do
       messages = [
         %{
           role: "user",
-          feedback: %{
-            "annotated_text" => "Das [[1:haus||Haus]] ist schön.",
-            "annotations" => [%{"id" => 1, "category" => "spelling", "explanation" => "capital"}]
-          }
+          feedback: %{"annotated_text" => "Das [[haus||Haus||spelling||capital]] ist schön."}
+        }
+      ]
+
+      assert {:ok, 0} = Flashcards.ingest_conversation(1, messages)
+      assert Flashcards.count_cards() == 0
+    end
+
+    test "skips messages already turned into cards (no AI call)" do
+      # A substantive correction, but the message is already watermarked — as copied-forward
+      # turns are when a completed conversation is continued — so it must not be re-carded.
+      messages = [
+        %{
+          role: "user",
+          flashcards_at: DateTime.utc_now(),
+          feedback: %{"annotated_text" => "Ich [[gehe||ging||verb||past]] gestern heim."}
         }
       ]
 

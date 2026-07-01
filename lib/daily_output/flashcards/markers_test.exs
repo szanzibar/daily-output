@@ -5,7 +5,7 @@ defmodule DailyOutput.Flashcards.MarkersTest do
 
   describe "corrected_text/1" do
     test "applies replace, insert, and delete markers" do
-      text = "Ich [[1:gehe||ging]] heim[[2:||,]] [[3:sehr ||]]müde."
+      text = "Ich [[gehe||ging||verb||v]] heim[[||,||punctuation||p]] [[sehr ||||word||w]]müde."
       assert Markers.corrected_text(text) == "Ich ging heim, müde."
     end
 
@@ -19,12 +19,18 @@ defmodule DailyOutput.Flashcards.MarkersTest do
   end
 
   describe "parse/1" do
-    test "extracts id, original, and corrected" do
+    test "extracts original, corrected, category, and explanation" do
       assert [
-               %{id: "1", original: "das", corrected: "dass"},
-               %{id: "2", original: "", corrected: ","}
+               %{original: "das", corrected: "dass", category: "grammar", explanation: "conj"},
+               %{original: "", corrected: ",", category: "punctuation", explanation: "comma"}
              ] =
-               Markers.parse("Ich glaube [[1:das||dass]] es klappt[[2:||,]]")
+               Markers.parse(
+                 "Ich glaube [[das||dass||grammar||conj]] es klappt[[||,||punctuation||comma]]"
+               )
+    end
+
+    test "drops no-op markers (before == after)" do
+      assert Markers.parse("Alles [[gut||gut||none||]] hier") == []
     end
   end
 
@@ -45,7 +51,7 @@ defmodule DailyOutput.Flashcards.MarkersTest do
   end
 
   test "substantive/1 drops capitalization-only markers" do
-    markers = Markers.parse("Das [[1:haus||Haus]] ist [[2:gross||groß]].")
+    markers = Markers.parse("Das [[haus||Haus||spelling||cap]] ist [[gross||groß||spelling||ss]].")
     assert [%{corrected: "groß"}] = Markers.substantive(markers)
   end
 end

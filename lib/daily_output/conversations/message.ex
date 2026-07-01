@@ -11,6 +11,10 @@ defmodule DailyOutput.Conversations.Message do
     # Only set on user messages, and only once their correction has come back.
     field :feedback, :map
 
+    # Set once this message's corrections have been turned into flashcards, so a continued
+    # (and re-completed) conversation never re-cards it. See `Flashcards.ingest_conversation/3`.
+    field :flashcards_at, :utc_datetime
+
     belongs_to :conversation, Conversation
 
     timestamps(type: :utc_datetime, updated_at: false)

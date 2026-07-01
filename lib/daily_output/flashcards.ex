@@ -14,6 +14,7 @@ defmodule DailyOutput.Flashcards do
   import Ecto.Query
 
   alias DailyOutput.{Clock, Repo, Settings}
+  alias DailyOutput.Conversations.Message
 
   alias DailyOutput.Flashcards.{
     Card,
@@ -56,10 +57,9 @@ defmodule DailyOutput.Flashcards do
 
   def ingest_correction(source_type, source_id, feedback, opts) do
     annotated = feedback["annotated_text"] || ""
-    markers = Markers.parse(annotated)
-    substantive = Markers.substantive(markers)
+    mistakes = annotated |> Markers.parse() |> Markers.substantive()
 
-    if substantive == [] do
+    if mistakes == [] do
       {:ok, 0}
     else
       config = opts[:config] || Settings.get_config()
@@ -67,7 +67,6 @@ defmodule DailyOutput.Flashcards do
       native = config.native_language || "en"
       level = config.language_level || "B2"
       corrected = Markers.corrected_text(annotated)
-      mistakes = build_mistakes(substantive, feedback["annotations"])
 
       case Generator.generate(corrected, mistakes,
              target_language: target,
@@ -102,21 +101,24 @@ defmodule DailyOutput.Flashcards do
   best-effort — wrap it in a `Task` so AI latency never blocks the completion flow.
   """
   def ingest_conversation(conversation_id, messages, opts \\ []) do
-    corrections =
+    # Only card user messages not already carded by an earlier completion. A conversation is
+    # "continued" by copying its messages into a fresh conversation (see
+    # `Conversations.copy_message/2`), so the flashcards_at watermark travels with them —
+    # re-completing then cards only the genuinely new turns instead of duplicating old ones.
+    # ponytail: reads the watermark off the in-memory structs; the continue flow always
+    # re-mounts with fresh rows, so they're current.
+    new_messages =
       messages
-      |> Enum.filter(&(&1.role == "user"))
-      |> Enum.flat_map(fn msg ->
-        annotated = (is_map(msg.feedback) && msg.feedback["annotated_text"]) || ""
+      |> Enum.filter(&(&1.role == "user" and is_map(Map.get(&1, :feedback))))
+      |> Enum.reject(&Map.get(&1, :flashcards_at))
+
+    corrections =
+      Enum.flat_map(new_messages, fn msg ->
+        annotated = msg.feedback["annotated_text"] || ""
 
         case annotated |> Markers.parse() |> Markers.substantive() do
-          [] ->
-            []
-
-          markers ->
-            [
-              {Markers.corrected_text(annotated),
-               build_mistakes(markers, msg.feedback["annotations"])}
-            ]
+          [] -> []
+          mistakes -> [{Markers.corrected_text(annotated), mistakes}]
         end
       end)
 
@@ -136,12 +138,19 @@ defmodule DailyOutput.Flashcards do
              native_language: native,
              language_level: level
            ) do
+        {:ok, []} ->
+          # The model produced no cards this round (empty/transient response). Do NOT stamp —
+          # leave the messages so a later completion retries them, instead of silently losing
+          # the flashcards forever.
+          {:ok, 0}
+
         {:ok, cards} ->
           inserted =
             cards
             |> Enum.map(&insert_card(&1, target, "conversation", conversation_id))
             |> Enum.count(&match?({:ok, %Card{}}, &1))
 
+          mark_carded(new_messages)
           {:ok, inserted}
 
         {:error, reason} ->
@@ -150,25 +159,14 @@ defmodule DailyOutput.Flashcards do
     end
   end
 
-  # Join the substantive markers with their annotation (by id) for richer AI context.
-  defp build_mistakes(markers, annotations) do
-    annotations = if is_list(annotations), do: annotations, else: []
+  # Stamp the messages we just turned into cards so a later completion never re-cards them.
+  defp mark_carded(messages) do
+    ids = messages |> Enum.map(&Map.get(&1, :id)) |> Enum.reject(&is_nil/1)
 
-    ann_by_id =
-      annotations
-      |> Enum.filter(&is_map/1)
-      |> Map.new(fn a -> {to_string(a["id"]), a} end)
-
-    Enum.map(markers, fn m ->
-      ann = Map.get(ann_by_id, to_string(m.id), %{})
-
-      %{
-        original: m.original,
-        corrected: m.corrected,
-        category: ann["category"] || "other",
-        explanation: ann["explanation"] || ""
-      }
-    end)
+    if ids != [] do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      Repo.update_all(from(m in Message, where: m.id in ^ids), set: [flashcards_at: now])
+    end
   end
 
   defp insert_card(

@@ -46,7 +46,12 @@ defmodule DailyOutput.Conversations do
     with {:ok, message} <-
            add_message(conversation, %{role: source.role, body: source.body}) do
       if is_map(source.feedback) do
-        message |> Message.feedback_changeset(source.feedback) |> Repo.update()
+        # Carry the flashcard watermark forward too, so already-carded turns aren't re-carded
+        # when the branched conversation is completed again.
+        message
+        |> Message.feedback_changeset(source.feedback)
+        |> Ecto.Changeset.put_change(:flashcards_at, source.flashcards_at)
+        |> Repo.update()
       else
         {:ok, message}
       end

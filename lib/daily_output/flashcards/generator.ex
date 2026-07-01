@@ -90,19 +90,20 @@ defmodule DailyOutput.Flashcards.Generator do
              tools: [flashcards_tool()],
              tool_choice: %{type: "tool", name: "provide_flashcards"},
              purpose: "flashcards",
-             max_tokens: 1536
+             # sonnet-5 thinks by default and max_tokens is a ceiling (not a billed cost), so a
+             # whole conversation's worth of corrections needs headroom for the thinking block
+             # PLUS the tool_use output — 1536 truncated the tool call mid-stream, yielding zero
+             # cards. Matches the proofreader's batched budget.
+             max_tokens: 4096
            ) do
         {:ok, %{"content" => content} = response} ->
           case AI.tool_use(response) do
-            %{"cards" => cards} when is_list(cards) ->
-              {:ok, normalize_cards(cards)}
-
-            input when is_map(input) ->
-              {:ok, []}
-
-            _ ->
+            nil ->
               Logger.error("Generator: no tool_use block in response: #{inspect(content)}")
               {:error, :no_tool_response}
+
+            input ->
+              {:ok, input |> extract_cards() |> normalize_cards()}
           end
 
         {:error, reason} ->
@@ -163,14 +164,14 @@ defmodule DailyOutput.Flashcards.Generator do
            ) do
         {:ok, %{"content" => _} = response} ->
           case AI.tool_use(response) do
-            %{"cards" => [_ | _] = cards} ->
-              case normalize_cards(cards) do
+            nil ->
+              {:error, :no_tool_response}
+
+            input ->
+              case input |> extract_cards() |> normalize_cards() do
                 [pair | _] -> {:ok, pair}
                 [] -> {:error, :empty}
               end
-
-            _ ->
-              {:error, :no_tool_response}
           end
 
         {:error, reason} ->
@@ -188,6 +189,24 @@ defmodule DailyOutput.Flashcards.Generator do
       "- #{orig} → #{corrected} (#{m.category}: #{m.explanation})"
     end)
   end
+
+  @doc """
+  Pulls the card list out of the tool_use input. sonnet-5 sometimes returns the `cards` array
+  as a JSON *string* instead of a real array (or double-wraps it as `{"cards": [...]}`); accept
+  every shape so a stringified response doesn't silently yield zero flashcards.
+  """
+  def extract_cards(%{"cards" => cards}) when is_list(cards), do: cards
+
+  def extract_cards(%{"cards" => json}) when is_binary(json) do
+    case Jason.decode(json) do
+      {:ok, %{"cards" => cards}} when is_list(cards) -> cards
+      {:ok, cards} when is_list(cards) -> cards
+      _ -> []
+    end
+  end
+
+  def extract_cards(list) when is_list(list), do: list
+  def extract_cards(_), do: []
 
   defp normalize_cards(cards) do
     cards
