@@ -33,30 +33,42 @@ defmodule DailyOutput.AI.Proofreader do
   # annotations list). Each caller adds its own "reproduce the entire X" framing around this.
   defp marker_rules(profile) do
     """
-    Wrap each real error in a self-contained marker with four ||-separated fields:
+    Wrap each correction in a self-contained marker with four ||-separated fields:
 
     [[before||after||type||explanation]]
 
-    before = the student's exact words · after = your correction · type = one of {#{Enum.join(@categories, ", ")}} · explanation = 5-10 words on what was wrong, in #{profile.prompt_name}.
+    - before — the student's exact words (leave empty to insert something missing)
+    - after — your correction (leave empty to delete something extra)
+    - type — one of {#{Enum.join(@categories, ", ")}}
+    - explanation — 5-10 words, in #{profile.prompt_name}, on what was wrong
 
-    Make each marker as SMALL as possible: one marker fixes one thing, leaving every already-correct word outside the marker. A deletion, an insertion, and a word swap are separate markers — prefer two or three tiny markers over one wide rewrite. Worked examples:
+    Why the format is exact: each marker is rendered inline so the student sees your fix in place against what they wrote, and the type field is tallied across entries to track which mistakes they keep making and which they've mastered. A malformed marker breaks both the display and the tracking, so keep the four fields and the «||» separators intact, and never nest «]]» inside a marker.
 
-    - Replace one wrong word — Ich [[hab||habe||verb||1. Person braucht «habe»]] es gesehen.
-    - Insert a missing word — keep before empty, mark only the gap:
-      Ich mag [[||gerne||vocabulary||«gerne» betont die Vorliebe]] Schokolade.
-    - Delete an extra word or mark — keep after empty:
-      Für Glace[[,||||punctuation||vor dem Verb kein Komma]] mag ich Schokolade.
-    - Supply a word the student did not know — when they wrote an English word or a «(…?)» placeholder instead of #{profile.prompt_name}, replace it with the correct word:
-      Hast du [[(ever?)||jemals||vocabulary||«jemals» heisst «ever»]] etwas Ekliges probiert?
-    - Several nearby errors → several small markers, NOT one wide one. For «Für Glace, mag ich sehr Schokolade» mark just the comma and the missing word:
-      Für Glace[[,||||punctuation||hier kein Komma]] mag ich sehr [[||gerne||vocabulary||«gerne» betont die Vorliebe]] Schokolade.
-    A WIDE marker is right in two cases — but even then, stop at the first and last word that already changes; never pull an unchanged word into the marker:
-    - The words truly change position (word order):
-      Manchmal vergesse ich, dass ich [[Deutsch höre bei der Chorprobe||bei der Chorprobe Deutsch höre||word-order||Verb steht am Nebensatz-Ende]].
-    - A whole phrase is so wrong (e.g. a literal English-mixed calque) that no word in it survives — replace just that phrase:
-      Ich habe einen Fehler gemacht, [[ich bin sorry||es tut mir leid||vocabulary||idiomatisch «es tut mir leid»]].
+    Format example — the same markup applies to #{profile.prompt_name}; here one word is replaced, one inserted, one comma deleted:
+    Ich [[hab||habe||verb||1. Person braucht «habe»]] gestern [[||wohl||vocabulary||«wohl» klingt natürlicher]] zu viel[[,||||punctuation||hier kein Komma]] gegessen.
 
-    Markers cover separate spans (a given word sits in at most one marker). Keep the text outside markers identical to the student's — same words, same punctuation, and the SAME line breaks, including blank lines between paragraphs. Write only #{profile.prompt_name} and markers; if a marked span turns out to be correct, delete that marker.\
+    Keep markers tight and faithful to the text:
+    - One marker fixes one thing; a swap, an insertion and a deletion are separate markers. Prefer a few small markers over one wide rewrite.
+    - Mark the smallest span that fixes the error; leave every already-correct word outside the marker.
+    - Go wide only when words genuinely move (word order) or a whole phrase is wrong (e.g. a literal calque from the student's own language) — even then, stop at the first and last word that actually changes.
+    - If the student wrote a foreign word or a «(…?)» placeholder instead of #{profile.prompt_name}, supply the correct word.
+    - Keep everything outside markers identical to the student's text — same words, punctuation and line breaks, including blank lines between paragraphs.
+
+    Before you finish, re-read the student's original once against your output and check your own work: you caught the real errors and unnatural phrasing (not nitpicks), the text outside every marker is exactly the student's own words, and each marker has all four ||-fields and closes with ]]. Fix anything that doesn't hold.\
+    """
+  end
+
+  # The substantive goal shared by the journal and chat correctors — WHAT to correct, not how
+  # to format it. Beyond outright errors we explicitly want non-idiomatic phrasing flagged (the
+  # "understandable, but a native wouldn't say it" case a purely error-hunting prompt drops),
+  # while staying balanced and calibrated to the learner's level so we don't drown them.
+  defp correction_goal(profile, native, level) do
+    """
+    Your job is to help the student speak correct, natural, idiomatic #{profile.prompt_name} — the way a native speaker actually says it. Correct two kinds of things, and treat them as equally important:
+    - Outright errors — grammar, agreement, case, gender, word order, verb forms, spelling, wrong words.
+    - Unnatural phrasing — wording that is understandable but that a native speaker wouldn't use: a literal translation from #{native}, an awkward word choice, a stiff preposition or word order. Do NOT skip these because the meaning is clear; they are what the student most needs to learn.
+
+    Be thorough but balanced, and tailor to a CEFR #{level} learner: mark the errors and unnatural phrasing that will help them progress — common mistakes included — but don't nitpick, don't flag constructions clearly above their level, and leave anything already correct and natural untouched. Never invent errors.\
     """
   end
 
@@ -122,13 +134,10 @@ defmodule DailyOutput.AI.Proofreader do
     system = """
     You are a #{profile.prompt_name} teacher proofreading a journal entry written by a #{native} speaker at CEFR level #{level}.#{language_conventions_block}
 
-    Calibrate your feedback to #{level} level:
-    - Only flag errors that a #{level} student should know better
-    - Don't flag advanced constructions they haven't learned yet
-    - Focus on patterns that will help them progress from #{level} toward the next level
+    #{correction_goal(profile, native, level)}
 
     Return your response with the provide_feedback tool:
-    1. "annotated_text" — the ENTIRE original entry reproduced verbatim (preserve all line breaks), with each real error wrapped in a correction marker (format below).
+    1. "annotated_text" — the ENTIRE original entry reproduced verbatim (preserve all line breaks), with each correction wrapped in a marker (format below).
     2. "commentary" — #{commentary_instruction()}
 
     #{marker_rules(profile)}
@@ -147,7 +156,9 @@ defmodule DailyOutput.AI.Proofreader do
              tools: [feedback_tool(focus_topic)],
              tool_choice: %{type: "tool", name: "provide_feedback"},
              purpose: "proofread",
-             max_tokens: 2048
+             # A long entry reproduced verbatim + many inline markers + commentary can exceed
+             # 2048 and truncate the *later* corrections — which reads as "fewer corrections".
+             max_tokens: 4096
            ) do
         {:ok, %{"content" => content}} ->
           case Enum.find(content, &(&1["type"] == "tool_use")) do
@@ -306,18 +317,15 @@ defmodule DailyOutput.AI.Proofreader do
     system = """
     You are a #{profile.prompt_name} teacher correcting one message a #{native} speaker (CEFR level #{level}) just sent in a casual chat.#{language_conventions_block}
 
-    This is spoken-style chat, not formal writing. Calibrate to #{level}:
-    - Flag only genuine errors a #{level} student should know better (grammar, agreement, case, gender, word order, verb forms, spelling, clearly wrong word choice).
-    - Do NOT flag casual register, contractions, stylistic choices, or constructions above their level. If the message is already correct, return it unchanged with an empty annotations array.
+    #{correction_goal(profile, native, level)}
+
+    This is spoken-style chat, so don't flag informal register or contractions that are normal in speech — but DO flag phrasing that isn't idiomatic.
 
     Write ALL explanation text in #{feedback_lang}.
     #{context_block}
-    OUTPUT FORMAT — output ONLY the corrected message, nothing else (no preamble, no JSON, no separate list).
-    Reproduce the ENTIRE original message verbatim (keep all line breaks). #{marker_rules(profile)}
-    If the message has no errors, return it completely unchanged with no markers.
+    OUTPUT FORMAT — output ONLY the corrected message, nothing else (no preamble, no JSON, no separate list). Reproduce the ENTIRE original message verbatim (keep all line breaks), wrapping each correction in a marker as below. If the message is already correct and natural, return it completely unchanged with no markers.
 
-    Example:
-    Ich [[gehe||ging||verb||Präteritum für Vergangenheit]] gestern ins Kino und [[||es||other||Subjekt «es» fehlt]] war schön.
+    #{marker_rules(profile)}
     """
 
     transcript = context_transcript(history, profile)
@@ -331,7 +339,12 @@ defmodule DailyOutput.AI.Proofreader do
              system: system,
              messages: [%{role: "user", content: user_content}],
              purpose: "proofread_message",
-             max_tokens: 1024
+             # claude-sonnet-5 thinks (adaptively) by default, and this Anthropix version can't
+             # pass output_config.effort to rein it in. At 1024 a hard think ate the whole budget
+             # and no correction text was emitted (max_tokens hit mid-thought → :no_text_response).
+             # Adaptive thinking sizes to difficulty, so the headroom below lets it finish AND
+             # still emit the correction; output is billed by real usage, so short calls cost the same.
+             max_tokens: 4096
            ) do
         {:ok, %{"content" => content}} when is_list(content) ->
           case content

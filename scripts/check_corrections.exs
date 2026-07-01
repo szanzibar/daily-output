@@ -4,9 +4,12 @@
 #   mix run scripts/check_corrections.exs --entry    # also run the latest journal entry
 #
 # Makes real API calls, then deletes the api_usages rows it creates so your stats stay clean.
-# The sample sentences are real learner mistakes (word order, Perfekt mit sein/haben, compound
-# nouns, capitalization, …) — the cases that used to garble. Each result is flagged:
+# The samples cover three things: outright learner mistakes (word order, Perfekt mit sein/haben,
+# compound nouns, capitalization, …) that used to garble; grammatical-but-unidiomatic phrasing
+# (calques, false friends, wrong prepositions) the corrector must now catch; and already-correct
+# natural sentences that must stay clean (balance — no invented nitpicks). Each result is flagged:
 #   ✓ clean   ·   ⚠ no corrections (model missed, or guard fell back)   ·   ✗ garbled/duplicated.
+# For ⚠/✗, eyeball whether it's the right call: on a natural sentence ⚠ is correct, not a miss.
 
 alias DailyOutput.{Repo, AI}
 import Ecto.Query
@@ -36,7 +39,19 @@ sentences = [
   # genuine whole-phrase replacement — every word changes, so one wide marker is right
   "Ich habe einen Fehler gemacht und ich bin sorry.",
   # English placeholder for an unknown word — should be translated, not ignored
-  "Hast du (ever?) etwas sehr ecklig probiert?"
+  "Hast du (ever?) etwas sehr ecklig probiert?",
+  # --- idiomatic / naturalness: grammatical, but a native wouldn't say it (the case the
+  #     error-only prompt used to miss). These SHOULD now get a vocabulary/other correction. ---
+  # calque of "have a good time" — grammatical; nudge toward natural phrasing
+  "Ich habe letztes Wochenende eine gute Zeit gehabt.",
+  # false friend: «langweilig» = boring, they mean bored → «mir ist langweilig»
+  "Wenn es regnet, bin ich langweilig zu Hause.",
+  # calque of "wait for" — wrong preposition, should be «auf den Bus»
+  "Ich habe zwanzig Minuten für den Bus gewartet.",
+  # --- balance: these are already correct AND natural — must stay clean, no invented nitpicks ---
+  "Ich gehe heute Abend mit ein paar Freunden ins Kino.",
+  # casual spoken register that is fine in chat (ellipsis, colloquial) — not errors to flag
+  "Bin grad am Kochen, meld mich später bei dir."
 ]
 
 marker = ~r/\[\[([\s\S]*?)\]\]/
