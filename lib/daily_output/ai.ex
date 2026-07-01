@@ -1,6 +1,12 @@
 defmodule DailyOutput.AI do
   @moduledoc """
-  AI context wrapping Anthropix for prompt generation and proofreading.
+  AI context wrapping ReqLLM for prompt generation and proofreading.
+
+  All calls go through `chat/2`, which sends `thinking: %{type: "disabled"}` so the
+  model does not burn output tokens on reasoning (see `thinking_opt/0`). The ReqLLM
+  response is reshaped back into the Anthropic-native `%{"content" => ..., "usage" =>
+  ..., "model" => ...}` map so callers, `text_content/1`, `tool_use/1`, and
+  `DailyOutput.Stats.record_usage/2` are unchanged from the Anthropix era.
   """
 
   require Logger
@@ -57,13 +63,9 @@ defmodule DailyOutput.AI do
     end
   end
 
-  def client do
-    case Application.get_env(:daily_output, :anthropic_api_key) do
-      nil -> {:error, :api_key_not_set}
-      "" -> {:error, :api_key_not_set}
-      api_key -> {:ok, Anthropix.init(api_key)}
-    end
-  end
+  # ReqLLM is stateless (no persistent client), so the "client" callers hold is just
+  # the API key. Keeping the {:ok, client} contract avoids touching every call site.
+  def client, do: get_api_key()
 
   def model(force_refresh \\ false) do
     if force_refresh do
@@ -100,33 +102,141 @@ defmodule DailyOutput.AI do
     end
   end
 
-  def chat(client, opts) do
-    # `:purpose` tags the call site for cost tracking; it's ours, not Anthropix's,
+  def chat(api_key, opts) do
+    # `:purpose` tags the call site for cost tracking; it's ours, not the API's,
     # so strip it before the request goes out.
     {purpose, opts} = Keyword.pop(opts, :purpose)
     requested_model = Keyword.get(opts, :model)
     model_result = if is_binary(requested_model), do: {:ok, requested_model}, else: model()
 
     with {:ok, model_id} <- model_result do
-      request_opts = Keyword.put(opts, :model, model_id)
-
-      case Anthropix.chat(client, request_opts) do
-        {:error, %Anthropix.APIError{} = api_error} = error ->
-          if model_not_found_error?(api_error) do
-            retry_chat_with_refreshed_model(client, opts, model_id, purpose, error)
-          else
-            error
-          end
-
+      case req_llm_chat(api_key, model_id, opts) do
         {:ok, response} = ok ->
           record_usage(purpose, response)
           ok
 
-        other ->
-          other
+        {:error, error_struct} = error ->
+          if model_not_found_error?(error_struct) do
+            retry_chat_with_refreshed_model(api_key, opts, model_id, purpose, error)
+          else
+            error
+          end
       end
     end
   end
+
+  # Translate our Anthropic-style opts into a ReqLLM call and reshape the result back.
+  defp req_llm_chat(api_key, model_id, opts) do
+    context = build_context(Keyword.get(opts, :system), Keyword.get(opts, :messages, []))
+
+    req_opts =
+      [api_key: api_key]
+      |> put_opt(:max_tokens, Keyword.get(opts, :max_tokens))
+      |> put_opt(:tools, to_req_tools(Keyword.get(opts, :tools)))
+      |> put_opt(:tool_choice, Keyword.get(opts, :tool_choice))
+      |> Keyword.merge(thinking_opt())
+
+    case ReqLLM.generate_text(model_spec(model_id), context, req_opts) do
+      {:ok, response} -> {:ok, anthropic_shape(response, model_id)}
+      error -> error
+    end
+  end
+
+  # Resolve to a model struct so ReqLLM doesn't re-resolve the "anthropic:<id>" string and
+  # log an "unverified model" warning on every call — our models are auto-discovered and
+  # routinely newer than ReqLLM's static catalog. Falls back to the string spec if the
+  # provider can't build one.
+  defp model_spec(model_id) do
+    case ReqLLM.model(%{provider: :anthropic, id: model_id}) do
+      {:ok, model} -> model
+      _ -> "anthropic:" <> model_id
+    end
+  end
+
+  # ReqLLM's Anthropic encoder only accepts %ReqLLM.Tool{} structs
+  # (Schema.to_openai_format/1 has no clause for a raw map), so wrap our Anthropic-native
+  # tool maps. A JSON-schema map in :parameter_schema passes through to the request's
+  # input_schema untouched (Schema.to_json/1), producing the same tool the proofreader
+  # intended. The required :callback is never invoked — generate_text returns the tool
+  # call, it does not execute it. `tool_choice` (a %{type: "tool", name: ...} map) is
+  # accepted as-is by ReqLLM.
+  defp to_req_tools(nil), do: nil
+
+  defp to_req_tools(tools) when is_list(tools) do
+    Enum.map(tools, fn tool ->
+      ReqLLM.tool(
+        name: tool_field(tool, :name),
+        description: tool_field(tool, :description),
+        parameter_schema: tool_field(tool, :input_schema),
+        callback: fn _args -> {:ok, nil} end
+      )
+    end)
+  end
+
+  defp tool_field(tool, key), do: tool[key] || tool[to_string(key)]
+
+  defp build_context(system, messages) do
+    system_msgs =
+      if is_binary(system) and system != "", do: [ReqLLM.Context.system(system)], else: []
+
+    turn_msgs =
+      Enum.map(messages, fn
+        %{role: "assistant", content: content} -> ReqLLM.Context.assistant(content)
+        %{role: _role, content: content} -> ReqLLM.Context.user(content)
+      end)
+
+    ReqLLM.Context.new(system_msgs ++ turn_msgs)
+  end
+
+  defp put_opt(opts, _key, nil), do: opts
+  defp put_opt(opts, key, value), do: Keyword.put(opts, key, value)
+
+  # Disable model reasoning by default so it doesn't spend output tokens thinking — this
+  # is the whole reason for the ReqLLM swap (Anthropix couldn't send `thinking`).
+  # ponytail: config knob because the model is auto-discovered; if a future model rejects
+  # an explicit "disabled" (e.g. always-on models), set `config :daily_output, :ai_thinking, false`
+  # to omit the field, or to a map to send a specific config — no code change.
+  @default_thinking %{type: "disabled"}
+  defp thinking_opt do
+    case Application.get_env(:daily_output, :ai_thinking, @default_thinking) do
+      thinking when is_map(thinking) -> [thinking: thinking]
+      _ -> []
+    end
+  end
+
+  # Reshape a %ReqLLM.Response{} into the Anthropic-native map the rest of the app reads
+  # (text_content/1, tool_use/1, Stats.record_usage/2), so nothing downstream changed.
+  @doc false
+  def anthropic_shape(%ReqLLM.Response{} = response, fallback_model) do
+    text = ReqLLM.Response.text(response)
+
+    text_blocks =
+      if is_binary(text) and text != "", do: [%{"type" => "text", "text" => text}], else: []
+
+    tool_blocks =
+      response
+      |> ReqLLM.Response.tool_calls()
+      |> Enum.map(fn tool_call ->
+        %{name: name, arguments: arguments} = ReqLLM.ToolCall.to_map(tool_call)
+        %{"type" => "tool_use", "name" => name, "input" => arguments}
+      end)
+
+    usage = response.usage || %{}
+
+    %{
+      "content" => text_blocks ++ tool_blocks,
+      "model" => response.model || fallback_model,
+      "usage" => %{
+        "input_tokens" => usage_field(usage, :input_tokens),
+        "output_tokens" => usage_field(usage, :output_tokens),
+        # ReqLLM normalizes Anthropic's cache_read/cache_creation to these names.
+        "cache_read_input_tokens" => usage_field(usage, :cached_tokens),
+        "cache_creation_input_tokens" => usage_field(usage, :cache_creation_tokens)
+      }
+    }
+  end
+
+  defp usage_field(usage, key), do: usage[key] || usage[to_string(key)] || 0
 
   defp discover_model do
     case fetch_models() do
@@ -178,14 +288,11 @@ defmodule DailyOutput.AI do
     end
   end
 
-  defp model_not_found_error?(%Anthropix.APIError{status: 404, type: "not_found_error"} = err) do
-    message = Map.get(err, :message, "")
-    String.contains?(message, "model")
-  end
-
+  # A 404 from /v1/messages means the model id is unknown — the trigger to re-discover.
+  defp model_not_found_error?(%ReqLLM.Error.API.Response{status: 404}), do: true
   defp model_not_found_error?(_), do: false
 
-  defp retry_chat_with_refreshed_model(client, opts, failed_model, purpose, original_error) do
+  defp retry_chat_with_refreshed_model(api_key, opts, failed_model, purpose, original_error) do
     case model(true) do
       {:ok, refreshed_model} ->
         if refreshed_model == failed_model do
@@ -195,7 +302,7 @@ defmodule DailyOutput.AI do
             "AI model '#{failed_model}' not found. Retrying with '#{refreshed_model}'."
           )
 
-          case Anthropix.chat(client, Keyword.put(opts, :model, refreshed_model)) do
+          case req_llm_chat(api_key, refreshed_model, opts) do
             {:ok, response} = ok ->
               record_usage(purpose, response)
               ok

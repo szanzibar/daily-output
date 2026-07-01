@@ -144,6 +144,29 @@ defmodule DailyOutput.AI.ProofreaderTest do
       result = Proofreader.parse_message_feedback(polluted, original)
       assert result == %{"annotated_text" => original, "annotations" => []}
     end
+
+    test "falls back to uncorrected when the model re-emits the message (double output)" do
+      # The thinking-off failure mode: a first marked version, then a whole second attempt.
+      # Every word is the student's own, so the foreign-run check can't catch it — the
+      # length-inflation guard must.
+      original = "Gestern ich habe in die Stadt gegangen."
+
+      doubled =
+        "Gestern [[ich habe||habe ich||word-order||Verb an zweiter Stelle]] in die Stadt gegangen.\n\n" <>
+          "Gestern [[ich habe||bin ich||word-order||Korrektur oben]] in die Stadt gegangen."
+
+      result = Proofreader.parse_message_feedback(doubled, original)
+      assert result == %{"annotated_text" => original, "annotations" => []}
+    end
+
+    test "a normal single correction is not mistaken for inflation" do
+      original = "Gestern ich habe in die Stadt gegangen."
+      output = "Gestern [[ich habe||bin ich||word-order||Verb an zweiter Stelle]] in die Stadt gegangen."
+
+      result = Proofreader.parse_message_feedback(output, original)
+      assert result["annotated_text"] == output
+      assert result["annotations"] != []
+    end
   end
 
   describe "assessment_tool/1" do

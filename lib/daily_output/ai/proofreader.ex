@@ -54,7 +54,7 @@ defmodule DailyOutput.AI.Proofreader do
     - If the student wrote a foreign word or a «(…?)» placeholder instead of #{profile.prompt_name}, supply the correct word.
     - Keep everything outside markers identical to the student's text — same words, punctuation and line breaks, including blank lines between paragraphs.
 
-    Before you finish, re-read the student's original once against your output and check your own work: you caught the real errors and unnatural phrasing (not nitpicks), the text outside every marker is exactly the student's own words, and each marker has all four ||-fields and closes with ]]. Fix anything that doesn't hold.\
+    Before you finish, silently re-read the student's original against your output and check your own work: you caught the real errors and unnatural phrasing (not nitpicks), the text outside every marker is exactly the student's own words, and each marker has all four ||-fields and closes with ]]. Do this checking in your head — output ONLY the single final corrected version. Never reproduce the text more than once, never show earlier attempts or a revised second try, and never write meta-commentary about your process (no «wait, let me redo this», «to simplify», «more precisely», etc.).\
     """
   end
 
@@ -323,7 +323,7 @@ defmodule DailyOutput.AI.Proofreader do
 
     Write ALL explanation text in #{feedback_lang}.
     #{context_block}
-    OUTPUT FORMAT — output ONLY the corrected message, nothing else (no preamble, no JSON, no separate list). Reproduce the ENTIRE original message verbatim (keep all line breaks), wrapping each correction in a marker as below. If the message is already correct and natural, return it completely unchanged with no markers.
+    OUTPUT FORMAT — output ONLY the corrected message, exactly once, nothing else (no preamble, no JSON, no separate list, no second attempt). Reproduce the ENTIRE original message verbatim (keep all line breaks), wrapping each correction in a marker as below. If the message is already correct and natural, return it completely unchanged with no markers.
 
     #{marker_rules(profile)}
     """
@@ -339,11 +339,9 @@ defmodule DailyOutput.AI.Proofreader do
              system: system,
              messages: [%{role: "user", content: user_content}],
              purpose: "proofread_message",
-             # claude-sonnet-5 thinks (adaptively) by default, and this Anthropix version can't
-             # pass output_config.effort to rein it in. At 1024 a hard think ate the whole budget
-             # and no correction text was emitted (max_tokens hit mid-thought → :no_text_response).
-             # Adaptive thinking sizes to difficulty, so the headroom below lets it finish AND
-             # still emit the correction; output is billed by real usage, so short calls cost the same.
+             # Thinking is disabled centrally in AI.chat, so this budget is pure output: a
+             # long entry reproduced verbatim + many inline markers. max_tokens is a ceiling,
+             # not a cost (billed by real usage), so the headroom is free for short messages.
              max_tokens: 4096
            ) do
         {:ok, %{"content" => content} = response} when is_list(content) ->
@@ -456,8 +454,16 @@ defmodule DailyOutput.AI.Proofreader do
   # Reduce markers to the student's original words; clean output has no run of foreign words.
   # Injected prose is a contiguous run of words absent from the source; isolated artifacts are not.
   @max_foreign_run 3
+  # With thinking disabled the model sometimes re-emits the whole message a second time
+  # (a visible "second attempt") instead of reasoning privately. Once markers are reduced
+  # to the student's own words, that doubles the word count — but every word is the
+  # student's, so longest_foreign_run can't see it. Guard on gross length inflation too:
+  # a faithful correction reduces back to ~the original length (insertions collapse to ""),
+  # so anything past 1.5x is duplication/garble → fall back to the uncorrected text.
+  @max_length_ratio 1.5
   defp uncontaminated?(annotated_text, original) do
-    source = MapSet.new(words(original))
+    source_words = words(original)
+    source = MapSet.new(source_words)
 
     reduced =
       Regex.replace(@marker, annotated_text, fn whole, inner ->
@@ -467,8 +473,16 @@ defmodule DailyOutput.AI.Proofreader do
         end
       end)
 
-    longest_foreign_run(words(reduced), source) <= @max_foreign_run
+    reduced_words = words(reduced)
+
+    longest_foreign_run(reduced_words, source) <= @max_foreign_run and
+      not length_inflated?(length(reduced_words), length(source_words))
   end
+
+  defp length_inflated?(reduced_len, original_len) when original_len > 0,
+    do: reduced_len > round(original_len * @max_length_ratio)
+
+  defp length_inflated?(_reduced_len, _original_len), do: false
 
   defp longest_foreign_run(words, source) do
     {max, _run} =

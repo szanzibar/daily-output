@@ -148,7 +148,7 @@ defmodule DailyOutput.Stats do
   @default_tier "sonnet"
 
   @doc """
-  Records one API call's token usage from the raw Anthropix `response`, tagged with
+  Records one API call's token usage from the (Anthropic-shaped) `response`, tagged with
   `purpose`. Tolerant: a response without a `"usage"` map is ignored, so this never
   breaks the calling AI flow.
   """
