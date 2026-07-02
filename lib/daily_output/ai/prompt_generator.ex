@@ -6,10 +6,18 @@ defmodule DailyOutput.AI.PromptGenerator do
   alias DailyOutput.AI
 
   def generate_prompts(topics, target_language, native_language) do
-    interests =
-      case topics do
-        [] -> "everyday life, work, hobbies, food, travel"
-        list -> Enum.join(list, ", ")
+    inspiration_block =
+      # None, one, or two seeds drawn at random from the learner's interests.
+      # `[]` (some days) means no injected theme at all, so the model is free to roam.
+      case Enum.take_random(topics, Enum.random(0..2)) do
+        [] ->
+          "Today, don't anchor on any given theme — roam freely across everyday moments,
+          opinions, memories, small decisions, hypotheticals, and the occasional bigger question."
+
+        seeds ->
+          "As loose inspiration for only one or two of the prompts (not a checklist — come at them " <>
+            "from an unexpected angle): #{Enum.join(seeds, "; ")}. Let the remaining prompts " <>
+            "roam well beyond these."
       end
 
     system = """
@@ -20,11 +28,7 @@ defmodule DailyOutput.AI.PromptGenerator do
     student with angles they wouldn't think of themselves, while keeping every prompt
     rooted in a real life they could plausibly live.
 
-    Treat the student's interests as loose inspiration, NOT a checklist: #{interests}
-    - Only some prompts need to touch those interests, and when they do, come at them
-      from an unexpected angle rather than the obvious "What did you do today?" question.
-    - Let the others roam well beyond the list: everyday moments, opinions, memories,
-      small decisions, hypotheticals, culture, the occasional bigger "why" question.
+    #{inspiration_block}
     - Vary the depth deliberately — mostly light and concrete, but include the odd
       reflective or thought-provoking prompt about values, choices, or how things change.
     - Keep each prompt answerable from personal experience and concrete enough to write

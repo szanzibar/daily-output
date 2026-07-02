@@ -55,6 +55,10 @@ defmodule DailyOutput.Flashcards.Generator do
     THAT sentence.#{conventions_block}
 
     Rules:
+    - ONE sentence per card. Each "target_text" is a SINGLE sentence — one idea, one main clause,
+      ending in exactly one period or question mark. Never put two sentences, a run-on, or the
+      whole message onto one card. When the corrected text spans several sentences, emit several
+      cards (one each); when it is one sentence, emit exactly one card.
     - Make one card per sentence that contained a substantive mistake. Skip sentences that were
       already correct, and skip corrections that were only capitalization (letter casing).
     - "target_text" = the most natural, idiomatic #{profile.language_name} a native speaker would
@@ -234,7 +238,8 @@ defmodule DailyOutput.Flashcards.Generator do
               "properties" => %{
                 "target_text" => %{
                   "type" => "string",
-                  "description" => "The fully correct target-language sentence to type"
+                  "description" =>
+                    "A single fully correct target-language sentence to type — exactly one sentence, never two and never the whole message"
                 },
                 "native_text" => %{
                   "type" => "string",

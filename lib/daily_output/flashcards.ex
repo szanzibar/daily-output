@@ -202,8 +202,13 @@ defmodule DailyOutput.Flashcards do
   # ── Study session ────────────────────────────────────
 
   @doc """
-  The distinct cards to study today for the current target language: all due reviews
-  first (oldest due first), then new cards to fill up to `target`. Capped at `target`.
+  The distinct cards to study today for the current target language: due reviews and new
+  cards, mixed so new material always flows — even behind a big review backlog.
+
+  New cards are guaranteed up to ~half the daily batch; whichever pool (due reviews / new)
+  is short, the other fills the slack, capped at `target`. The result is shuffled so new
+  cards don't all trail the reviews. Goal is *encountering* `target` distinct cards a day,
+  not clearing the whole review backlog first.
   """
   def due_today(target \\ nil) do
     target = target || daily_target()
@@ -222,22 +227,27 @@ defmodule DailyOutput.Flashcards do
         )
       )
 
-    remaining = target - length(due)
-
-    new_cards =
-      if remaining > 0 do
-        Repo.all(
-          from(c in Card,
-            where: is_nil(c.deleted_at) and c.language == ^language and c.state == "new",
-            order_by: [asc: c.inserted_at],
-            limit: ^remaining
-          )
+    new =
+      Repo.all(
+        from(c in Card,
+          where: is_nil(c.deleted_at) and c.language == ^language and c.state == "new",
+          order_by: [asc: c.inserted_at],
+          limit: ^target
         )
-      else
-        []
-      end
+      )
 
-    due ++ new_cards
+    {due, new} = split_batch(due, new, target)
+    Enum.shuffle(due ++ new)
+  end
+
+  # Reserve up to half the batch for new cards so new material always appears, even when
+  # due reviews alone could fill `target`. If one pool is short, the other takes the slack.
+  defp split_batch(due, new, target) do
+    new_reserve = max(1, div(target, 2))
+    n_new = min(length(new), new_reserve)
+    n_due = min(length(due), target - n_new)
+    n_new = min(length(new), target - n_due)
+    {Enum.take(due, n_due), Enum.take(new, n_new)}
   end
 
   @doc """

@@ -105,6 +105,22 @@ defmodule DailyOutput.FlashcardsTest do
       {:ok, _} = Flashcards.delete_card(card)
       assert Flashcards.due_today(10) == []
     end
+
+    test "surfaces new cards even behind a full review backlog" do
+      # More due review cards than the target: the old logic filled the whole batch with
+      # them and starved new cards forever. Now new cards keep a reserved share.
+      past = DateTime.add(DateTime.utc_now(), -86_400, :second) |> DateTime.truncate(:second)
+
+      for _ <- 1..20 do
+        new_card() |> Card.schedule_changeset(%{state: "review", due_at: past}) |> Repo.update!()
+      end
+
+      for _ <- 1..5, do: new_card()
+
+      batch = Flashcards.due_today(10)
+      assert length(batch) == 10
+      assert Enum.count(batch, &(&1.state == "new")) >= 1
+    end
   end
 
   describe "progress + completed_dates" do
