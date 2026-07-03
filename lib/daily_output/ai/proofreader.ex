@@ -2,17 +2,21 @@ defmodule DailyOutput.AI.Proofreader do
   @moduledoc """
   AI-powered proofreading with inline correction markers.
 
-  The journal `proofread/2` and `assess_conversation/2` use tool_use for their richer,
-  structured output (commentary, focus_result). The per-message `proofread_message/2` — by
-  far the most frequent call — instead asks for self-contained text markers and parses them
-  (see `parse_message_feedback/1`): no ~700-token tool schema on every chat message, and no
-  separate annotations list for the model to keep in sync.
+  Both the journal `proofread/2` and the per-message `proofread_message/2` ask the model, via
+  tool_use, for a clean *rewrite* of the text plus a list of `{before, after, type,
+  explanation}` changes — the model never hand-places `[[..]]` markers. `AI.RewriteDiff` then
+  builds the inline markers deterministically from a word diff of original↔rewrite, so a
+  malformed or garbled marker (the old failure on word-order moves) is impossible by
+  construction. The stored shape is unchanged: `annotated_text` (inline markers) + a derived
+  `annotations` list (see `parse_message_feedback/1`), which the front end, flashcards and
+  stats all still read. `assess_conversation/2` does no correcting — only commentary + focus.
   """
 
   require Logger
 
   alias DailyOutput.AI
   alias DailyOutput.AI.LanguageProfile
+  alias DailyOutput.AI.RewriteDiff
 
   # Error categories used to tag per-message corrections. They let us measure, at the end
   # of a conversation, which kinds of mistakes the student repeated vs. stopped making.
@@ -27,36 +31,6 @@ defmodule DailyOutput.AI.Proofreader do
   @doc "The fixed set of correction categories used to tag per-message annotations."
   def categories, do: @categories
 
-  # The correction-marker convention, shared by proofread/2 (journal) and proofread_message/2
-  # (chat) so the two never drift. The model wraps each error in a self-contained marker;
-  # parse_message_feedback/1 turns these back into the stored shape (plain markers + a derived
-  # annotations list). Each caller adds its own "reproduce the entire X" framing around this.
-  defp marker_rules(profile) do
-    """
-    Wrap each correction in a self-contained marker with four ||-separated fields:
-
-    [[before||after||type||explanation]]
-
-    - before — the student's exact words (leave empty to insert something missing)
-    - after — your correction (leave empty to delete something extra)
-    - type — one of {#{Enum.join(@categories, ", ")}}
-    - explanation — 5-10 words, in #{profile.prompt_name}, on what was wrong
-
-    Why the format is exact: each marker is rendered inline so the student sees your fix in place against what they wrote, and the type field is tallied across entries to track which mistakes they keep making and which they've mastered. A malformed marker breaks both the display and the tracking, so keep the four fields and the «||» separators intact, and never nest «]]» inside a marker.
-
-    Format example — the same markup applies to #{profile.prompt_name}; here one word is replaced, one inserted, one comma deleted:
-    Ich [[hab||habe||verb||1. Person braucht «habe»]] gestern [[||wohl||vocabulary||«wohl» klingt natürlicher]] zu viel[[,||||punctuation||hier kein Komma]] gegessen.
-
-    Keep markers tight and faithful to the text:
-    - One marker fixes one thing; a swap, an insertion and a deletion are separate markers. Prefer a few small markers over one wide rewrite.
-    - Mark the smallest span that fixes the error; leave every already-correct word outside the marker.
-    - Go wide only when words genuinely move (word order) or a whole phrase is wrong (e.g. a literal calque from the student's own language) — even then, stop at the first and last word that actually changes.
-    - If the student wrote a foreign word or a «(…?)» placeholder instead of #{profile.prompt_name}, supply the correct word.
-    - Keep everything outside markers identical to the student's text — same words, punctuation and line breaks, including blank lines between paragraphs.
-
-    Before you finish, silently re-read the student's original against your output and check your own work: you caught the real errors and unnatural phrasing (not nitpicks), the text outside every marker is exactly the student's own words, and each marker has all four ||-fields and closes with ]]. Do this checking in your head — output ONLY the single final corrected version. Never reproduce the text more than once, never show earlier attempts or a revised second try, and never write meta-commentary about your process (no «wait, let me redo this», «to simplify», «more precisely», etc.).\
-    """
-  end
 
   # The substantive goal shared by the journal and chat correctors — WHAT to correct, not how
   # to format it. Beyond outright errors we explicitly want non-idiomatic phrasing flagged (the
@@ -137,12 +111,11 @@ defmodule DailyOutput.AI.Proofreader do
     #{correction_goal(profile, native, level)}
 
     Return your response with the provide_feedback tool:
-    1. "annotated_text" — the ENTIRE original entry reproduced verbatim (preserve all line breaks), with each correction wrapped in a marker (format below).
-    2. "commentary" — #{commentary_instruction()}
+    1. "corrected" — the ENTIRE entry rewritten correctly and naturally. Change ONLY what needs fixing; keep every correct word, all punctuation, and all line breaks (including the blank lines between paragraphs) identical. Do NOT add any markup.
+    2. "corrections" — one entry per change, in the order the changes appear, each with "before" (the student's original words, empty if you inserted), "after" (your correction, empty if you deleted), "type" (one of {#{Enum.join(@categories, ", ")}}), and "explanation" (5-10 words on what was wrong). Every change in "corrected" has exactly one entry here.
+    3. "commentary" — #{commentary_instruction()}
 
-    #{marker_rules(profile)}
-
-    Write ALL text (inside markers and in commentary) in #{feedback_lang}.
+    Write ALL explanation text in #{feedback_lang}.
     #{context_block}#{focus_block}
     The "commentary" field MUST be a JSON array of objects, never a stringified string.
     """
@@ -156,21 +129,22 @@ defmodule DailyOutput.AI.Proofreader do
              tools: [feedback_tool(focus_topic)],
              tool_choice: %{type: "tool", name: "provide_feedback"},
              purpose: "proofread",
-             # A long entry reproduced verbatim + many inline markers + commentary can exceed
-             # 2048 and truncate the *later* corrections — which reads as "fewer corrections".
+             # A full-entry rewrite + a change list + commentary; 4096 keeps a long entry from
+             # truncating. max_tokens is a ceiling, not a cost (billed by real usage).
              max_tokens: 4096
            ) do
         {:ok, %{"content" => content} = response} ->
           case AI.tool_use(response) do
             input when is_map(input) ->
-              # annotated_text carries the shared inline markers; derive annotations from them
-              # (guarded against the entry) so journal and chat share one correction path.
-              marked =
-                if is_binary(input["annotated_text"]) and input["annotated_text"] != "",
-                  do: input["annotated_text"],
+              # The model rewrites the entry + lists changes; RewriteDiff builds the inline
+              # markers deterministically, so journal and chat share one garble-proof path.
+              corrected =
+                if is_binary(input["corrected"]) and input["corrected"] != "",
+                  do: input["corrected"],
                   else: text
 
-              corrections = parse_message_feedback(marked, text)
+              annotated = RewriteDiff.annotate(text, corrected, decode_if_string(input["corrections"]) || [])
+              corrections = parse_message_feedback(annotated, text)
               {:ok, normalize_feedback(Map.merge(input, corrections))}
 
             _ ->
@@ -323,9 +297,15 @@ defmodule DailyOutput.AI.Proofreader do
 
     Write ALL explanation text in #{feedback_lang}.
     #{context_block}
-    OUTPUT FORMAT — output ONLY the corrected message, exactly once, nothing else (no preamble, no JSON, no separate list, no second attempt). Reproduce the ENTIRE original message verbatim (keep all line breaks), wrapping each correction in a marker as below. If the message is already correct and natural, return it completely unchanged with no markers.
+    Use the report_corrections tool.
+    1. "corrected" — the student's message rewritten exactly as a native speaker would say it. Change ONLY what needs fixing; keep everything else — every correct word, all punctuation, and all line breaks — identical. If the message is already correct and natural, return it completely unchanged.
+    2. "corrections" — one entry per change, in the order the changes appear, each with:
+       - "after": the corrected words as they appear in your rewrite (empty if you deleted something)
+       - "before": the student's original words you changed (empty if you inserted something)
+       - "type": one of {#{Enum.join(@categories, ", ")}}
+       - "explanation": 5-10 words, in #{feedback_lang}, on what was wrong
 
-    #{marker_rules(profile)}
+    Do NOT place any markup inside "corrected" — just write the clean corrected message. The two fields must agree: every change in "corrected" has one entry in "corrections".
     """
 
     transcript = context_transcript(history, profile)
@@ -338,26 +318,70 @@ defmodule DailyOutput.AI.Proofreader do
       case AI.chat(client,
              system: system,
              messages: [%{role: "user", content: user_content}],
+             tools: [message_tool()],
+             tool_choice: %{type: "tool", name: "report_corrections"},
              purpose: "proofread_message",
-             # Thinking is disabled centrally in AI.chat, so this budget is pure output: a
-             # long entry reproduced verbatim + many inline markers. max_tokens is a ceiling,
-             # not a cost (billed by real usage), so the headroom is free for short messages.
-             max_tokens: 4096
+             # A rewrite of one chat message + a short change list; 1024 is plenty and caps a
+             # runaway (a model with thinking off can occasionally loop). max_tokens is a
+             # ceiling, not a cost — billed by real usage.
+             max_tokens: 1024
            ) do
-        {:ok, %{"content" => content} = response} when is_list(content) ->
-          case AI.text_content(response) do
-            "" ->
-              Logger.error("proofread_message: empty text response: #{inspect(content)}")
-              {:error, :no_text_response}
-
-            output ->
-              {:ok, normalize_message_feedback(parse_message_feedback(output, text))}
-          end
+        {:ok, response} ->
+          {:ok, normalize_message_feedback(build_message_feedback(response, text))}
 
         {:error, reason} ->
           {:error, reason}
       end
     end
+  end
+
+  # Turn the report_corrections tool call into the stored `%{annotated_text, annotations}`:
+  # the model gives us a clean rewrite + a change list, and RewriteDiff builds the inline
+  # markers deterministically (so a malformed/garbled marker is impossible). Falls back to the
+  # uncorrected message if the tool call is missing/empty (e.g. a truncated runaway response).
+  defp build_message_feedback(response, original) do
+    case AI.tool_use(response) do
+      %{"corrected" => corrected} = input when is_binary(corrected) and corrected != "" ->
+        corrections = decode_if_string(input["corrections"]) || []
+        annotated = RewriteDiff.annotate(original, corrected, corrections)
+        parse_message_feedback(annotated, original)
+
+      other ->
+        Logger.warning("proofread_message: no usable tool call (#{inspect(other)}); leaving message uncorrected")
+        %{"annotated_text" => original, "annotations" => []}
+    end
+  end
+
+  # One change in a rewrite: the original span, its replacement, and why. Shared by the chat
+  # tool (message_tool) and the journal tool (feedback_tool) so the two never drift. RewriteDiff
+  # matches these back to the diff of original↔rewrite to build the inline markers.
+  defp correction_item_schema do
+    %{
+      "type" => "object",
+      "properties" => %{
+        "after" => %{"type" => "string", "description" => "the corrected words as they appear in the rewrite (empty to delete)"},
+        "before" => %{"type" => "string", "description" => "the student's original words that changed (empty to insert)"},
+        "type" => %{"type" => "string", "enum" => @categories},
+        "explanation" => %{"type" => "string", "description" => "5-10 words on what was wrong"}
+      },
+      "required" => ["after", "before", "type", "explanation"]
+    }
+  end
+
+  @doc false
+  def message_tool do
+    %{
+      name: "report_corrections",
+      description: "Report the corrected rewrite of the student's message and the list of changes.",
+      input_schema: %{
+        "type" => "object",
+        "properties" => %{
+          "corrected" => %{"type" => "string", "description" => "the full message rewritten correctly and naturally; unchanged if already correct"},
+          "corrections" => %{"type" => "array", "items" => correction_item_schema()}
+        },
+        "required" => ["corrected", "corrections"]
+      }
+    }
   end
 
   # A short transcript of the preceding turns, so the model can judge the latest message
@@ -537,16 +561,17 @@ defmodule DailyOutput.AI.Proofreader do
   @doc false
   def feedback_tool(focus_topic) do
     base = %{
-      "annotated_text" => %{
+      "corrected" => %{
         "type" => "string",
         "description" =>
-          "The full original entry reproduced verbatim (keep all line breaks), with [[before||after||type||explanation]] markers on errors"
+          "The ENTIRE entry rewritten correctly and naturally, keeping every correct word, all punctuation, and all line breaks identical. No markup."
       },
+      "corrections" => %{"type" => "array", "items" => correction_item_schema()},
       "commentary" => commentary_schema()
     }
 
     {properties, required} =
-      with_focus_result(base, ["annotated_text", "commentary"], focus_topic)
+      with_focus_result(base, ["corrected", "corrections", "commentary"], focus_topic)
 
     %{
       name: "provide_feedback",

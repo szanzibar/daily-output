@@ -7,9 +7,11 @@ defmodule DailyOutput.AI.ProofreaderTest do
     test "without focus topic, focus_result is not required" do
       tool = Proofreader.feedback_tool(nil)
 
-      # annotations are derived from the inline markers in annotated_text, not a tool field
-      assert tool.input_schema["required"] == ["annotated_text", "commentary"]
+      # The model returns a rewrite + change list; annotations/annotated_text are derived from
+      # the diff (RewriteDiff), not tool fields.
+      assert tool.input_schema["required"] == ["corrected", "corrections", "commentary"]
       refute Map.has_key?(tool.input_schema["properties"], "annotations")
+      refute Map.has_key?(tool.input_schema["properties"], "annotated_text")
       refute Map.has_key?(tool.input_schema["properties"], "focus_result")
       refute Map.has_key?(tool.input_schema["properties"], "encouragement")
     end

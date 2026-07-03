@@ -12,15 +12,19 @@ config :daily_output,
   generators: [timestamp_type: :utc_datetime]
 
 # Per-purpose model routing (by the `:purpose` tag in DailyOutput.AI.chat/2). Free-form
-# generation goes to cheaper GLM — its German is fluent and idiomatic (incl. Swiss
-# dialect). Correction paths (proofread, proofread_message, assessment) have NO override,
-# so they use the global `:ai_model` (default: auto-discover latest Anthropic Sonnet) —
-# GLM's strict-marker output isn't reliable enough for those. Needs ZAI_API_KEY set.
+# generation goes to cheaper GLM — its German is fluent and idiomatic (incl. Swiss dialect).
+# Chat corrections (proofread_message) also run on GLM now: the corrector no longer asks the
+# model to hand-place [[..]] markers (which GLM garbled on word-order moves) — it just rewrites
+# the message and lists changes, and DailyOutput.AI.RewriteDiff builds the markers in code, so
+# GLM's output is clean and ~1/3 the tokens. The journal `proofread` uses the same rewrite+diff
+# format but stays on Sonnet (higher-stakes, once-daily; global `:ai_model` default). Needs
+# ZAI_API_KEY set.
 config :daily_output, :ai_model_overrides, %{
   "flashcards" => "zai:glm-5.2",
   "prompts" => "zai:glm-5.2",
   "openers" => "zai:glm-5.2",
-  "conversation" => "zai:glm-5.2"
+  "conversation" => "zai:glm-5.2",
+  "proofread_message" => "zai:glm-5.2"
 }
 
 # Configure the endpoint
