@@ -19,7 +19,7 @@ defmodule DailyOutput.AI do
     FocusSummarizer
   }
 
-  alias DailyOutput.{Cache, PromptCache, Stats}
+  alias DailyOutput.{Cache, PromptCache, Settings, Stats}
 
   @model_cache_key "anthropic_sonnet_model"
 
@@ -67,10 +67,13 @@ defmodule DailyOutput.AI do
   # provider + key per call (it can vary by purpose — see resolve_model/2). The {:ok, _}
   # contract is kept so call sites don't change.
   def client do
-    if match?({:ok, _}, get_api_key(:anthropic)) or match?({:ok, _}, get_api_key(:zai)),
+    if Enum.any?([:anthropic, :zai, :openrouter], &api_key_set?/1),
       do: {:ok, :ready},
       else: {:error, :api_key_not_set}
   end
+
+  @doc "Whether the API key for `provider` (:anthropic | :zai | :openrouter) is configured."
+  def api_key_set?(provider), do: match?({:ok, _}, get_api_key(provider))
 
   def model(force_refresh \\ false) do
     if force_refresh do
@@ -135,13 +138,15 @@ defmodule DailyOutput.AI do
   #   1. a per-call `:model` spec (rare),
   #   2. a per-purpose override (`:ai_model_overrides` routes low-stakes paths like
   #      flashcards/prompts/openers to a cheaper model; correction paths have no override),
-  #   3. the global `:ai_model` spec,
-  #   4. otherwise discover the latest Anthropic Sonnet (the historical default).
+  #   3. the user's Settings choice (ai_provider + ai_model — the normal path),
+  #   4. the global `:ai_model` config spec (fallback when Settings can't be read),
+  #   5. otherwise discover the latest Anthropic Sonnet (the historical default).
   # A spec is "provider:model", e.g. "zai:glm-5.2" or "anthropic:claude-sonnet-4-6".
   defp resolve_model(purpose, opts) do
     spec =
       Keyword.get(opts, :model) ||
         purpose_override(purpose) ||
+        settings_spec() ||
         Application.get_env(:daily_output, :ai_model)
 
     case spec do
@@ -164,7 +169,26 @@ defmodule DailyOutput.AI do
     |> Map.get(to_string(purpose))
   end
 
-  @providers %{"anthropic" => :anthropic, "zai" => :zai}
+  # The user's global model choice (Settings). Returns nil if settings can't be read
+  # (e.g. no DB in some unit tests), so resolution falls back to the :ai_model config.
+  defp settings_spec do
+    config = Settings.get_config()
+    spec_for(config.ai_provider, config.ai_model)
+  rescue
+    _ -> nil
+  end
+
+  @doc """
+  Maps a Settings `{ai_provider, ai_model}` pair to a ReqLLM "provider:model" spec.
+  Unknown/`nil` values fall back to the defaults (direct + GLM 5.2). OpenRouter model ids
+  follow its own slugs (dotted Anthropic, dashed z-ai); direct uses each vendor's api.
+  """
+  def spec_for("openrouter", "sonnet-4-6"), do: "openrouter:anthropic/claude-sonnet-4.6"
+  def spec_for("openrouter", _glm), do: "openrouter:z-ai/glm-5.2"
+  def spec_for(_direct, "sonnet-4-6"), do: "anthropic:claude-sonnet-4-6"
+  def spec_for(_direct, _glm), do: "zai:glm-5.2"
+
+  @providers %{"anthropic" => :anthropic, "zai" => :zai, "openrouter" => :openrouter}
   defp parse_spec(spec) do
     case String.split(spec, ":", parts: 2) do
       [provider, id] when id != "" ->
@@ -265,6 +289,12 @@ defmodule DailyOutput.AI do
     )
   end
 
+  # OpenRouter is OpenAI-compatible — it has no Anthropic-style `thinking` param; reasoning
+  # is controlled via `reasoning_effort`. We only ever disable, so map any thinking config
+  # to :none. ponytail: to route reasoning ON through OpenRouter, translate the map here.
+  defp place_thinking(opts, :openrouter, _thinking),
+    do: Keyword.put(opts, :reasoning_effort, :none)
+
   defp place_thinking(opts, _provider, thinking), do: Keyword.put(opts, :thinking, thinking)
 
   # Reshape a %ReqLLM.Response{} into the Anthropic-native map the rest of the app reads
@@ -346,7 +376,14 @@ defmodule DailyOutput.AI do
     fetch_key(System.get_env("ZAI_API_KEY") || Application.get_env(:daily_output, :zai_api_key))
   end
 
-  defp get_api_key(_anthropic) do
+  defp get_api_key(:openrouter) do
+    fetch_key(
+      System.get_env("OPENROUTER_API_KEY") ||
+        Application.get_env(:daily_output, :openrouter_api_key)
+    )
+  end
+
+  defp get_api_key(:anthropic) do
     fetch_key(
       Application.get_env(:daily_output, :anthropic_api_key) ||
         System.get_env("ANTHROPIC_API_KEY")

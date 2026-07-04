@@ -388,7 +388,9 @@ defmodule DailyOutputWeb.SettingsLive do
             field={@form[:prompt_context]}
             type="textarea"
             label={gettext("Additional instructions for the AI")}
-            placeholder="z.B. Ich habe Schwierigkeiten mit Dativ/Akkusativ. Ich möchte Konjunktiv II üben."
+            placeholder={
+              gettext("e.g. I struggle with verb tenses. I'd like to practice the subjunctive.")
+            }
             rows="4"
             class="w-full textarea border-3 border-ink font-mono text-sm"
           />
@@ -422,7 +424,90 @@ defmodule DailyOutputWeb.SettingsLive do
             label={gettext("Color theme")}
             options={theme_options()}
             class="w-full select border-3 border-ink font-mono"
+            phx-hook=".ThemeSelect"
           />
+          <%!-- <html data-theme> lives in the root layout, outside the LiveView DOM, so a
+               saved theme wouldn't show until a full reload. Flip it on the client on change.
+               Mapping mirrors DailyOutputWeb.Locale (light/dark → brutalist-*, auto → none). --%>
+          <script :type={Phoenix.LiveView.ColocatedHook} name=".ThemeSelect">
+            export default {
+              mounted() {
+                this.el.addEventListener("change", () => {
+                  const themes = {light: "brutalist-light", dark: "brutalist-dark"}
+                  const theme = themes[this.el.value]
+                  if (theme) {
+                    document.documentElement.setAttribute("data-theme", theme)
+                  } else {
+                    document.documentElement.removeAttribute("data-theme")
+                  }
+                })
+              }
+            }
+          </script>
+        </div>
+
+        <%!-- AI model & provider --%>
+        <div class="border-4 border-ink p-5">
+          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
+            <span class="inline-block w-3 h-3 block-pink"></span> {gettext("AI Model")}
+          </h2>
+          <div class="text-sm text-base-content/70 mb-4 space-y-3">
+            <p class="text-xs font-mono uppercase tracking-widest text-base-content/50">
+              {gettext("Tested models")}
+            </p>
+            <div>
+              <p class="font-black">Claude Sonnet 4.6</p>
+              <ul class="list-disc list-inside marker:text-base-content/40">
+                <li>
+                  {gettext(
+                    "~$3 / $15 per M tokens, and ~2× the tokens of GLM 5.2 — so ~6× the cost overall"
+                  )}
+                </li>
+                <li>{gettext("Very slightly better responses")}</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-black">
+                GLM 5.2 <span class="opacity-50 font-normal">— {gettext("default")}</span>
+              </p>
+              <ul class="list-disc list-inside marker:text-base-content/40">
+                <li>{gettext("~$1.40 / $4.40 per M tokens")}</li>
+                <li>{gettext("Occasionally misses a correction or explanation")}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <.input
+              field={@form[:ai_model]}
+              type="select"
+              label={gettext("Model")}
+              options={ai_model_options()}
+              class="w-full select border-3 border-ink font-mono"
+            />
+            <.input
+              field={@form[:ai_provider]}
+              type="select"
+              label={gettext("Provider")}
+              options={ai_provider_options()}
+              class="w-full select border-3 border-ink font-mono"
+            />
+          </div>
+
+          <%!-- Live key status: which env var must be set follows the two choices above. --%>
+          <div class="mt-4 space-y-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class={[
+                "text-xs font-mono px-2 py-1 uppercase",
+                if(api_key_ok?(@config), do: "block-green", else: "block-red")
+              ]}>
+                {if(api_key_ok?(@config), do: gettext("Key set"), else: gettext("Key missing"))}
+              </span>
+              <span class="text-sm text-base-content/60">{required_env_var(@config)}</span>
+            </div>
+            <p :if={!api_key_ok?(@config)} class="text-xs text-base-content/60 font-mono">
+              {gettext("Set %{var} in your .env file.", var: required_env_var(@config))}
+            </p>
+          </div>
         </div>
       </.form>
 
@@ -540,33 +625,12 @@ defmodule DailyOutputWeb.SettingsLive do
           )}
         </p>
       </div>
-
-      <%!-- API Key status --%>
-      <div class="border-4 border-ink p-5">
-        <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-          <span class="inline-block w-3 h-3 block-pink"></span> API
-        </h2>
-        <div class="flex items-center gap-2">
-          <span :if={api_key_set?()} class="text-xs font-mono px-2 py-1 block-green uppercase">
-            {gettext("Configured")}
-          </span>
-          <span :if={!api_key_set?()} class="text-xs font-mono px-2 py-1 block-red uppercase">
-            {gettext("Missing")}
-          </span>
-          <span class="text-sm text-base-content/60">
-            ANTHROPIC_API_KEY
-          </span>
-        </div>
-        <p :if={!api_key_set?()} class="text-xs text-base-content/60 mt-2 font-mono">
-          {gettext("Set the ANTHROPIC_API_KEY environment variable in the .env file.")}
-        </p>
-      </div>
     </div>
     """
   end
 
   defp language_options do
-    ["de", "en", "fr", "es", "it", "pt"]
+    ["de", "en", "fr", "es", "it", "pt", "ja"]
     |> Enum.map(fn code -> {language_option_label(code), code} end)
   end
 
@@ -606,6 +670,7 @@ defmodule DailyOutputWeb.SettingsLive do
         "es" -> "Español"
         "it" -> "Italiano"
         "pt" -> "Português"
+        "ja" -> "日本語"
         _ -> String.upcase(code)
       end
 
@@ -618,7 +683,30 @@ defmodule DailyOutputWeb.SettingsLive do
     end
   end
 
-  defp api_key_set? do
-    Application.get_env(:daily_output, :anthropic_api_key) not in [nil, ""]
+  defp ai_model_options do
+    [{"GLM 5.2", "glm-5.2"}, {"Claude Sonnet 4.6", "sonnet-4-6"}]
   end
+
+  defp ai_provider_options do
+    [{gettext("Native API"), "direct"}, {"OpenRouter", "openrouter"}]
+  end
+
+  # Which provider the current model/provider choice routes to — the single source of
+  # truth is AI.spec_for/2, so the key status can't drift from what a call actually uses.
+  defp required_provider(config) do
+    DailyOutput.AI.spec_for(config.ai_provider, config.ai_model)
+    |> String.split(":", parts: 2)
+    |> hd()
+    |> String.to_existing_atom()
+  end
+
+  defp required_env_var(config) do
+    case required_provider(config) do
+      :openrouter -> "OPENROUTER_API_KEY"
+      :anthropic -> "ANTHROPIC_API_KEY"
+      :zai -> "ZAI_API_KEY"
+    end
+  end
+
+  defp api_key_ok?(config), do: DailyOutput.AI.api_key_set?(required_provider(config))
 end

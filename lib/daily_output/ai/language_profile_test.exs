@@ -31,4 +31,15 @@ defmodule DailyOutput.AI.LanguageProfileTest do
     assert profile.conventions == []
     assert LanguageProfile.conventions_block(profile) == ""
   end
+
+  test "Japanese is written in rōmaji, never kana/kanji" do
+    profile = LanguageProfile.resolve("ja")
+
+    assert profile.language_name == "Japanese"
+    assert profile.settings_context == "Rōmaji"
+    assert profile.conventions != []
+    block = LanguageProfile.conventions_block(profile)
+    assert block =~ "rōmaji"
+    assert block =~ "Never output kanji, hiragana, or katakana"
+  end
 end

@@ -9,11 +9,12 @@ defmodule DailyOutput.AI.TopicGenerator do
   def generate_openers(topics, target_language, native_language) do
     topic_list =
       case topics do
-        [] -> "Alltag, Arbeit, Hobbys, Essen, Reisen, Wetter"
+        [] -> "everyday life, work, hobbies, food, travel, weather"
         list -> Enum.join(list, ", ")
       end
 
     profile = LanguageProfile.resolve(target_language)
+    native_name = LanguageProfile.resolve(native_language).language_name
 
     locale_line =
       if profile.locale_context do
@@ -45,10 +46,10 @@ defmodule DailyOutput.AI.TopicGenerator do
     - Only sometimes touch the interests above; let others roam into everyday moments,
       light opinions, small stories, or the occasional more reflective question
     - Range from easier to more challenging vocabulary
-    - Include a #{native_language} translation
+    - Include a #{native_name} translation
 
-    Respond with ONLY a JSON array:
-    [{"opener": "Wie war dein Wochenende?", "translation": "How was your weekend?"}]
+    Respond with ONLY a JSON array of objects with "opener" (in #{profile.prompt_name}) and
+    "translation" (in #{native_name}) keys, e.g. [{"opener": "...", "translation": "..."}].
     No other text.
     """
 

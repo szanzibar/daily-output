@@ -4,8 +4,12 @@ defmodule DailyOutput.AI.PromptGenerator do
   """
 
   alias DailyOutput.AI
+  alias DailyOutput.AI.LanguageProfile
 
   def generate_prompts(topics, target_language, native_language) do
+    target = LanguageProfile.resolve(target_language)
+    native_name = LanguageProfile.resolve(native_language).language_name
+
     # None, one, or two seeds drawn at random from the learner's interests.
     # `[]` (some days) means no injected theme at all, so the model is free to roam.
     inspiration_block =
@@ -20,9 +24,17 @@ defmodule DailyOutput.AI.PromptGenerator do
             "roam well beyond these."
       end
 
+    conventions_block =
+      if target.conventions == [] do
+        ""
+      else
+        "\nConventions for #{target.prompt_name} (every prompt MUST follow these):\n" <>
+          LanguageProfile.conventions_block(target) <> "\n"
+      end
+
     system = """
     You are a creative writing-prompt generator for a journal-keeping language learner.
-    The student speaks #{native_language} and is learning #{target_language}.
+    The student speaks #{native_name} and is learning #{target.prompt_name}.
 
     Generate exactly 5 writing prompts. Prize VARIETY and creative range — surprise the
     student with angles they wouldn't think of themselves, while keeping every prompt
@@ -35,10 +47,10 @@ defmodule DailyOutput.AI.PromptGenerator do
       about — never an abstract essay topic.
     - Range from easier to more challenging language.
 
-    Each prompt is written in #{target_language} with a #{native_language} translation.
-
-    Respond with ONLY a JSON array of objects, each with "prompt" and "translation" keys.
-    Example: [{"prompt": "Was hast du heute zum Frühstück gegessen?", "translation": "What did you eat for breakfast today?"}]
+    Each prompt is written in #{target.prompt_name} with a #{native_name} translation.
+    #{conventions_block}
+    Respond with ONLY a JSON array of objects, each with "prompt" (in #{target.prompt_name}) and
+    "translation" (in #{native_name}) keys, e.g. [{"prompt": "...", "translation": "..."}].
     No other text, just the JSON array.
     """
 

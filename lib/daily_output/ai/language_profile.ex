@@ -12,10 +12,21 @@ defmodule DailyOutput.AI.LanguageProfile do
     "es" => "Spanish",
     "fr" => "French",
     "it" => "Italian",
-    "pt" => "Portuguese"
+    "pt" => "Portuguese",
+    "ja" => "Japanese"
   }
 
   @profiles %{
+    "ja" => %{
+      prompt_name: "Japanese written in rōmaji (romanized Japanese)",
+      locale_context: nil,
+      settings_context: "Rōmaji",
+      conventions: [
+        "Always write Japanese in rōmaji (Latin-alphabet transliteration). Never output kanji, hiragana, or katakana — the learner studies with romanized text only",
+        "Use Hepburn romanization (shi, chi, tsu, fu; mark long vowels consistently as ō/ū or doubled vowels)",
+        "Separate words with spaces for readability (Japanese script has no spaces, but learner rōmaji should)"
+      ]
+    },
     "de" => %{
       prompt_name: "Swiss Standard German (Schweizer Hochdeutsch)",
       locale_context: "in Switzerland",

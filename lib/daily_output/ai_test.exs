@@ -39,6 +39,23 @@ defmodule DailyOutput.AITest do
     end
   end
 
+  describe "spec_for/2 (Settings choice → provider:model spec)" do
+    test "direct routes to each vendor's own API" do
+      assert AI.spec_for("direct", "glm-5.2") == "zai:glm-5.2"
+      assert AI.spec_for("direct", "sonnet-4-6") == "anthropic:claude-sonnet-4-6"
+    end
+
+    test "openrouter routes to OpenRouter's slugs (dotted anthropic, dashed z-ai)" do
+      assert AI.spec_for("openrouter", "glm-5.2") == "openrouter:z-ai/glm-5.2"
+      assert AI.spec_for("openrouter", "sonnet-4-6") == "openrouter:anthropic/claude-sonnet-4.6"
+    end
+
+    test "unknown/nil values fall back to the default (direct + GLM 5.2)" do
+      assert AI.spec_for(nil, nil) == "zai:glm-5.2"
+      assert AI.spec_for("direct", "mystery") == "zai:glm-5.2"
+    end
+  end
+
   describe "tool_use/1" do
     test "returns the input map even when a thinking block precedes tool_use" do
       response = %{

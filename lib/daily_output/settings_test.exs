@@ -69,6 +69,28 @@ defmodule DailyOutput.SettingsTest do
       assert config.language_level == "B2"
       assert config.min_exchanges == 5
       assert config.topics == []
+      assert config.ai_provider == "direct"
+      assert config.ai_model == "glm-5.2"
+    end
+  end
+
+  describe "ai model/provider" do
+    test "accepts the supported provider and model choices" do
+      {:ok, config} = Settings.ensure_config()
+
+      {:ok, updated} =
+        Settings.update_config(config, %{ai_provider: "openrouter", ai_model: "sonnet-4-6"})
+
+      assert updated.ai_provider == "openrouter"
+      assert updated.ai_model == "sonnet-4-6"
+    end
+
+    test "rejects unknown provider or model" do
+      {:ok, config} = Settings.ensure_config()
+      assert {:error, cs} = Settings.update_config(config, %{ai_provider: "bogus"})
+      assert %{ai_provider: _} = errors_on(cs)
+      assert {:error, cs} = Settings.update_config(config, %{ai_model: "gpt-9"})
+      assert %{ai_model: _} = errors_on(cs)
     end
   end
 end

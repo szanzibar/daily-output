@@ -33,7 +33,7 @@ defmodule DailyOutput.AI.ConversationPartner do
         [
           "Keep responses natural and conversational (2-3 sentences)",
           "Match the complexity to #{level} level — don't oversimplify, but be clear",
-          "If they ask how to say something (\"Wie sagt man X?\"), answer naturally",
+          "If they ask how to say something (e.g. \"How do you say X?\"), answer naturally",
           "If they ask about grammar or vocabulary, give a brief helpful answer",
           "Otherwise do NOT correct their errors — just respond naturally",
           "Ask follow-up questions to keep the conversation going",

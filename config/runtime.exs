@@ -4,9 +4,12 @@ import Config
 if config_env() != :test do
   Dotenvy.source!([".env", System.get_env()])
 
-  # Both keys are optional so the app boots with whichever provider you've configured.
+  # All keys are optional so the app boots with whichever provider you've configured.
+  # Which one you need depends on the AI provider + model chosen in Settings (see
+  # DailyOutput.AI.spec_for/2): direct+GLM → ZAI, direct+Sonnet → ANTHROPIC, OpenRouter → OPENROUTER.
   config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string, "")
   config :daily_output, :zai_api_key, Dotenvy.env!("ZAI_API_KEY", :string, "")
+  config :daily_output, :openrouter_api_key, Dotenvy.env!("OPENROUTER_API_KEY", :string, "")
 
   # "provider:model" spec (e.g. "anthropic:claude-sonnet-4-6") overriding the default in
   # config.exs (zai:glm-5.2); blank = keep that default.

@@ -155,11 +155,6 @@ msgstr ""
 msgid "Choose a topic from your focus pool to concentrate on."
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Configured"
-msgstr ""
-
 #: lib/daily_output_web/live/conversation_live/show.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
@@ -427,11 +422,6 @@ msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "Missing"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Native language"
 msgstr ""
 
@@ -539,11 +529,6 @@ msgstr ""
 #: lib/daily_output_web/live/entry_live/edit.ex
 #, elixir-autogen, elixir-format
 msgid "Saved."
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Set the ANTHROPIC_API_KEY environment variable in the .env file."
 msgstr ""
 
 #: lib/daily_output_web/components/layouts.ex
@@ -1519,4 +1504,74 @@ msgstr ""
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Light"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "AI Model"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Key missing"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Key set"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Model"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Provider"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Set %{var} in your .env file."
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "e.g. I struggle with verb tenses. I'd like to practice the subjunctive."
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Native API"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Occasionally misses a correction or explanation"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Tested models"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Very slightly better responses"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "default"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "~$1.40 / $4.40 per M tokens"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "~$3 / $15 per M tokens, and ~2× the tokens of GLM 5.2 — so ~6× the cost overall"
 msgstr ""

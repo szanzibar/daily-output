@@ -16,6 +16,11 @@ defmodule DailyOutput.Settings.Config do
     field :reminder_time, :time, default: ~T[20:00:00]
     field :last_reminder_on, :date
     field :theme, :string, default: "auto"
+    # How AI calls are routed: "direct" (each vendor's own API) or "openrouter".
+    field :ai_provider, :string, default: "direct"
+    # Which model runs everything: "glm-5.2" or "sonnet-4-6". DailyOutput.AI maps the
+    # (ai_provider, ai_model) pair to a concrete provider + model id.
+    field :ai_model, :string, default: "glm-5.2"
 
     timestamps(type: :utc_datetime)
   end
@@ -35,12 +40,16 @@ defmodule DailyOutput.Settings.Config do
       :timezone,
       :reminder_time,
       :last_reminder_on,
-      :theme
+      :theme,
+      :ai_provider,
+      :ai_model
     ])
     |> validate_required([:timer_minutes, :target_language, :native_language])
     |> validate_number(:timer_minutes, greater_than: 0, less_than_or_equal_to: 60)
     |> validate_number(:flashcards_per_day, greater_than: 0, less_than_or_equal_to: 100)
     |> validate_inclusion(:ui_language, ~w(auto en de))
     |> validate_inclusion(:theme, ~w(auto light dark))
+    |> validate_inclusion(:ai_provider, ~w(direct openrouter))
+    |> validate_inclusion(:ai_model, ~w(glm-5.2 sonnet-4-6))
   end
 end

@@ -34,6 +34,32 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     assert html =~ "less than or equal to" or html =~ "must be"
   end
 
+  test "AI section saves model/provider and its key status follows the choice", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/settings")
+
+    # Default direct + GLM → the status watches ZAI_API_KEY.
+    assert html =~ "ZAI_API_KEY"
+
+    html =
+      view
+      |> form("#settings-form", config: %{ai_provider: "openrouter", ai_model: "sonnet-4-6"})
+      |> render_change()
+
+    config = Settings.get_config()
+    assert config.ai_provider == "openrouter"
+    assert config.ai_model == "sonnet-4-6"
+    # OpenRouter uses one key regardless of model.
+    assert html =~ "OPENROUTER_API_KEY"
+
+    html =
+      view
+      |> form("#settings-form", config: %{ai_provider: "direct", ai_model: "sonnet-4-6"})
+      |> render_change()
+
+    # Direct + Sonnet → Anthropic's own API.
+    assert html =~ "ANTHROPIC_API_KEY"
+  end
+
   test "set_timezone stores a valid timezone", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/settings")
 

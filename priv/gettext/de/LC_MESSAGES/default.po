@@ -155,11 +155,6 @@ msgstr "Fokus wählen"
 msgid "Choose a topic from your focus pool to concentrate on."
 msgstr "Wähle ein Thema aus deinem Fokus-Pool, auf das du dich konzentrieren willst."
 
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Configured"
-msgstr "Konfiguriert"
-
 #: lib/daily_output_web/live/conversation_live/show.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
@@ -427,11 +422,6 @@ msgstr "Minuten pro Eintrag"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "Missing"
-msgstr "Fehlt"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Native language"
 msgstr "Muttersprache"
 
@@ -540,11 +530,6 @@ msgstr "Speichern"
 #, elixir-autogen, elixir-format
 msgid "Saved."
 msgstr "Gespeichert."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Set the ANTHROPIC_API_KEY environment variable in the .env file."
-msgstr "Setze die Umgebungsvariable ANTHROPIC_API_KEY in der .env Datei."
 
 #: lib/daily_output_web/components/layouts.ex
 #: lib/daily_output_web/live/settings_live.ex
@@ -1525,3 +1510,73 @@ msgstr "Systemeinstellung"
 #, elixir-autogen, elixir-format
 msgid "Light"
 msgstr "Hell"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "AI Model"
+msgstr "KI-Modell"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Key missing"
+msgstr "Schlüssel fehlt"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Key set"
+msgstr "Schlüssel gesetzt"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Model"
+msgstr "Modell"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Provider"
+msgstr "Anbieter"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Set %{var} in your .env file."
+msgstr "Setze %{var} in deiner .env-Datei."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "e.g. I struggle with verb tenses. I'd like to practice the subjunctive."
+msgstr "z.B. Ich habe Mühe mit den Verbzeiten. Ich möchte den Konjunktiv üben."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Native API"
+msgstr "Native API"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Occasionally misses a correction or explanation"
+msgstr "Verpasst gelegentlich eine Korrektur oder Erklärung"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Tested models"
+msgstr "Getestete Modelle"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Very slightly better responses"
+msgstr "Minim bessere Antworten"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "default"
+msgstr "Vorgabe"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "~$1.40 / $4.40 per M tokens"
+msgstr "~$1.40 / $4.40 pro Mio. Tokens"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "~$3 / $15 per M tokens, and ~2× the tokens of GLM 5.2 — so ~6× the cost overall"
+msgstr "~$3 / $15 pro Mio. Tokens, und ~2× so viele Tokens wie GLM 5.2 — also ~6× teurer insgesamt"
