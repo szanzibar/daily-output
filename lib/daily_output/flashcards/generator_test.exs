@@ -19,7 +19,10 @@ defmodule DailyOutput.Flashcards.GeneratorTest do
 
     test "cards returned as a bare JSON array string" do
       json = ~s([{"target_text":"Hallo","native_text":"Hi"}])
-      assert Generator.extract_cards(%{"cards" => json}) == [%{"target_text" => "Hallo", "native_text" => "Hi"}]
+
+      assert Generator.extract_cards(%{"cards" => json}) == [
+               %{"target_text" => "Hallo", "native_text" => "Hi"}
+             ]
     end
 
     test "malformed or unexpected input yields no cards" do

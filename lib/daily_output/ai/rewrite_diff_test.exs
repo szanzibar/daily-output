@@ -35,7 +35,12 @@ defmodule DailyOutput.AI.RewriteDiffTest do
     annotated =
       RewriteDiff.annotate(orig, corr, [
         %{"after" => "bin", "type" => "verb", "explanation" => "Bewegungsverb braucht sein"},
-        %{"before" => "habe", "after" => "", "type" => "word-order", "explanation" => "Verb an Position 2"}
+        %{
+          "before" => "habe",
+          "after" => "",
+          "type" => "word-order",
+          "explanation" => "Verb an Position 2"
+        }
       ])
 
     # Faithful: outside markers is exactly the student's text; nothing duplicated.
@@ -66,7 +71,12 @@ defmodule DailyOutput.AI.RewriteDiffTest do
 
     annotated =
       RewriteDiff.annotate(orig, corr, [
-        %{"before" => "ein", "after" => "einen", "type" => "case", "explanation" => "Akkusativ maskulin"}
+        %{
+          "before" => "ein",
+          "after" => "einen",
+          "type" => "case",
+          "explanation" => "Akkusativ maskulin"
+        }
       ])
 
     assert collapse(to_before(annotated)) == collapse(orig)

@@ -163,7 +163,9 @@ defmodule DailyOutput.AI.ProofreaderTest do
 
     test "a normal single correction is not mistaken for inflation" do
       original = "Gestern ich habe in die Stadt gegangen."
-      output = "Gestern [[ich habe||bin ich||word-order||Verb an zweiter Stelle]] in die Stadt gegangen."
+
+      output =
+        "Gestern [[ich habe||bin ich||word-order||Verb an zweiter Stelle]] in die Stadt gegangen."
 
       result = Proofreader.parse_message_feedback(output, original)
       assert result["annotated_text"] == output

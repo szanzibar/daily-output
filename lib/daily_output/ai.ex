@@ -257,7 +257,12 @@ defmodule DailyOutput.AI do
   end
 
   defp place_thinking(opts, :zai, thinking) do
-    Keyword.update(opts, :provider_options, [thinking: thinking], &Keyword.put(&1, :thinking, thinking))
+    Keyword.update(
+      opts,
+      :provider_options,
+      [thinking: thinking],
+      &Keyword.put(&1, :thinking, thinking)
+    )
   end
 
   defp place_thinking(opts, _provider, thinking), do: Keyword.put(opts, :thinking, thinking)
@@ -343,7 +348,8 @@ defmodule DailyOutput.AI do
 
   defp get_api_key(_anthropic) do
     fetch_key(
-      Application.get_env(:daily_output, :anthropic_api_key) || System.get_env("ANTHROPIC_API_KEY")
+      Application.get_env(:daily_output, :anthropic_api_key) ||
+        System.get_env("ANTHROPIC_API_KEY")
     )
   end
 

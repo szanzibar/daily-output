@@ -6,9 +6,9 @@ defmodule DailyOutput.AI.PromptGenerator do
   alias DailyOutput.AI
 
   def generate_prompts(topics, target_language, native_language) do
+    # None, one, or two seeds drawn at random from the learner's interests.
+    # `[]` (some days) means no injected theme at all, so the model is free to roam.
     inspiration_block =
-      # None, one, or two seeds drawn at random from the learner's interests.
-      # `[]` (some days) means no injected theme at all, so the model is free to roam.
       case Enum.take_random(topics, Enum.random(0..2)) do
         [] ->
           "Today, don't anchor on any given theme — roam freely across everyday moments,

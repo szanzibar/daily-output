@@ -148,7 +148,10 @@ defmodule DailyOutput.AI.RewriteDiff do
   end
 
   defp meta(c) do
-    %{"type" => to_string(c["type"] || "other"), "explanation" => to_string(c["explanation"] || "")}
+    %{
+      "type" => to_string(c["type"] || "other"),
+      "explanation" => to_string(c["explanation"] || "")
+    }
   end
 
   defp wordset(a, b), do: MapSet.new(words(a) ++ words(b))
@@ -184,9 +187,14 @@ defmodule DailyOutput.AI.RewriteDiff do
 
   defp back(a, b, n, m, dp, i, j, xa, xb) do
     cond do
-      elem(a, i) == elem(b, j) -> back(a, b, n, m, dp, i + 1, j + 1, [i | xa], [j | xb])
-      Map.get(dp, {i + 1, j}, 0) >= Map.get(dp, {i, j + 1}, 0) -> back(a, b, n, m, dp, i + 1, j, xa, xb)
-      true -> back(a, b, n, m, dp, i, j + 1, xa, xb)
+      elem(a, i) == elem(b, j) ->
+        back(a, b, n, m, dp, i + 1, j + 1, [i | xa], [j | xb])
+
+      Map.get(dp, {i + 1, j}, 0) >= Map.get(dp, {i, j + 1}, 0) ->
+        back(a, b, n, m, dp, i + 1, j, xa, xb)
+
+      true ->
+        back(a, b, n, m, dp, i, j + 1, xa, xb)
     end
   end
 end

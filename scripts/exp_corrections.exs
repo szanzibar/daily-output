@@ -23,7 +23,15 @@ alias DailyOutput.AI.RewriteDiff
 import Ecto.Query
 
 model_spec = System.argv() |> Enum.find(&(&1 =~ ~r/^[a-z_]+:.+/))
-if model_spec, do: Application.put_env(:daily_output, :ai_model, model_spec)
+
+if model_spec do
+  # A model arg means "benchmark THIS model everywhere". Clear the per-purpose overrides too,
+  # or :ai_model_overrides (proofread/proofread_message → GLM by default) silently shadows the
+  # arg — resolve_model checks the override before :ai_model, so without this the benchmark
+  # would run GLM no matter what spec you pass.
+  Application.put_env(:daily_output, :ai_model, model_spec)
+  Application.put_env(:daily_output, :ai_model_overrides, %{})
+end
 
 case System.get_env("THINKING") do
   t when t in ["on", "enabled", "1"] -> Application.put_env(:daily_output, :ai_thinking, %{type: "enabled"})
@@ -349,6 +357,20 @@ end
 correct_prompt = fn original -> "The student just sent this message — correct only this message:\n\n#{original}" end
 call = fn strat, original -> chat_tool.(systems[strat], tools[strat], correct_prompt.(original)) end
 
+# Some models (Sonnet especially) return an array-typed tool field as a JSON STRING instead of
+# a real list — same quirk production guards with Proofreader.decode_if_string. Coerce to a list
+# so the harness doesn't crash mid-run (Enum on a BitString) and silently drop the whole model.
+decode_list = fn
+  v when is_list(v) -> v
+  v when is_binary(v) ->
+    case Jason.decode(v) do
+      {:ok, l} when is_list(l) -> l
+      {:ok, %{} = m} -> Enum.find_value(m, [], fn {_k, val} -> is_list(val) && val end)
+      _ -> []
+    end
+  _ -> []
+end
+
 run = fn
   "baseline", original ->
     case AI.proofread_message(original, opts) do
@@ -360,7 +382,7 @@ run = fn
     case call.(:json, original) do
       {{:error, e}, _} -> {"(err)", 0, 0, ["error: #{inspect(e)}"]}
       {input, tok} ->
-        {annotated, bad, n} = build_json.(original, input["corrections"] || [])
+        {annotated, bad, n} = build_json.(original, decode_list.(input["corrections"]))
         extra = if bad > 0, do: ["#{bad} unlocatable"], else: []
         {annotated, n, tok, analyze.(original, annotated, extra)}
     end
@@ -383,7 +405,7 @@ run = fn
 
           user2 = "Student's original:\n#{original}\n\nCorrected:\n#{corrected}\n\nChanges made (explain each, in order):\n#{listing}"
           {input2, tok2} = chat_tool.(systems[:explain], tools[:explain], user2)
-          expls = if is_map(input2), do: input2["explanations"] || [], else: []
+          expls = if is_map(input2), do: decode_list.(input2["explanations"]), else: []
 
           corrections =
             changes
@@ -410,8 +432,8 @@ run = fn
 
         metas =
           if strat == "diff_notes",
-            do: input["notes"] || [],
-            else: match_meta.(regions, input["corrections"] || [])
+            do: decode_list.(input["notes"]),
+            else: match_meta.(regions, decode_list.(input["corrections"]))
 
         annotated = attach.(bare, regions, metas)
         # moves: a deleted word that reappears as an insertion shares the insert-half's tooltip

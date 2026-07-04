@@ -8,7 +8,8 @@ if config_env() != :test do
   config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string, "")
   config :daily_output, :zai_api_key, Dotenvy.env!("ZAI_API_KEY", :string, "")
 
-  # "provider:model" spec (e.g. "zai:glm-5.2"); blank = discover the latest Anthropic Sonnet.
+  # "provider:model" spec (e.g. "anthropic:claude-sonnet-4-6") overriding the default in
+  # config.exs (zai:glm-5.2); blank = keep that default.
   case Dotenvy.env!("AI_MODEL", :string, "") do
     "" -> :ok
     spec -> config :daily_output, :ai_model, spec

@@ -51,7 +51,9 @@ defmodule DailyOutput.Flashcards.MarkersTest do
   end
 
   test "substantive/1 drops capitalization-only markers" do
-    markers = Markers.parse("Das [[haus||Haus||spelling||cap]] ist [[gross||groß||spelling||ss]].")
+    markers =
+      Markers.parse("Das [[haus||Haus||spelling||cap]] ist [[gross||groß||spelling||ss]].")
+
     assert [%{corrected: "groß"}] = Markers.substantive(markers)
   end
 end

@@ -31,7 +31,6 @@ defmodule DailyOutput.AI.Proofreader do
   @doc "The fixed set of correction categories used to tag per-message annotations."
   def categories, do: @categories
 
-
   # The substantive goal shared by the journal and chat correctors — WHAT to correct, not how
   # to format it. Beyond outright errors we explicitly want non-idiomatic phrasing flagged (the
   # "understandable, but a native wouldn't say it" case a purely error-hunting prompt drops),
@@ -45,6 +44,22 @@ defmodule DailyOutput.AI.Proofreader do
     Be thorough but balanced, and tailor to a CEFR #{level} learner: mark the errors and unnatural phrasing that will help them progress — common mistakes included — but don't nitpick, don't flag constructions clearly above their level, and leave anything already correct and natural untouched. Never invent errors.\
     """
   end
+
+  # Shared prompt scaffolding so the journal and chat correctors (and the conversation review)
+  # build the same system prompt from the same rules — one place to change, no drift.
+
+  # B2+ students get all feedback in the target language; below that, in their native language.
+  defp feedback_lang(level, target, native),
+    do: if(level in ["B2", "C1", "C2"], do: target, else: native)
+
+  defp context_block(""), do: ""
+  defp context_block(context), do: "\n\nAdditional context about the student:\n#{context}\n"
+
+  defp language_conventions(%{conventions: []}), do: ""
+
+  defp language_conventions(profile),
+    do:
+      "\n\nLanguage-specific conventions for #{profile.prompt_name}:\n#{LanguageProfile.conventions_block(profile)}\n"
 
   # Shared prompt text for the focus-concept judgement, used by both the journal review and
   # the end-of-conversation review. `scope` is the noun for the thing being judged ("entry"
@@ -77,33 +92,10 @@ defmodule DailyOutput.AI.Proofreader do
     focus_topic = Keyword.get(opts, :focus_topic)
     profile = LanguageProfile.resolve(target)
 
-    context_block =
-      if context != "" do
-        "\n\nAdditional context about the student:\n#{context}\n"
-      else
-        ""
-      end
-
+    context_block = context_block(context)
     focus_block = focus_instructions(focus_topic, "entry")
-
-    # B2+ students get all feedback in the target language
-    feedback_lang =
-      if level in ["B2", "C1", "C2"] do
-        target
-      else
-        native
-      end
-
-    language_conventions_block =
-      if profile.conventions == [] do
-        ""
-      else
-        """
-
-        Language-specific conventions for #{profile.prompt_name}:
-        #{LanguageProfile.conventions_block(profile)}
-        """
-      end
+    feedback_lang = feedback_lang(level, target, native)
+    language_conventions_block = language_conventions(profile)
 
     system = """
     You are a #{profile.prompt_name} teacher proofreading a journal entry written by a #{native} speaker at CEFR level #{level}.#{language_conventions_block}
@@ -143,7 +135,13 @@ defmodule DailyOutput.AI.Proofreader do
                   do: input["corrected"],
                   else: text
 
-              annotated = RewriteDiff.annotate(text, corrected, decode_if_string(input["corrections"]) || [])
+              annotated =
+                RewriteDiff.annotate(
+                  text,
+                  corrected,
+                  decode_if_string(input["corrections"]) || []
+                )
+
               corrections = parse_message_feedback(annotated, text)
               {:ok, normalize_feedback(Map.merge(input, corrections))}
 
@@ -181,11 +179,8 @@ defmodule DailyOutput.AI.Proofreader do
     focus_topic = Keyword.get(opts, :focus_topic)
     profile = LanguageProfile.resolve(target)
 
-    feedback_lang = if level in ["B2", "C1", "C2"], do: target, else: native
-
-    context_block =
-      if context != "", do: "\n\nAdditional context about the student:\n#{context}\n", else: ""
-
+    feedback_lang = feedback_lang(level, target, native)
+    context_block = context_block(context)
     focus_block = focus_instructions(focus_topic, "conversation")
 
     system = """
@@ -276,17 +271,9 @@ defmodule DailyOutput.AI.Proofreader do
     history = Keyword.get(opts, :context_messages, [])
     profile = LanguageProfile.resolve(target)
 
-    feedback_lang = if level in ["B2", "C1", "C2"], do: target, else: native
-
-    context_block =
-      if context != "", do: "\n\nAdditional context about the student:\n#{context}\n", else: ""
-
-    language_conventions_block =
-      if profile.conventions == [] do
-        ""
-      else
-        "\n\nLanguage-specific conventions for #{profile.prompt_name}:\n#{LanguageProfile.conventions_block(profile)}\n"
-      end
+    feedback_lang = feedback_lang(level, target, native)
+    context_block = context_block(context)
+    language_conventions_block = language_conventions(profile)
 
     system = """
     You are a #{profile.prompt_name} teacher correcting one message a #{native} speaker (CEFR level #{level}) just sent in a casual chat.#{language_conventions_block}
@@ -347,7 +334,10 @@ defmodule DailyOutput.AI.Proofreader do
         parse_message_feedback(annotated, original)
 
       other ->
-        Logger.warning("proofread_message: no usable tool call (#{inspect(other)}); leaving message uncorrected")
+        Logger.warning(
+          "proofread_message: no usable tool call (#{inspect(other)}); leaving message uncorrected"
+        )
+
         %{"annotated_text" => original, "annotations" => []}
     end
   end
@@ -359,8 +349,14 @@ defmodule DailyOutput.AI.Proofreader do
     %{
       "type" => "object",
       "properties" => %{
-        "after" => %{"type" => "string", "description" => "the corrected words as they appear in the rewrite (empty to delete)"},
-        "before" => %{"type" => "string", "description" => "the student's original words that changed (empty to insert)"},
+        "after" => %{
+          "type" => "string",
+          "description" => "the corrected words as they appear in the rewrite (empty to delete)"
+        },
+        "before" => %{
+          "type" => "string",
+          "description" => "the student's original words that changed (empty to insert)"
+        },
         "type" => %{"type" => "string", "enum" => @categories},
         "explanation" => %{"type" => "string", "description" => "5-10 words on what was wrong"}
       },
@@ -372,11 +368,16 @@ defmodule DailyOutput.AI.Proofreader do
   def message_tool do
     %{
       name: "report_corrections",
-      description: "Report the corrected rewrite of the student's message and the list of changes.",
+      description:
+        "Report the corrected rewrite of the student's message and the list of changes.",
       input_schema: %{
         "type" => "object",
         "properties" => %{
-          "corrected" => %{"type" => "string", "description" => "the full message rewritten correctly and naturally; unchanged if already correct"},
+          "corrected" => %{
+            "type" => "string",
+            "description" =>
+              "the full message rewritten correctly and naturally; unchanged if already correct"
+          },
           "corrections" => %{"type" => "array", "items" => correction_item_schema()}
         },
         "required" => ["corrected", "corrections"]
