@@ -498,11 +498,6 @@ msgstr "Überschrieben — zählt als verwendet."
 msgid "Partner"
 msgstr "Partner"
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Phoenix LiveView, powered by Claude AI."
-msgstr "Phoenix LiveView, angetrieben von Claude AI."
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Prompt Context"
@@ -1580,3 +1575,18 @@ msgstr "~$1.40 / $4.40 pro Mio. Tokens"
 #, elixir-autogen, elixir-format
 msgid "~$3 / $15 per M tokens, and ~2× the tokens of GLM 5.2 — so ~6× the cost overall"
 msgstr "~$3 / $15 pro Mio. Tokens, und ~2× so viele Tokens wie GLM 5.2 — also ~6× teurer insgesamt"
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Daily reminders"
+msgstr "Tägliche Erinnerungen"
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Flashcards from your mistakes"
+msgstr "Karteikarten aus deinen Fehlern"
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Phoenix LiveView and SQLite, with AI from GLM 5.2 or Claude."
+msgstr "Phoenix LiveView und SQLite, mit KI von GLM 5.2 oder Claude."

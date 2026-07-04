@@ -35,15 +35,17 @@ defmodule DailyOutputWeb.AboutLive do
           <li class="font-bold">{gettext("Timed writing entries")}</li>
           <li class="font-bold">{gettext("AI conversations")}</li>
           <li class="font-bold">{gettext("Corrections & tips")}</li>
+          <li class="font-bold">{gettext("Flashcards from your mistakes")}</li>
           <li class="font-bold">{gettext("Focus topics for targeted practice")}</li>
           <li class="font-bold">{gettext("Streak tracking")}</li>
+          <li class="font-bold">{gettext("Daily reminders")}</li>
         </ul>
       </div>
 
       <div class="border-4 border-ink p-4 block-green font-mono space-y-2">
         <h2 class="text-xl font-black uppercase">{gettext("Built with")}</h2>
         <p>
-          {gettext("Phoenix LiveView, powered by Claude AI.")}
+          {gettext("Phoenix LiveView and SQLite, with AI from GLM 5.2 or Claude.")}
         </p>
       </div>
 

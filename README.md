@@ -1,24 +1,25 @@
 # DailyOutput
 
-A daily language practice journal with AI feedback. Write and speak in your target language every day, get instant inline corrections and learning tips.
+**Write and speak in your target language every day, get instant level-appropriate corrections — then drill your own mistakes as flashcards.**
 
-Built with Phoenix LiveView, SQLite, and the Anthropic API (Claude). Brutalist UI design.
+A self-hosted, single-user language-practice journal built with Phoenix LiveView and SQLite. AI runs through [ReqLLM](https://hex.pm/packages/req_llm) — **GLM 5.2 by default, or Claude Sonnet 4.6** — direct or via OpenRouter. Installable as a PWA. Brutalist UI, no external design system.
 
 ## Why
 
-The only way to improve at a language is to produce output — writing and speaking — regularly. DailyOutput gives you a daily structure: write a timed journal entry, have an AI conversation, get detailed feedback, and track your streak. The AI adapts to your CEFR level so you only see corrections relevant to what you should know.
+The only way to get better at a language is to produce output — writing and speaking — regularly. DailyOutput gives you a daily structure: a timed journal entry, an AI role-play conversation, detailed corrections, and a streak to keep you honest. Feedback is calibrated to your CEFR level, so you only see mistakes you should actually know at that level, and every correction can become a flashcard you review later.
 
 ## Features
 
-- **Timed writing entries** — AI-generated prompts, configurable timer, distraction-free editor
-- **AI conversations** — Role-play with a language partner who responds naturally
-- **Inline corrections** — College professor style: strikethrough + corrections with annotations
-- **Tips & commentary** — Grammar patterns, suggestions, encouragement
-- **Focus topics** — Save tips from feedback, choose one to practice before each session
-- **Streak tracking** — Daily challenge (1 entry + 1 conversation), streak counter
-- **Versioning** — Edit entries, continue conversations, track all versions
-- **PWA** — Install on your phone, works offline
-- **i18n** — English and German UI, auto-switches based on your level (B1+ = target language)
+- **Timed journaling** — AI-generated prompts at your level, a focus timer, and a distraction-free editor that never loses a draft.
+- **AI conversations** — natural role-play with a partner in your target language.
+- **Inline corrections** — a clean rewrite with word-level strikethrough/insert markers and a short note on each change; catches unnatural phrasing, not just outright errors.
+- **Flashcards** — cards distilled from your own mistakes, drilled with SM-2 spaced repetition and progressive fill-in-the-blank.
+- **Focus pool** — save grammar tips from feedback and pick one to practice before each session.
+- **Streaks** — a daily challenge (one entry + one conversation) with tiered streaks and earned freezes so one missed day doesn't reset you.
+- **Progress** — words written and corrections per 100 words over time, plus your daily AI spend.
+- **Daily reminders** — opt-in push notifications, managed per device.
+- **Choice of model** — GLM 5.2 (default) or Claude Sonnet 4.6, via each vendor's native API or OpenRouter.
+- **Installable PWA** — add to your home screen; English/German UI that switches to your target language at B1+.
 
 ## Screenshots
 
@@ -27,166 +28,111 @@ The only way to improve at a language is to produce output — writing and speak
 | ![Conversation prompts](priv/static/images/screenshots/conversation-prompts.png) | ![Conversation](priv/static/images/screenshots/conversation.png) |
 | ![Corrections](priv/static/images/screenshots/conversation-corrections.png) | ![About](priv/static/images/screenshots/about.png) |
 
-## Supported Languages
+## Quick start
 
-The app works with any target language for AI feedback. The UI itself is available in:
-- English (default)
-- German
-
-The AI prompts for German use Swiss Standard German conventions (no ß).
-
-## Setup
-
-### Prerequisites
-
-- Elixir 1.15+
-- Node.js (for JS tests)
-- An [Anthropic API key](https://console.anthropic.com/)
-
-### Development
-
-```bash
-# Install dependencies
-mix setup
-
-# Create .env with your API key
-cp .env.example .env
-# Edit .env with your ANTHROPIC_API_KEY
-
-# Start the server
-mix phx.server
-```
-
-Visit [localhost:4000](http://localhost:4000).
-
-### Docker
-
-```bash
-cp .env.example .env
-# Edit with ANTHROPIC_API_KEY
-
-docker compose up -d
-```
-
-On first startup, the release script auto-generates `SECRET_KEY_BASE` and stores
-it in `./data/secret_key_base`. The SQLite database is always stored at
-`./data/daily_output.db`.
-
-`PORT` controls the host-side published app port in docker-compose
-(default: `4000`). The app itself listens on internal port `4000`.
-
-Production contract:
-
-- Phoenix advertises a public URL of `https://<PHX_HOST>` on port `443`
-- Phoenix expects HTTPS origin checks for `PHX_HOST`
-- A reverse proxy is responsible for TLS termination on `:443` and forwarding to the host-published `PORT` (for example `40005`), which maps to container `:4000`
-
-For local Docker convenience, this repository's compose file publishes `${PORT}` to container `:4000`.
-
-### Container Publishing (GHCR)
-
-This repository includes a GitHub Actions workflow at
-`.github/workflows/publish-container.yml` that builds and publishes the container
-image to GitHub Container Registry (`ghcr.io`).
-
-- Push to `main`: publishes branch + `sha` tags and updates `latest`
-- Push a tag like `v1.2.3`: publishes corresponding version tags
-- Pull requests: build only (no push)
-
-Published image path:
-
-```text
-ghcr.io/szanzibar/daily-output
-```
-
-To pull and run:
-
-```bash
-docker pull ghcr.io/szanzibar/daily-output:latest
-docker run --rm \
-  -e ANTHROPIC_API_KEY=your_api_key \
-  -e PHX_HOST=localhost \
-  -v daily_output_data:/app/data \
-  -p 4000:4000 \
-  ghcr.io/szanzibar/daily-output:latest
-```
-
-Simple compose example using the GHCR image:
+Run the published image with Docker Compose:
 
 ```yaml
+# compose.yaml
 services:
   daily_output:
     image: ghcr.io/szanzibar/daily-output:latest
     ports:
       - "${PORT:-4000}:4000"
     environment:
-      ANTHROPIC_API_KEY: "your_api_key"
-      # Required in production (public hostname at the reverse proxy):
-      PHX_HOST: "localhost"
+      # The AI key for the model/provider you pick in Settings. Default is GLM 5.2:
+      ZAI_API_KEY: "your-zai-key"
+      # ...or use ANTHROPIC_API_KEY (Claude) / OPENROUTER_API_KEY instead.
+      # Public hostname your reverse proxy serves (used for HTTPS origin checks):
+      PHX_HOST: "example.com"
     volumes:
       - ./data:/app/data
     restart: unless-stopped
 ```
 
-Then run:
-
 ```bash
 docker compose up -d
 ```
 
-### Testing
+That's it. On first boot the container generates its `SECRET_KEY_BASE`, creates the SQLite database, and runs migrations — everything persists in `./data`. Web Push keys are generated automatically too; there's nothing else to configure.
 
-```bash
-mix test
-```
-
-Tests are colocated with source files in `lib/`.
+**Behind a reverse proxy (production):** DailyOutput serves plain HTTP on container port `4000` and expects HTTPS origin checks for `PHX_HOST`. Terminate TLS at your proxy and forward to the published `PORT`, which maps to container `:4000`.
 
 ## Configuration
 
-All configuration is done through the in-app settings page:
+The only thing DailyOutput needs is **one AI key**, matching the model + provider you choose in Settings:
+
+| Model | Provider | Key |
+|---|---|---|
+| GLM 5.2 *(default)* | Native API | `ZAI_API_KEY` |
+| Claude Sonnet 4.6 | Native API | `ANTHROPIC_API_KEY` |
+| either | OpenRouter | `OPENROUTER_API_KEY` |
+
+Everything else is set on the in-app **Settings** page:
 
 | Setting | Description |
 |---|---|
-| Timer duration | Minutes per writing entry (1-60) |
-| Min. exchanges | Minimum conversation turns before completion |
-| Target language | The language you're learning |
-| Native language | Your first language |
-| CEFR level | A1-C2, calibrates feedback difficulty |
-| Topics | Subjects for AI-generated writing prompts |
-| Prompt context | Custom instructions for the AI |
-| UI language | Auto (target language at B1+), English, or German |
+| AI model & provider | GLM 5.2 or Claude Sonnet 4.6; native API or OpenRouter |
+| Timer & exchanges | Minutes per entry; minimum conversation turns to complete |
+| Flashcards per day | Target number of cards that make a full flashcard day |
+| Target / native language | The language you're learning and your first language |
+| CEFR level | A1–C2 — calibrates feedback difficulty and the UI-language switch |
+| Topics & prompt context | Themes and custom instructions for AI-generated prompts |
+| Daily reminder | Per-device push notifications at a chosen time |
+| UI language & appearance | Auto/English/German; light, dark, or follow OS |
 
-The only environment variable required is `ANTHROPIC_API_KEY` in `.env`.
+## Languages
 
-## Architecture
+DailyOutput works with **any target language** for AI feedback. Two have tuned conventions:
 
-- **Phoenix LiveView** — all pages are stateful LiveViews, no REST API
-- **Ecto + SQLite** — file-based database, no Postgres needed
-- **Anthropix** — Elixir client for the Anthropic API
-- **Tailwind 4** — custom brutalist theme
-- **Gettext** — i18n with English source, German translations
-- **Minimal JS** — only DOM measurement for annotated text and textarea auto-expand
+- **German** — written as Swiss Standard German (`ss`, never `ß`).
+- **Japanese** — written in rōmaji (Hepburn), never kana or kanji.
 
-### Contexts
+The **UI** is available in English (default) and German, and auto-switches to your target language once you reach B1+.
+
+## Local development
+
+Requires Elixir `~> 1.15` (with Erlang/OTP) and Node.js (for the JS test suite).
+
+```bash
+mix setup                # deps, DB, assets
+cp .env.example .env      # add an AI key — ZAI_API_KEY by default
+mix phx.server            # http://localhost:4000
+```
+
+Run the checks before pushing:
+
+```bash
+mix test        # colocated with source under lib/
+mix precommit   # compile (warnings as errors), format, full test suite
+```
+
+### Architecture
+
+- **Phoenix LiveView** — every page is a stateful LiveView; no REST API.
+- **Ecto + SQLite** — a single file-based database, no Postgres.
+- **ReqLLM** — one client across providers (z.ai, Anthropic, OpenRouter).
+- **Tailwind v4** — a custom brutalist theme; JS is limited to DOM measurement and textarea auto-expand.
+- **Gettext** — English source strings, German translations.
 
 | Context | Purpose |
 |---|---|
-| `DailyOutput.Journal` | Entries CRUD, versioning, word count |
-| `DailyOutput.Conversations` | Conversations + messages, versioning |
-| `DailyOutput.Settings` | User preferences (singleton config) |
-| `DailyOutput.FocusTopics` | Focus pool, streaks, daily challenge |
-| `DailyOutput.AI` | Prompt generation, conversation, proofreading |
-| `DailyOutput.Cache` | Key-value cache for API model discovery |
+| `Journal` / `Conversations` | Entries and role-play chats, with versioning |
+| `AI` | Prompt generation, conversation, proofreading, flashcard/focus summaries |
+| `Flashcards` | Spaced-repetition cards built from corrections |
+| `FocusTopics` | Focus pool, daily challenge, streaks and freezes |
+| `Stats` | Progress aggregation (words, corrections, spend) |
+| `Settings` | Single-row user configuration |
+| `Push` / `Reminders` | Web Push subscriptions and the daily nudge |
+| `Clock` | Timezone + 4am logical-day boundary — the source of truth for day math |
 
 ## Contributing
 
-Contributions welcome! Some areas that could use help:
+Contributions welcome. Areas that could use help:
 
-- Additional UI translations (add a new locale in `priv/gettext/`)
-- More target language support in AI prompts
-- Accessibility improvements
-- Mobile UX refinements
+- Additional UI translations (add a locale under `priv/gettext/`)
+- Tuned conventions for more target languages (`DailyOutput.AI.LanguageProfile`)
+- Accessibility and mobile-UX refinements
 
 ## License
 
