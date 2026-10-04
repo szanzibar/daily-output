@@ -77,9 +77,9 @@ defmodule DailyOutput.StatsTest do
   describe "usage_by_day/1" do
     test "one ascending row per day; today is split by purpose, highest cost first" do
       today = Clock.today()
-      # sonnet pricing: $3/M input, $15/M output.
-      log_usage("flashcards", "claude-sonnet", input: 1_000_000)
-      log_usage("proofread", "claude-sonnet", output: 1_000_000)
+      # Sonnet 5.5 pricing: $2/M input, $10/M output.
+      log_usage("flashcards", "claude-sonnet-5-5", input: 1_000_000)
+      log_usage("proofread", "claude-sonnet-5-5", output: 1_000_000)
 
       days = Stats.usage_by_day(7)
 
@@ -88,16 +88,32 @@ defmodule DailyOutput.StatsTest do
 
       last = List.last(days)
       assert last.date == today
-      assert_in_delta last.total, 18.0, 0.0001
+      assert_in_delta last.total, 12.0, 0.0001
 
       assert Enum.map(last.by_purpose, & &1.purpose) == ["proofread", "flashcards"]
-      assert_in_delta hd(last.by_purpose).cost, 15.0, 0.0001
+      assert_in_delta hd(last.by_purpose).cost, 10.0, 0.0001
     end
 
     test "quiet days have an empty breakdown and a zero total" do
       days = Stats.usage_by_day(7)
       assert length(days) == 7
       assert Enum.all?(days, &(&1.by_purpose == [] and &1.total == 0))
+    end
+  end
+
+  describe "cost/5" do
+    test "prices Sonnet 5.5 and GPT-5.6 Luna by their direct and OpenRouter ids" do
+      for model <- ["claude-sonnet-5-5", "anthropic/claude-sonnet-5.5"] do
+        assert_in_delta Stats.cost(model, 1_000_000, 1_000_000, 1_000_000, 1_000_000),
+                        14.7,
+                        1.0e-9
+      end
+
+      for model <- ["gpt-5.6-luna", "openai/gpt-5.6-luna"] do
+        assert_in_delta Stats.cost(model, 1_000_000, 1_000_000, 1_000_000, 1_000_000),
+                        1.67,
+                        1.0e-9
+      end
     end
   end
 

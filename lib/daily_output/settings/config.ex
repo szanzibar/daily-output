@@ -18,9 +18,9 @@ defmodule DailyOutput.Settings.Config do
     field :theme, :string, default: "auto"
     # How AI calls are routed: "direct" (each vendor's own API) or "openrouter".
     field :ai_provider, :string, default: "direct"
-    # Which model runs everything: "glm-5.2" or "sonnet-4-6". DailyOutput.AI maps the
-    # (ai_provider, ai_model) pair to a concrete provider + model id.
-    field :ai_model, :string, default: "glm-5.2"
+    # Which model runs everything: "sonnet-5.5" or "gpt-5.6-luna". DailyOutput.AI.spec_for/2
+    # maps the (ai_provider, ai_model) pair to a concrete provider + model id.
+    field :ai_model, :string, default: "sonnet-5.5"
 
     timestamps(type: :utc_datetime)
   end
@@ -50,6 +50,6 @@ defmodule DailyOutput.Settings.Config do
     |> validate_inclusion(:ui_language, ~w(auto en de))
     |> validate_inclusion(:theme, ~w(auto light dark))
     |> validate_inclusion(:ai_provider, ~w(direct openrouter))
-    |> validate_inclusion(:ai_model, ~w(glm-5.2 sonnet-4-6))
+    |> validate_inclusion(:ai_model, ~w(sonnet-5.5 gpt-5.6-luna))
   end
 end

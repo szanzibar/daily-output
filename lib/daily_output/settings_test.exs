@@ -70,7 +70,7 @@ defmodule DailyOutput.SettingsTest do
       assert config.min_exchanges == 5
       assert config.topics == []
       assert config.ai_provider == "direct"
-      assert config.ai_model == "glm-5.2"
+      assert config.ai_model == "sonnet-5.5"
     end
   end
 
@@ -79,10 +79,10 @@ defmodule DailyOutput.SettingsTest do
       {:ok, config} = Settings.ensure_config()
 
       {:ok, updated} =
-        Settings.update_config(config, %{ai_provider: "openrouter", ai_model: "sonnet-4-6"})
+        Settings.update_config(config, %{ai_provider: "openrouter", ai_model: "gpt-5.6-luna"})
 
       assert updated.ai_provider == "openrouter"
-      assert updated.ai_model == "sonnet-4-6"
+      assert updated.ai_model == "gpt-5.6-luna"
     end
 
     test "rejects unknown provider or model" do

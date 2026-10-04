@@ -2,7 +2,7 @@ defmodule DailyOutput.AI.RewriteDiff do
   @moduledoc """
   Turns a model's *rewrite* of the student's message into inline correction markers.
 
-  Experiments (see `scripts/exp_corrections.exs`) showed that asking the model to hand-place
+  Experiments showed that asking the model to hand-place
   `[[before||after||type||explanation]]` markers is the source of the garbled/duplicated
   corrections — it cannot express a word-order MOVE as a before/after span (the moved word ends
   up both inside and outside the span), so it garbles delimiters or gives up. So instead the

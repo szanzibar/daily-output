@@ -1,12 +1,14 @@
 defmodule DailyOutput.AI do
   @moduledoc """
-  AI context wrapping ReqLLM for prompt generation and proofreading.
+  AI context wrapping ReqLLM. Every call goes through `chat/2`, which picks the model, sets
+  thinking, and records usage for cost tracking.
 
-  All calls go through `chat/2`, which sends `thinking: %{type: "disabled"}` so the
-  model does not burn output tokens on reasoning (see `thinking_opt/0`). The ReqLLM
-  response is reshaped back into the Anthropic-native `%{"content" => ..., "usage" =>
-  ..., "model" => ...}` map so callers, `text_content/1`, `tool_use/1`, and
-  `DailyOutput.Stats.record_usage/2` are unchanged from the Anthropix era.
+  There are two models, Claude Sonnet 5.5 (default) and GPT-5.6 Luna, each reached directly
+  or through OpenRouter (see `spec_for/2`). Thinking is off unless a call passes
+  `thinking: true`.
+
+  Structured calls pass a JSON `schema:` and use the provider's structured outputs, not a
+  forced tool, because Sonnet 5.5 rejects a forced `tool_choice`.
   """
 
   require Logger
@@ -19,9 +21,7 @@ defmodule DailyOutput.AI do
     FocusSummarizer
   }
 
-  alias DailyOutput.{Cache, PromptCache, Settings, Stats}
-
-  @model_cache_key "anthropic_sonnet_model"
+  alias DailyOutput.{PromptCache, Settings, Stats}
 
   defdelegate generate_prompts(topics, target_language, native_language),
     to: PromptGenerator
@@ -63,34 +63,36 @@ defmodule DailyOutput.AI do
     end
   end
 
-  # AI is "ready" if any provider key is configured; chat/2 resolves the specific
-  # provider + key per call (it can vary by purpose — see resolve_model/2). The {:ok, _}
-  # contract is kept so call sites don't change.
+  @key_vars %{
+    anthropic: "ANTHROPIC_API_KEY",
+    openai: "OPENAI_API_KEY",
+    openrouter: "OPENROUTER_API_KEY"
+  }
+
+  # AI is "ready" if any provider key is configured; chat/2 resolves the key per call.
   def client do
-    if Enum.any?([:anthropic, :zai, :openrouter], &api_key_set?/1),
+    if Enum.any?(Map.keys(@key_vars), &api_key_set?/1),
       do: {:ok, :ready},
       else: {:error, :api_key_not_set}
   end
 
-  @doc "Whether the API key for `provider` (:anthropic | :zai | :openrouter) is configured."
+  @doc "Whether the API key for `provider` (:anthropic | :openai | :openrouter) is configured."
   def api_key_set?(provider), do: match?({:ok, _}, get_api_key(provider))
 
-  def model(force_refresh \\ false) do
-    if force_refresh do
-      discover_model()
-    else
-      case Cache.get(@model_cache_key, 86400) do
-        nil -> discover_model()
-        cached -> {:ok, cached}
-      end
+  @doc "The env var that holds `provider`'s API key."
+  def api_key_var(provider), do: Map.fetch!(@key_vars, provider)
+
+  defp get_api_key(provider) do
+    case Application.get_env(:daily_output, :"#{provider}_api_key") ||
+           System.get_env(@key_vars[provider]) do
+      key when is_binary(key) and key != "" -> {:ok, key}
+      _ -> {:error, :api_key_not_set}
     end
   end
 
   @doc """
-  Concatenates the text from an Anthropic response's content blocks, skipping
-  non-text blocks. Thinking-enabled models (sonnet-5 thinks by default) emit a
-  `thinking` block before the `text` block, so callers must not assume `content`
-  starts with text. Returns "" when there is no text block.
+  Concatenates the text from a response's content blocks, skipping non-text blocks.
+  Returns "" when there is no text block.
   """
   def text_content(%{"content" => blocks}) when is_list(blocks) do
     blocks
@@ -99,78 +101,47 @@ defmodule DailyOutput.AI do
   end
 
   @doc """
-  Returns the `input` map of the first `tool_use` block in a response, or `nil`
-  when there is none. Like `text_content/1`, this keeps the Anthropic response
-  shape out of callers.
+  Sends one request. `:purpose` tags it for cost tracking, `:model` (a "provider:id" spec)
+  overrides the Settings choice, and `thinking: true` turns reasoning on.
+
+  With `:schema` (a JSON schema) it returns `{:ok, map}`, or `{:error, :unparsed}` when the
+  reply has no decodable object. Without it, it returns the response for `text_content/1`.
   """
-  def tool_use(%{"content" => blocks}) when is_list(blocks) do
-    case Enum.find(blocks, &(&1["type"] == "tool_use")) do
-      %{"input" => input} -> input
-      _ -> nil
-    end
-  end
-
   def chat(_client, opts) do
-    # `:purpose` tags the call site for cost tracking; it's ours, not the API's, so strip
-    # it before the request goes out. It also selects the model/provider for low-stakes
-    # paths (see resolve_model/2), so the matching key is resolved per call.
     {purpose, opts} = Keyword.pop(opts, :purpose)
+    {provider, model_id} = resolve_model(opts)
 
-    with {:ok, provider, model_id} <- resolve_model(purpose, opts),
-         {:ok, api_key} <- get_api_key(provider) do
-      case req_llm_chat(provider, api_key, model_id, opts) do
-        {:ok, response} = ok ->
-          record_usage(purpose, response)
-          ok
-
-        {:error, error_struct} = error ->
-          # Only the Anthropic path auto-discovers, so only it can recover a stale id.
-          if provider == :anthropic and model_not_found_error?(error_struct) do
-            retry_chat_with_refreshed_model(api_key, opts, model_id, purpose, error)
-          else
-            error
-          end
-      end
+    with {:ok, api_key} <- get_api_key(provider),
+         {:ok, response} <- req_llm_chat(provider, api_key, model_id, opts) do
+      shaped = anthropic_shape(response, model_id)
+      record_usage(purpose, shaped)
+      if opts[:schema], do: structured(response), else: {:ok, shaped}
     end
   end
 
-  # Resolve this call's model as {provider, model_id}. Precedence:
-  #   1. a per-call `:model` spec (rare),
-  #   2. a per-purpose override (`:ai_model_overrides` routes low-stakes paths like
-  #      flashcards/prompts/openers to a cheaper model; correction paths have no override),
-  #   3. the user's Settings choice (ai_provider + ai_model — the normal path),
-  #   4. the global `:ai_model` config spec (fallback when Settings can't be read),
-  #   5. otherwise discover the latest Anthropic Sonnet (the historical default).
-  # A spec is "provider:model", e.g. "zai:glm-5.2" or "anthropic:claude-sonnet-4-6".
-  defp resolve_model(purpose, opts) do
-    spec =
-      Keyword.get(opts, :model) ||
-        purpose_override(purpose) ||
-        settings_spec() ||
-        Application.get_env(:daily_output, :ai_model)
-
-    case spec do
-      spec when is_binary(spec) ->
-        case parse_spec(spec) do
-          {provider, model_id} -> {:ok, provider, model_id}
-          :error -> {:error, {:bad_model_spec, spec}}
-        end
+  @doc false
+  def structured(%ReqLLM.Response{} = response) do
+    case ReqLLM.Response.object(response) do
+      %{} = object ->
+        {:ok, object}
 
       _ ->
-        with {:ok, model_id} <- model(), do: {:ok, :anthropic, model_id}
+        Logger.warning("AI: no structured output in #{inspect(ReqLLM.Response.text(response))}")
+        {:error, :unparsed}
     end
   end
 
-  defp purpose_override(nil), do: nil
+  @providers %{"anthropic" => :anthropic, "openai" => :openai, "openrouter" => :openrouter}
 
-  defp purpose_override(purpose) do
-    :daily_output
-    |> Application.get_env(:ai_model_overrides, %{})
-    |> Map.get(to_string(purpose))
+  # A per-call `:model` spec (the bench) beats the Settings choice. The config default only
+  # applies when Settings can't be read.
+  defp resolve_model(opts) do
+    spec = opts[:model] || settings_spec() || Application.fetch_env!(:daily_output, :ai_model)
+    [provider, model_id] = String.split(spec, ":", parts: 2)
+    {Map.fetch!(@providers, provider), model_id}
   end
 
-  # The user's global model choice (Settings). Returns nil if settings can't be read
-  # (e.g. no DB in some unit tests), so resolution falls back to the :ai_model config.
+  # nil when there's no DB (some unit tests), so resolution falls back to config.
   defp settings_spec do
     config = Settings.get_config()
     spec_for(config.ai_provider, config.ai_model)
@@ -180,76 +151,48 @@ defmodule DailyOutput.AI do
 
   @doc """
   Maps a Settings `{ai_provider, ai_model}` pair to a ReqLLM "provider:model" spec.
-  Unknown/`nil` values fall back to the defaults (direct + GLM 5.2). OpenRouter model ids
-  follow its own slugs (dotted Anthropic, dashed z-ai); direct uses each vendor's api.
+  Unknown or `nil` values fall back to direct Sonnet 5.5.
   """
-  def spec_for("openrouter", "sonnet-4-6"), do: "openrouter:anthropic/claude-sonnet-4.6"
-  def spec_for("openrouter", _glm), do: "openrouter:z-ai/glm-5.2"
-  def spec_for(_direct, "sonnet-4-6"), do: "anthropic:claude-sonnet-4-6"
-  def spec_for(_direct, _glm), do: "zai:glm-5.2"
+  def spec_for("openrouter", "gpt-5.6-luna"), do: "openrouter:openai/gpt-5.6-luna"
+  def spec_for("openrouter", _sonnet), do: "openrouter:anthropic/claude-sonnet-5.5"
+  def spec_for(_direct, "gpt-5.6-luna"), do: "openai:gpt-5.6-luna"
+  def spec_for(_direct, _sonnet), do: "anthropic:claude-sonnet-5-5"
 
-  @providers %{"anthropic" => :anthropic, "zai" => :zai, "openrouter" => :openrouter}
-  defp parse_spec(spec) do
-    case String.split(spec, ":", parts: 2) do
-      [provider, id] when id != "" ->
-        case Map.fetch(@providers, provider) do
-          {:ok, atom} -> {atom, id}
-          :error -> :error
-        end
-
-      _ ->
-        :error
-    end
-  end
-
-  # Translate our Anthropic-style opts into a ReqLLM call and reshape the result back.
   defp req_llm_chat(provider, api_key, model_id, opts) do
-    context = build_context(Keyword.get(opts, :system), Keyword.get(opts, :messages, []))
+    # A struct, not a string, so ReqLLM doesn't warn about ids newer than its catalog.
+    {:ok, model} = ReqLLM.model(%{provider: provider, id: model_id})
+    context = build_context(opts[:system], opts[:messages] || [])
 
     req_opts =
-      [api_key: api_key]
-      |> put_opt(:max_tokens, Keyword.get(opts, :max_tokens))
-      |> put_opt(:tools, to_req_tools(Keyword.get(opts, :tools)))
-      |> put_opt(:tool_choice, Keyword.get(opts, :tool_choice))
-      |> put_thinking(provider)
-
-    case ReqLLM.generate_text(model_spec(provider, model_id), context, req_opts) do
-      {:ok, response} -> {:ok, anthropic_shape(response, model_id)}
-      error -> error
-    end
-  end
-
-  # Resolve to a model struct so ReqLLM doesn't re-resolve the "provider:<id>" string and
-  # log an "unverified model" warning on every call — our models are routinely newer than
-  # ReqLLM's static catalog. Falls back to the string spec if the provider can't build one.
-  defp model_spec(provider, model_id) do
-    case ReqLLM.model(%{provider: provider, id: model_id}) do
-      {:ok, model} -> model
-      _ -> "#{provider}:#{model_id}"
-    end
-  end
-
-  # ReqLLM's Anthropic encoder only accepts %ReqLLM.Tool{} structs
-  # (Schema.to_openai_format/1 has no clause for a raw map), so wrap our Anthropic-native
-  # tool maps. A JSON-schema map in :parameter_schema passes through to the request's
-  # input_schema untouched (Schema.to_json/1), producing the same tool the proofreader
-  # intended. The required :callback is never invoked — generate_text returns the tool
-  # call, it does not execute it. `tool_choice` (a %{type: "tool", name: ...} map) is
-  # accepted as-is by ReqLLM.
-  defp to_req_tools(nil), do: nil
-
-  defp to_req_tools(tools) when is_list(tools) do
-    Enum.map(tools, fn tool ->
-      ReqLLM.tool(
-        name: tool_field(tool, :name),
-        description: tool_field(tool, :description),
-        parameter_schema: tool_field(tool, :input_schema),
-        callback: fn _args -> {:ok, nil} end
+      put_thinking(
+        [api_key: api_key, max_tokens: Keyword.fetch!(opts, :max_tokens)],
+        provider,
+        opts[:thinking] || false
       )
-    end)
+
+    case opts[:schema] do
+      nil ->
+        ReqLLM.generate_text(model, context, req_opts)
+
+      schema ->
+        ReqLLM.generate_object(model, context, schema, put_structured_mode(req_opts, provider))
+    end
   end
 
-  defp tool_field(tool, key), do: tool[key] || tool[to_string(key)]
+  # OpenRouter's default structured mode is a forced tool, which Sonnet 5.5 rejects.
+  defp put_structured_mode(opts, :openrouter),
+    do: Keyword.put(opts, :provider_options, openrouter_structured_output_mode: :json_schema)
+
+  defp put_structured_mode(opts, _provider), do: opts
+
+  # Sonnet 5.5 turns thinking off with "between_tools" and rejects "disabled". OpenAI-style
+  # APIs take reasoning_effort :none. "On" means the model's own default.
+  defp put_thinking(opts, :anthropic, false),
+    do: Keyword.put(opts, :thinking, %{type: "between_tools"})
+
+  defp put_thinking(opts, :anthropic, true), do: Keyword.put(opts, :thinking, %{type: "adaptive"})
+  defp put_thinking(opts, _provider, false), do: Keyword.put(opts, :reasoning_effort, :none)
+  defp put_thinking(opts, _provider, true), do: opts
 
   defp build_context(system, messages) do
     system_msgs =
@@ -264,163 +207,32 @@ defmodule DailyOutput.AI do
     ReqLLM.Context.new(system_msgs ++ turn_msgs)
   end
 
-  defp put_opt(opts, _key, nil), do: opts
-  defp put_opt(opts, key, value), do: Keyword.put(opts, key, value)
-
-  # Disable model reasoning by default so it doesn't spend output tokens thinking — the
-  # whole reason for the ReqLLM swap. Placement differs by provider: Anthropic reads a
-  # top-level `thinking:`; z.ai reads it under `provider_options`. Set
-  # `config :daily_output, :ai_thinking, false` to omit it (fallback for a model that
-  # rejects an explicit "disabled"), or to a map to send a specific config — no code change.
-  @default_thinking %{type: "disabled"}
-  defp put_thinking(opts, provider) do
-    case Application.get_env(:daily_output, :ai_thinking, @default_thinking) do
-      thinking when is_map(thinking) -> place_thinking(opts, provider, thinking)
-      _ -> opts
-    end
-  end
-
-  defp place_thinking(opts, :zai, thinking) do
-    Keyword.update(
-      opts,
-      :provider_options,
-      [thinking: thinking],
-      &Keyword.put(&1, :thinking, thinking)
-    )
-  end
-
-  # OpenRouter is OpenAI-compatible — it has no Anthropic-style `thinking` param; reasoning
-  # is controlled via `reasoning_effort`. We only ever disable, so map any thinking config
-  # to :none. ponytail: to route reasoning ON through OpenRouter, translate the map here.
-  defp place_thinking(opts, :openrouter, _thinking),
-    do: Keyword.put(opts, :reasoning_effort, :none)
-
-  defp place_thinking(opts, _provider, thinking), do: Keyword.put(opts, :thinking, thinking)
-
-  # Reshape a %ReqLLM.Response{} into the Anthropic-native map the rest of the app reads
-  # (text_content/1, tool_use/1, Stats.record_usage/2), so nothing downstream changed.
+  # Reshape a %ReqLLM.Response{} into the Anthropic-native map that text_content/1 and
+  # Stats.record_usage/2 read.
   @doc false
   def anthropic_shape(%ReqLLM.Response{} = response, fallback_model) do
     text = ReqLLM.Response.text(response)
-
-    text_blocks =
-      if is_binary(text) and text != "", do: [%{"type" => "text", "text" => text}], else: []
-
-    tool_blocks =
-      response
-      |> ReqLLM.Response.tool_calls()
-      |> Enum.map(fn tool_call ->
-        %{name: name, arguments: arguments} = ReqLLM.ToolCall.to_map(tool_call)
-        %{"type" => "tool_use", "name" => name, "input" => arguments}
-      end)
-
     usage = response.usage || %{}
 
     %{
-      "content" => text_blocks ++ tool_blocks,
+      "content" =>
+        if(is_binary(text) and text != "", do: [%{"type" => "text", "text" => text}], else: []),
       "model" => response.model || fallback_model,
       "usage" => %{
         "input_tokens" => usage_field(usage, :input_tokens),
         "output_tokens" => usage_field(usage, :output_tokens),
+        # Always 0 on Anthropic: ReqLLM 1.17 reads the wrong field. Known and accepted.
+        "reasoning_tokens" => usage_field(usage, :reasoning_tokens),
         # ReqLLM normalizes Anthropic's cache_read/cache_creation to these names.
         "cache_read_input_tokens" => usage_field(usage, :cached_tokens),
-        "cache_creation_input_tokens" => usage_field(usage, :cache_creation_tokens)
+        "cache_creation_input_tokens" => usage_field(usage, :cache_creation_tokens),
+        # nil when ReqLLM's catalog has no price for the model.
+        "total_cost" => usage[:total_cost] || usage["total_cost"]
       }
     }
   end
 
   defp usage_field(usage, key), do: usage[key] || usage[to_string(key)] || 0
-
-  defp discover_model do
-    case fetch_models() do
-      {:ok, model_info} ->
-        model_id = model_info.id
-        Cache.put(@model_cache_key, model_id)
-
-        Logger.info(
-          "Selected Anthropic Sonnet model from API: id=#{model_info.id} display_name=#{inspect(model_info.display_name)} created_at=#{inspect(model_info.created_at)}"
-        )
-
-        {:ok, model_id}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  defp fetch_models do
-    with {:ok, api_key} <- get_api_key(:anthropic) do
-      req =
-        Req.new(
-          url: "https://api.anthropic.com/v1/models",
-          headers: [
-            {"x-api-key", api_key},
-            {"anthropic-version", "2023-06-01"}
-          ]
-        )
-
-      case Req.get(req) do
-        {:ok, %{status: 200, body: %{"data" => models}}} ->
-          pick_latest_sonnet(models)
-
-        {:ok, %{status: status, body: body}} ->
-          {:error, "API returned #{status}: #{inspect(body)}"}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
-    end
-  end
-
-  defp get_api_key(:zai) do
-    fetch_key(System.get_env("ZAI_API_KEY") || Application.get_env(:daily_output, :zai_api_key))
-  end
-
-  defp get_api_key(:openrouter) do
-    fetch_key(
-      System.get_env("OPENROUTER_API_KEY") ||
-        Application.get_env(:daily_output, :openrouter_api_key)
-    )
-  end
-
-  defp get_api_key(:anthropic) do
-    fetch_key(
-      Application.get_env(:daily_output, :anthropic_api_key) ||
-        System.get_env("ANTHROPIC_API_KEY")
-    )
-  end
-
-  defp fetch_key(key) when is_binary(key) and key != "", do: {:ok, key}
-  defp fetch_key(_), do: {:error, :api_key_not_set}
-
-  # A 404 from /v1/messages means the model id is unknown — the trigger to re-discover.
-  defp model_not_found_error?(%ReqLLM.Error.API.Response{status: 404}), do: true
-  defp model_not_found_error?(_), do: false
-
-  defp retry_chat_with_refreshed_model(api_key, opts, failed_model, purpose, original_error) do
-    case model(true) do
-      {:ok, refreshed_model} ->
-        if refreshed_model == failed_model do
-          original_error
-        else
-          Logger.warning(
-            "AI model '#{failed_model}' not found. Retrying with '#{refreshed_model}'."
-          )
-
-          case req_llm_chat(:anthropic, api_key, refreshed_model, opts) do
-            {:ok, response} = ok ->
-              record_usage(purpose, response)
-              ok
-
-            other ->
-              other
-          end
-        end
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
 
   # Cost tracking must never break the chat flow — swallow and log any failure.
   defp record_usage(purpose, response) do
@@ -429,26 +241,5 @@ defmodule DailyOutput.AI do
     error ->
       Logger.warning("Failed to record API usage: #{inspect(error)}")
       {:error, :usage_not_recorded}
-  end
-
-  defp pick_latest_sonnet(models) do
-    sonnet =
-      models
-      |> Enum.filter(fn m -> String.contains?(m["id"], "sonnet") end)
-      |> Enum.sort_by(fn m -> m["created_at"] || m["id"] end, :desc)
-      |> List.first()
-
-    case sonnet do
-      nil ->
-        {:error, :no_sonnet_found}
-
-      %{"id" => id} = model ->
-        {:ok,
-         %{
-           id: id,
-           display_name: model["display_name"],
-           created_at: model["created_at"]
-         }}
-    end
   end
 end

@@ -11,22 +11,9 @@ config :daily_output,
   ecto_repos: [DailyOutput.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-# The one model for everything (used by DailyOutput.AI.chat/2 when no per-purpose override
-# applies — see :ai_model_overrides below, now empty): GLM 5.2. Its German is fluent and
-# idiomatic (incl. Swiss dialect), and head-to-head on both the chat and journal correction
-# paths (scripts/exp_corrections.exs, scripts/exp_journal.exs) it matches Sonnet's error recall
-# at ~1/10th the cost. Both proofread paths (journal `proofread` + chat `proofread_message`)
-# share one rewrite+diff pipeline: the model only rewrites the text and lists changes, and
-# DailyOutput.AI.RewriteDiff builds the [[..]] markers in code, so a garbled marker (the old
-# word-order-move failure) is impossible regardless of model. Needs ZAI_API_KEY set; override
-# per environment with AI_MODEL (runtime.exs).
-config :daily_output, :ai_model, "zai:glm-5.2"
-
-# Per-purpose model routing (by the `:purpose` tag in DailyOutput.AI.chat/2) — the escape hatch
-# to send one call site to a different model without changing the default. Empty: every purpose
-# uses the default above. e.g. %{"proofread" => "anthropic:claude-sonnet-4-6"} would put journal
-# proofread back on Sonnet (needs ANTHROPIC_API_KEY).
-config :daily_output, :ai_model_overrides, %{}
+# Fallback model when Settings can't be read; Settings picks the model otherwise. Override per
+# environment with AI_MODEL (runtime.exs).
+config :daily_output, :ai_model, "anthropic:claude-sonnet-5-5"
 
 # Configure the endpoint
 config :daily_output, DailyOutputWeb.Endpoint,

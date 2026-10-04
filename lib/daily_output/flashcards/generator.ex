@@ -13,11 +13,8 @@ defmodule DailyOutput.Flashcards.Generator do
   `native_text` (its translation).
 
   Fully language-agnostic — `target`/`native`/`level` come from settings and conventions
-  are resolved via `AI.LanguageProfile`. Uses tool_use for structured output, mirroring
-  `AI.Proofreader`.
+  are resolved via `AI.LanguageProfile`. Uses structured output, like `AI.Proofreader`.
   """
-
-  require Logger
 
   alias DailyOutput.AI
   alias DailyOutput.AI.LanguageProfile
@@ -75,8 +72,6 @@ defmodule DailyOutput.Flashcards.Generator do
       optional flavouring particles or word-order variants that have many equally valid forms.
     - Split a long/compound sentence into separate single-idea sentences — one card each.
     - Keep sentences short and practical. Do not include quotation marks around the sentences.
-
-    Use the provide_flashcards tool to return your response.
     """
 
     user_content = """
@@ -87,31 +82,21 @@ defmodule DailyOutput.Flashcards.Generator do
     #{format_mistakes(mistakes)}
     """
 
-    with {:ok, client} <- AI.client() do
-      case AI.chat(client,
-             system: system,
-             messages: [%{role: "user", content: user_content}],
-             tools: [flashcards_tool()],
-             tool_choice: %{type: "tool", name: "provide_flashcards"},
-             purpose: "flashcards",
-             # max_tokens is a ceiling, not a billed cost. A whole conversation's worth of
-             # cards can be long, and 1536 once truncated the tool call mid-stream (zero
-             # cards), so keep headroom. (This path routes to GLM via :ai_model_overrides.)
-             max_tokens: 4096
+    with {:ok, client} <- AI.client(),
+         {:ok, %{"cards" => cards}} <-
+           AI.chat(
+             client,
+             [
+               system: system,
+               messages: [%{role: "user", content: user_content}],
+               schema: flashcards_schema(),
+               purpose: "flashcards",
+               # max_tokens is a ceiling, not a billed cost. A whole conversation's worth of
+               # cards can be long, and 1536 once truncated the reply (zero cards).
+               max_tokens: 4096
+             ] ++ Keyword.take(opts, [:model, :thinking])
            ) do
-        {:ok, %{"content" => content} = response} ->
-          case AI.tool_use(response) do
-            nil ->
-              Logger.error("Generator: no tool_use block in response: #{inspect(content)}")
-              {:error, :no_tool_response}
-
-            input ->
-              {:ok, input |> extract_cards() |> normalize_cards()}
-          end
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      {:ok, normalize_cards(cards)}
     end
   end
 
@@ -147,7 +132,7 @@ defmodule DailyOutput.Flashcards.Generator do
       explicit or literal so the learner can derive the target, as long as it stays grammatical
       and natural enough to read.
 
-    Return exactly one card via the provide_flashcards tool.
+    Return exactly one card.
     """
 
     user_content = """
@@ -156,29 +141,18 @@ defmodule DailyOutput.Flashcards.Generator do
     #{native_name}: #{card.native_text}
     """
 
-    with {:ok, client} <- AI.client() do
-      case AI.chat(client,
+    with {:ok, client} <- AI.client(),
+         {:ok, %{"cards" => cards}} <-
+           AI.chat(client,
              system: system,
              messages: [%{role: "user", content: user_content}],
-             tools: [flashcards_tool()],
-             tool_choice: %{type: "tool", name: "provide_flashcards"},
+             schema: flashcards_schema(),
              purpose: "flashcards",
              max_tokens: 512
            ) do
-        {:ok, %{"content" => _} = response} ->
-          case AI.tool_use(response) do
-            nil ->
-              {:error, :no_tool_response}
-
-            input ->
-              case input |> extract_cards() |> normalize_cards() do
-                [pair | _] -> {:ok, pair}
-                [] -> {:error, :empty}
-              end
-          end
-
-        {:error, reason} ->
-          {:error, reason}
+      case normalize_cards(cards) do
+        [pair | _] -> {:ok, pair}
+        [] -> {:error, :empty}
       end
     end
   end
@@ -193,24 +167,6 @@ defmodule DailyOutput.Flashcards.Generator do
     end)
   end
 
-  @doc """
-  Pulls the card list out of the tool_use input. sonnet-5 sometimes returns the `cards` array
-  as a JSON *string* instead of a real array (or double-wraps it as `{"cards": [...]}`); accept
-  every shape so a stringified response doesn't silently yield zero flashcards.
-  """
-  def extract_cards(%{"cards" => cards}) when is_list(cards), do: cards
-
-  def extract_cards(%{"cards" => json}) when is_binary(json) do
-    case Jason.decode(json) do
-      {:ok, %{"cards" => cards}} when is_list(cards) -> cards
-      {:ok, cards} when is_list(cards) -> cards
-      _ -> []
-    end
-  end
-
-  def extract_cards(list) when is_list(list), do: list
-  def extract_cards(_), do: []
-
   defp normalize_cards(cards) do
     cards
     |> Enum.filter(&is_map/1)
@@ -223,35 +179,32 @@ defmodule DailyOutput.Flashcards.Generator do
     |> Enum.reject(&(&1["target_text"] == "" or &1["native_text"] == ""))
   end
 
-  @doc false
-  def flashcards_tool do
+  defp flashcards_schema do
     %{
-      name: "provide_flashcards",
-      description: "Provide the flashcards built from the learner's corrected writing",
-      input_schema: %{
-        "type" => "object",
-        "properties" => %{
-          "cards" => %{
-            "type" => "array",
-            "items" => %{
-              "type" => "object",
-              "properties" => %{
-                "target_text" => %{
-                  "type" => "string",
-                  "description" =>
-                    "A single fully correct target-language sentence to type — exactly one sentence, never two and never the whole message"
-                },
-                "native_text" => %{
-                  "type" => "string",
-                  "description" => "A natural native-language translation of the sentence"
-                }
+      "type" => "object",
+      "properties" => %{
+        "cards" => %{
+          "type" => "array",
+          "items" => %{
+            "type" => "object",
+            "properties" => %{
+              "target_text" => %{
+                "type" => "string",
+                "description" =>
+                  "A single fully correct target-language sentence to type — exactly one sentence, never two and never the whole message"
               },
-              "required" => ["target_text", "native_text"]
-            }
+              "native_text" => %{
+                "type" => "string",
+                "description" => "A natural native-language translation of the sentence"
+              }
+            },
+            "required" => ["target_text", "native_text"],
+            "additionalProperties" => false
           }
-        },
-        "required" => ["cards"]
-      }
+        }
+      },
+      "required" => ["cards"],
+      "additionalProperties" => false
     }
   end
 end

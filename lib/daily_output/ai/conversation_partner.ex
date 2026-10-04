@@ -66,11 +66,10 @@ defmodule DailyOutput.AI.ConversationPartner do
       end)
 
     with {:ok, client} <- AI.client() do
-      case AI.chat(client,
-             purpose: "conversation",
-             system: system,
-             messages: api_messages,
-             max_tokens: 512
+      case AI.chat(
+             client,
+             [purpose: "conversation", system: system, messages: api_messages, max_tokens: 512] ++
+               Keyword.take(opts, [:model, :thinking])
            ) do
         {:ok, %{"content" => _} = response} ->
           {:ok, String.trim(AI.text_content(response))}

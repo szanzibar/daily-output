@@ -1,26 +1,28 @@
 defmodule DailyOutput.AI.ProofreaderTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   alias DailyOutput.AI.Proofreader
 
-  describe "feedback_tool/1" do
+  describe "feedback_schema/1" do
     test "without focus topic, focus_result is not required" do
-      tool = Proofreader.feedback_tool(nil)
+      schema = Proofreader.feedback_schema(nil)
 
       # The model returns a rewrite + change list; annotations/annotated_text are derived from
-      # the diff (RewriteDiff), not tool fields.
-      assert tool.input_schema["required"] == ["corrected", "corrections", "commentary"]
-      refute Map.has_key?(tool.input_schema["properties"], "annotations")
-      refute Map.has_key?(tool.input_schema["properties"], "annotated_text")
-      refute Map.has_key?(tool.input_schema["properties"], "focus_result")
-      refute Map.has_key?(tool.input_schema["properties"], "encouragement")
+      # the diff (RewriteDiff), not schema fields.
+      assert schema["required"] == ["corrected", "corrections", "commentary"]
+      refute Map.has_key?(schema["properties"], "annotations")
+      refute Map.has_key?(schema["properties"], "annotated_text")
+      refute Map.has_key?(schema["properties"], "focus_result")
+      refute Map.has_key?(schema["properties"], "encouragement")
     end
 
     test "with focus topic, focus_result is required" do
-      tool = Proofreader.feedback_tool("Nebensatzkonnektoren")
+      schema = Proofreader.feedback_schema("Nebensatzkonnektoren")
 
-      assert "focus_result" in tool.input_schema["required"]
-      focus_props = tool.input_schema["properties"]["focus_result"]["properties"]
+      assert "focus_result" in schema["required"]
+      focus_props = schema["properties"]["focus_result"]["properties"]
       assert Map.has_key?(focus_props, "used")
       assert Map.has_key?(focus_props, "correct")
       assert Map.has_key?(focus_props, "comment")
@@ -30,13 +32,13 @@ defmodule DailyOutput.AI.ProofreaderTest do
     end
 
     test "with empty string focus topic, focus_result is not required" do
-      tool = Proofreader.feedback_tool("")
-      refute "focus_result" in tool.input_schema["required"]
+      schema = Proofreader.feedback_schema("")
+      refute "focus_result" in schema["required"]
     end
 
     test "commentary type is constrained to valid values" do
-      tool = Proofreader.feedback_tool(nil)
-      commentary_props = tool.input_schema["properties"]["commentary"]["items"]["properties"]
+      schema = Proofreader.feedback_schema(nil)
+      commentary_props = schema["properties"]["commentary"]["items"]["properties"]
       assert commentary_props["type"]["enum"] == ["pattern", "suggestion", "alternative"]
     end
   end
@@ -173,42 +175,64 @@ defmodule DailyOutput.AI.ProofreaderTest do
     end
   end
 
-  describe "assessment_tool/1" do
+  describe "assessment_schema/1" do
     test "is correction-free: no annotated_text or annotations" do
-      tool = Proofreader.assessment_tool(nil)
+      schema = Proofreader.assessment_schema(nil)
 
-      assert tool.name == "provide_assessment"
-      refute Map.has_key?(tool.input_schema["properties"], "annotated_text")
-      refute Map.has_key?(tool.input_schema["properties"], "annotations")
+      refute Map.has_key?(schema["properties"], "annotated_text")
+      refute Map.has_key?(schema["properties"], "annotations")
     end
 
     test "without focus topic, requires only commentary" do
-      tool = Proofreader.assessment_tool(nil)
+      schema = Proofreader.assessment_schema(nil)
 
-      assert tool.input_schema["required"] == ["commentary"]
-      refute Map.has_key?(tool.input_schema["properties"], "focus_result")
+      assert schema["required"] == ["commentary"]
+      refute Map.has_key?(schema["properties"], "focus_result")
     end
 
     test "with focus topic, focus_result is required" do
-      tool = Proofreader.assessment_tool("Nebensatzkonnektoren")
+      schema = Proofreader.assessment_schema("Nebensatzkonnektoren")
 
-      assert "focus_result" in tool.input_schema["required"]
-      focus_props = tool.input_schema["properties"]["focus_result"]["properties"]
+      assert "focus_result" in schema["required"]
+      focus_props = schema["properties"]["focus_result"]["properties"]
       assert Map.has_key?(focus_props, "used")
       assert Map.has_key?(focus_props, "correct")
       assert Map.has_key?(focus_props, "comment")
     end
 
     test "commentary type is constrained to valid values" do
-      tool = Proofreader.assessment_tool(nil)
-      commentary_props = tool.input_schema["properties"]["commentary"]["items"]["properties"]
+      schema = Proofreader.assessment_schema(nil)
+      commentary_props = schema["properties"]["commentary"]["items"]["properties"]
       assert commentary_props["type"]["enum"] == ["pattern", "suggestion", "alternative"]
     end
 
     test "no longer offers encouragement or improvement_note fields" do
-      tool = Proofreader.assessment_tool(nil)
-      refute Map.has_key?(tool.input_schema["properties"], "encouragement")
-      refute Map.has_key?(tool.input_schema["properties"], "improvement_note")
+      schema = Proofreader.assessment_schema(nil)
+      refute Map.has_key?(schema["properties"], "encouragement")
+      refute Map.has_key?(schema["properties"], "improvement_note")
+    end
+  end
+
+  describe "rewrite_feedback/2" do
+    test "builds inline markers from the rewrite" do
+      input = %{
+        "corrected" => "Gestern bin ich gegangen.",
+        "corrections" => [
+          %{"before" => "habe", "after" => "bin", "type" => "verb", "explanation" => "sein"}
+        ]
+      }
+
+      assert {:ok, %{"annotated_text" => annotated, "annotations" => [%{"category" => "verb"}]}} =
+               Proofreader.rewrite_feedback(input, "Gestern habe ich gegangen.")
+
+      assert annotated =~ "[[habe||bin||verb||sein]]"
+    end
+
+    test "an empty rewrite is a parse miss, not an uncorrected message" do
+      capture_log(fn ->
+        assert Proofreader.rewrite_feedback(%{"corrected" => "", "corrections" => []}, "Hallo") ==
+                 {:error, :unparsed}
+      end)
     end
   end
 

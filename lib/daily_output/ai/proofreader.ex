@@ -3,7 +3,7 @@ defmodule DailyOutput.AI.Proofreader do
   AI-powered proofreading with inline correction markers.
 
   Both the journal `proofread/2` and the per-message `proofread_message/2` ask the model, via
-  tool_use, for a clean *rewrite* of the text plus a list of `{before, after, type,
+  structured output, for a clean *rewrite* of the text plus a list of `{before, after, type,
   explanation}` changes — the model never hand-places `[[..]]` markers. `AI.RewriteDiff` then
   builds the inline markers deterministically from a word diff of original↔rewrite, so a
   malformed or garbled marker (the old failure on word-order moves) is impossible by
@@ -102,57 +102,33 @@ defmodule DailyOutput.AI.Proofreader do
 
     #{correction_goal(profile, native, level)}
 
-    Return your response with the provide_feedback tool:
+    Respond with:
     1. "corrected" — the ENTIRE entry rewritten correctly and naturally. Change ONLY what needs fixing; keep every correct word, all punctuation, and all line breaks (including the blank lines between paragraphs) identical. Do NOT add any markup.
     2. "corrections" — one entry per change, in the order the changes appear, each with "before" (the student's original words, empty if you inserted), "after" (your correction, empty if you deleted), "type" (one of {#{Enum.join(@categories, ", ")}}), and "explanation" (5-10 words on what was wrong). Every change in "corrected" has exactly one entry here.
     3. "commentary" — #{commentary_instruction()}
 
     Write ALL explanation text in #{feedback_lang}.
     #{context_block}#{focus_block}
-    The "commentary" field MUST be a JSON array of objects, never a stringified string.
     """
 
-    with {:ok, client} <- AI.client() do
-      case AI.chat(client,
-             system: system,
-             messages: [
-               %{role: "user", content: "Please proofread this journal entry:\n\n#{text}"}
-             ],
-             tools: [feedback_tool(focus_topic)],
-             tool_choice: %{type: "tool", name: "provide_feedback"},
-             purpose: "proofread",
-             # A full-entry rewrite + a change list + commentary; 4096 keeps a long entry from
-             # truncating. max_tokens is a ceiling, not a cost (billed by real usage).
-             max_tokens: 4096
-           ) do
-        {:ok, %{"content" => content} = response} ->
-          case AI.tool_use(response) do
-            input when is_map(input) ->
-              # The model rewrites the entry + lists changes; RewriteDiff builds the inline
-              # markers deterministically, so journal and chat share one garble-proof path.
-              corrected =
-                if is_binary(input["corrected"]) and input["corrected"] != "",
-                  do: input["corrected"],
-                  else: text
-
-              annotated =
-                RewriteDiff.annotate(
-                  text,
-                  corrected,
-                  decode_if_string(input["corrections"]) || []
-                )
-
-              corrections = parse_message_feedback(annotated, text)
-              {:ok, normalize_feedback(Map.merge(input, corrections))}
-
-            _ ->
-              Logger.error("Proofreader: no tool_use block in response: #{inspect(content)}")
-              {:error, :no_tool_response}
-          end
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+    with {:ok, client} <- AI.client(),
+         {:ok, input} <-
+           AI.chat(
+             client,
+             [
+               system: system,
+               messages: [
+                 %{role: "user", content: "Please proofread this journal entry:\n\n#{text}"}
+               ],
+               schema: feedback_schema(focus_topic),
+               purpose: "proofread",
+               # A full-entry rewrite + a change list + commentary; 4096 keeps a long entry from
+               # truncating. max_tokens is a ceiling, not a cost (billed by real usage).
+               max_tokens: 4096
+             ] ++ Keyword.take(opts, [:model, :thinking])
+           ),
+         {:ok, corrections} <- rewrite_feedback(input, text) do
+      {:ok, normalize_feedback(Map.merge(input, corrections))}
     end
   end
 
@@ -195,31 +171,21 @@ defmodule DailyOutput.AI.Proofreader do
     Calibrate to #{level}: pick what will move them toward the next level.
     Write ALL text in #{feedback_lang}.
     #{context_block}#{focus_block}
-    Use the provide_assessment tool. "commentary" MUST be a JSON array of objects, never a stringified string; each "type" is "pattern", "suggestion", or "alternative".
     """
 
-    with {:ok, client} <- AI.client() do
-      case AI.chat(client,
-             system: system,
-             messages: [%{role: "user", content: assessment_transcript(messages, profile)}],
-             tools: [assessment_tool(focus_topic)],
-             tool_choice: %{type: "tool", name: "provide_assessment"},
-             purpose: "assessment",
-             max_tokens: 512
+    with {:ok, client} <- AI.client(),
+         {:ok, input} <-
+           AI.chat(
+             client,
+             [
+               system: system,
+               messages: [%{role: "user", content: assessment_transcript(messages, profile)}],
+               schema: assessment_schema(focus_topic),
+               purpose: "assessment",
+               max_tokens: 512
+             ] ++ Keyword.take(opts, [:model, :thinking])
            ) do
-        {:ok, %{"content" => content} = response} ->
-          case AI.tool_use(response) do
-            input when is_map(input) ->
-              {:ok, normalize_feedback(input)}
-
-            _ ->
-              Logger.error("assess_conversation: no tool_use block: #{inspect(content)}")
-              {:error, :no_tool_response}
-          end
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      {:ok, normalize_feedback(input)}
     end
   end
 
@@ -284,7 +250,7 @@ defmodule DailyOutput.AI.Proofreader do
 
     Write ALL explanation text in #{feedback_lang}.
     #{context_block}
-    Use the report_corrections tool.
+    Respond with:
     1. "corrected" — the student's message rewritten exactly as a native speaker would say it. Change ONLY what needs fixing; keep everything else — every correct word, all punctuation, and all line breaks — identical. If the message is already correct and natural, return it completely unchanged.
     2. "corrections" — one entry per change, in the order the changes appear, each with:
        - "after": the corrected words as they appear in your rewrite (empty if you deleted something)
@@ -301,50 +267,42 @@ defmodule DailyOutput.AI.Proofreader do
       transcript <>
         "The student just sent this message — correct only this message:\n\n#{text}"
 
-    with {:ok, client} <- AI.client() do
-      case AI.chat(client,
-             system: system,
-             messages: [%{role: "user", content: user_content}],
-             tools: [message_tool()],
-             tool_choice: %{type: "tool", name: "report_corrections"},
-             purpose: "proofread_message",
-             # A rewrite of one chat message + a short change list; 1024 is plenty and caps a
-             # runaway (a model with thinking off can occasionally loop). max_tokens is a
-             # ceiling, not a cost — billed by real usage.
-             max_tokens: 1024
-           ) do
-        {:ok, response} ->
-          {:ok, normalize_message_feedback(build_message_feedback(response, text))}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+    with {:ok, client} <- AI.client(),
+         {:ok, input} <-
+           AI.chat(
+             client,
+             [
+               system: system,
+               messages: [%{role: "user", content: user_content}],
+               schema: message_schema(),
+               purpose: "proofread_message",
+               # A rewrite of one chat message + a short change list; 1024 is plenty and caps a
+               # runaway. max_tokens is a ceiling, not a cost — billed by real usage.
+               max_tokens: 1024
+             ] ++ Keyword.take(opts, [:model, :thinking])
+           ),
+         {:ok, feedback} <- rewrite_feedback(input, text) do
+      {:ok, normalize_message_feedback(feedback)}
     end
   end
 
-  # Turn the report_corrections tool call into the stored `%{annotated_text, annotations}`:
-  # the model gives us a clean rewrite + a change list, and RewriteDiff builds the inline
-  # markers deterministically (so a malformed/garbled marker is impossible). Falls back to the
-  # uncorrected message if the tool call is missing/empty (e.g. a truncated runaway response).
-  defp build_message_feedback(response, original) do
-    case AI.tool_use(response) do
-      %{"corrected" => corrected} = input when is_binary(corrected) and corrected != "" ->
-        corrections = decode_if_string(input["corrections"]) || []
-        annotated = RewriteDiff.annotate(original, corrected, corrections)
-        parse_message_feedback(annotated, original)
+  # The model gives a clean rewrite + a change list, and RewriteDiff builds the inline markers
+  # from a word diff, so a garbled marker is impossible. An empty rewrite is a parse miss.
+  @doc false
+  def rewrite_feedback(%{"corrected" => corrected} = input, original)
+      when is_binary(corrected) and corrected != "" do
+    annotated = RewriteDiff.annotate(original, corrected, input["corrections"])
+    {:ok, parse_message_feedback(annotated, original)}
+  end
 
-      other ->
-        Logger.warning(
-          "proofread_message: no usable tool call (#{inspect(other)}); leaving message uncorrected"
-        )
-
-        %{"annotated_text" => original, "annotations" => []}
-    end
+  def rewrite_feedback(input, _original) do
+    Logger.warning("proofread: empty rewrite in #{inspect(input)}")
+    {:error, :unparsed}
   end
 
   # One change in a rewrite: the original span, its replacement, and why. Shared by the chat
-  # tool (message_tool) and the journal tool (feedback_tool) so the two never drift. RewriteDiff
-  # matches these back to the diff of original↔rewrite to build the inline markers.
+  # and journal schemas so the two never drift. RewriteDiff matches these back to the diff of
+  # original↔rewrite to build the inline markers.
   defp correction_item_schema do
     %{
       "type" => "object",
@@ -360,28 +318,24 @@ defmodule DailyOutput.AI.Proofreader do
         "type" => %{"type" => "string", "enum" => @categories},
         "explanation" => %{"type" => "string", "description" => "5-10 words on what was wrong"}
       },
-      "required" => ["after", "before", "type", "explanation"]
+      "required" => ["after", "before", "type", "explanation"],
+      "additionalProperties" => false
     }
   end
 
-  @doc false
-  def message_tool do
+  defp message_schema do
     %{
-      name: "report_corrections",
-      description:
-        "Report the corrected rewrite of the student's message and the list of changes.",
-      input_schema: %{
-        "type" => "object",
-        "properties" => %{
-          "corrected" => %{
-            "type" => "string",
-            "description" =>
-              "the full message rewritten correctly and naturally; unchanged if already correct"
-          },
-          "corrections" => %{"type" => "array", "items" => correction_item_schema()}
+      "type" => "object",
+      "properties" => %{
+        "corrected" => %{
+          "type" => "string",
+          "description" =>
+            "the full message rewritten correctly and naturally; unchanged if already correct"
         },
-        "required" => ["corrected", "corrections"]
-      }
+        "corrections" => %{"type" => "array", "items" => correction_item_schema()}
+      },
+      "required" => ["corrected", "corrections"],
+      "additionalProperties" => false
     }
   end
 
@@ -560,7 +514,7 @@ defmodule DailyOutput.AI.Proofreader do
   defp normalize_category(_), do: "other"
 
   @doc false
-  def feedback_tool(focus_topic) do
+  def feedback_schema(focus_topic) do
     base = %{
       "corrected" => %{
         "type" => "string",
@@ -571,31 +525,16 @@ defmodule DailyOutput.AI.Proofreader do
       "commentary" => commentary_schema()
     }
 
-    {properties, required} =
-      with_focus_result(base, ["corrected", "corrections", "commentary"], focus_topic)
-
-    %{
-      name: "provide_feedback",
-      description: "Provide proofreading feedback on the student's journal entry",
-      input_schema: %{"type" => "object", "properties" => properties, "required" => required}
-    }
+    with_focus_result(base, ["corrected", "corrections", "commentary"], focus_topic)
   end
 
   @doc false
-  def assessment_tool(focus_topic) do
-    {properties, required} =
-      with_focus_result(%{"commentary" => commentary_schema()}, ["commentary"], focus_topic)
-
-    %{
-      name: "provide_assessment",
-      description:
-        "Provide the end-of-conversation review (future focus areas + focus result). Do NOT correct text.",
-      input_schema: %{"type" => "object", "properties" => properties, "required" => required}
-    }
+  def assessment_schema(focus_topic) do
+    with_focus_result(%{"commentary" => commentary_schema()}, ["commentary"], focus_topic)
   end
 
-  # commentary + focus_result are identical for the journal review (feedback_tool) and the
-  # end-of-conversation review (assessment_tool), so both build from these shared fragments.
+  # commentary + focus_result are identical for the journal review (feedback_schema) and the
+  # end-of-conversation review (assessment_schema), so both build from these shared fragments.
   defp commentary_schema do
     %{
       "type" => "array",
@@ -609,7 +548,8 @@ defmodule DailyOutput.AI.Proofreader do
               "One pattern-level teaching point to turn into a focus area — one short sentence, max ~15 words"
           }
         },
-        "required" => ["type", "text"]
+        "required" => ["type", "text"],
+        "additionalProperties" => false
       }
     }
   end
@@ -633,16 +573,25 @@ defmodule DailyOutput.AI.Proofreader do
           "description" => "Brief feedback consistent with used/correct booleans"
         }
       },
-      "required" => ["used", "correct", "comment"]
+      "required" => ["used", "correct", "comment"],
+      "additionalProperties" => false
     }
   end
 
   defp with_focus_result(properties, required, focus_topic) do
-    if focus_topic && focus_topic != "" do
-      {Map.put(properties, "focus_result", focus_result_schema()), required ++ ["focus_result"]}
-    else
-      {properties, required}
-    end
+    {properties, required} =
+      if focus_topic && focus_topic != "" do
+        {Map.put(properties, "focus_result", focus_result_schema()), required ++ ["focus_result"]}
+      else
+        {properties, required}
+      end
+
+    %{
+      "type" => "object",
+      "properties" => properties,
+      "required" => required,
+      "additionalProperties" => false
+    }
   end
 
   @doc """

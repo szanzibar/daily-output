@@ -137,18 +137,11 @@ defmodule DailyOutput.Stats do
 
   # ── API cost tracking ──────────────────────────────────
 
-  # Approximate USD per 1,000,000 tokens, by model tier. Cache reads bill cheaper than
-  # input; cache writes at ~1.25x input. The active model is set in config (see
-  # DailyOutput.AI); "sonnet" is the default tier when a model id matches nothing else.
-  # z.ai's GLM has no cache-write price published (cached storage is free for now), so
-  # cache_write is set to the input rate as a safe placeholder — we don't use caching yet.
+  # USD per 1,000,000 tokens. Model ids from either route contain "sonnet" or "luna".
   @pricing %{
-    "opus" => %{input: 5.0, output: 25.0, cache_read: 0.5, cache_write: 6.25},
-    "sonnet" => %{input: 3.0, output: 15.0, cache_read: 0.3, cache_write: 3.75},
-    "haiku" => %{input: 1.0, output: 5.0, cache_read: 0.1, cache_write: 1.25},
-    "glm" => %{input: 1.4, output: 4.4, cache_read: 0.26, cache_write: 1.4}
+    sonnet: %{input: 2.0, output: 10.0, cache_read: 0.2, cache_write: 2.5},
+    luna: %{input: 0.2, output: 1.2, cache_read: 0.02, cache_write: 0.25}
   }
-  @default_tier "sonnet"
 
   @doc """
   Records one API call's token usage from the (Anthropic-shaped) `response`, tagged with
@@ -267,25 +260,12 @@ defmodule DailyOutput.Stats do
     |> Enum.sort_by(& &1.cost, :desc)
   end
 
-  defp cost(model, input, output, cache_read, cache_write) do
-    p = pricing_for(model)
+  @doc "USD cost of one call's tokens on `model`."
+  def cost(model, input, output, cache_read, cache_write) do
+    p = if String.contains?(model || "", "luna"), do: @pricing.luna, else: @pricing.sonnet
 
     ((input || 0) * p.input + (output || 0) * p.output + (cache_read || 0) * p.cache_read +
        (cache_write || 0) * p.cache_write) / 1_000_000
-  end
-
-  defp pricing_for(model) do
-    model = model || ""
-
-    tier =
-      cond do
-        String.contains?(model, "opus") -> "opus"
-        String.contains?(model, "haiku") -> "haiku"
-        String.contains?(model, "glm") -> "glm"
-        true -> @default_tier
-      end
-
-    @pricing[tier]
   end
 
   @doc "Formats a USD `amount` compactly: `$1.23`, `<$0.01`, or `$0.00`."

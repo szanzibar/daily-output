@@ -451,31 +451,17 @@ defmodule DailyOutputWeb.SettingsLive do
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
             <span class="inline-block w-3 h-3 block-pink"></span> {gettext("AI Model")}
           </h2>
-          <div class="text-sm text-base-content/70 mb-4 space-y-3">
-            <p class="text-xs font-mono uppercase tracking-widest text-base-content/50">
-              {gettext("Tested models")}
-            </p>
-            <div>
-              <p class="font-black">Claude Sonnet 4.6</p>
-              <ul class="list-disc list-inside marker:text-base-content/40">
-                <li>
-                  {gettext(
-                    "~$3 / $15 per M tokens, and ~2× the tokens of GLM 5.2 — so ~6× the cost overall"
-                  )}
-                </li>
-                <li>{gettext("Very slightly better responses")}</li>
-              </ul>
-            </div>
-            <div>
-              <p class="font-black">
-                GLM 5.2 <span class="opacity-50 font-normal">— {gettext("default")}</span>
+          <div id="ai-models" class="grid sm:grid-cols-2 gap-3 mb-2 text-sm">
+            <div :for={{name, score, price} <- ai_models()} class="border-3 border-ink p-3">
+              <p class="font-black">{name}</p>
+              <p class="font-mono text-xs text-base-content/70">
+                {gettext("Score %{score}", score: score)} · {price}
               </p>
-              <ul class="list-disc list-inside marker:text-base-content/40">
-                <li>{gettext("~$1.40 / $4.40 per M tokens")}</li>
-                <li>{gettext("Occasionally misses a correction or explanation")}</li>
-              </ul>
             </div>
           </div>
+          <p class="text-xs font-mono text-base-content/50 mb-4">
+            {gettext("Scores from benchlm.ai, Oct 2026. Prices per million input / output tokens.")}
+          </p>
           <div class="grid grid-cols-2 gap-4">
             <.input
               field={@form[:ai_model]}
@@ -683,16 +669,20 @@ defmodule DailyOutputWeb.SettingsLive do
     end
   end
 
+  defp ai_models do
+    [{"Claude Sonnet 5.5", "83.4", "$2 / $10"}, {"GPT-5.6 Luna", "66.2", "$0.20 / $1.20"}]
+  end
+
   defp ai_model_options do
-    [{"GLM 5.2", "glm-5.2"}, {"Claude Sonnet 4.6", "sonnet-4-6"}]
+    [{"Claude Sonnet 5.5", "sonnet-5.5"}, {"GPT-5.6 Luna", "gpt-5.6-luna"}]
   end
 
   defp ai_provider_options do
     [{gettext("Native API"), "direct"}, {"OpenRouter", "openrouter"}]
   end
 
-  # Which provider the current model/provider choice routes to — the single source of
-  # truth is AI.spec_for/2, so the key status can't drift from what a call actually uses.
+  # Which provider the current choice routes to; AI.spec_for/2 is the single source of truth,
+  # so the key status can't drift from what a call actually uses.
   defp required_provider(config) do
     DailyOutput.AI.spec_for(config.ai_provider, config.ai_model)
     |> String.split(":", parts: 2)
@@ -700,13 +690,7 @@ defmodule DailyOutputWeb.SettingsLive do
     |> String.to_existing_atom()
   end
 
-  defp required_env_var(config) do
-    case required_provider(config) do
-      :openrouter -> "OPENROUTER_API_KEY"
-      :anthropic -> "ANTHROPIC_API_KEY"
-      :zai -> "ZAI_API_KEY"
-    end
-  end
+  defp required_env_var(config), do: DailyOutput.AI.api_key_var(required_provider(config))
 
   defp api_key_ok?(config), do: DailyOutput.AI.api_key_set?(required_provider(config))
 end

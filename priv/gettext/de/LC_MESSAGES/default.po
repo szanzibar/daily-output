@@ -1546,36 +1546,6 @@ msgstr "z.B. Ich habe Mühe mit den Verbzeiten. Ich möchte den Konjunktiv üben
 msgid "Native API"
 msgstr "Native API"
 
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Occasionally misses a correction or explanation"
-msgstr "Verpasst gelegentlich eine Korrektur oder Erklärung"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Tested models"
-msgstr "Getestete Modelle"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Very slightly better responses"
-msgstr "Minim bessere Antworten"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "default"
-msgstr "Vorgabe"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "~$1.40 / $4.40 per M tokens"
-msgstr "~$1.40 / $4.40 pro Mio. Tokens"
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "~$3 / $15 per M tokens, and ~2× the tokens of GLM 5.2 — so ~6× the cost overall"
-msgstr "~$3 / $15 pro Mio. Tokens, und ~2× so viele Tokens wie GLM 5.2 — also ~6× teurer insgesamt"
-
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "Daily reminders"
@@ -1588,5 +1558,15 @@ msgstr "Karteikarten aus deinen Fehlern"
 
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
-msgid "Phoenix LiveView and SQLite, with AI from GLM 5.2 or Claude."
-msgstr "Phoenix LiveView und SQLite, mit KI von GLM 5.2 oder Claude."
+msgid "Phoenix LiveView and SQLite, with AI from Claude Sonnet 5.5 or GPT-5.6 Luna."
+msgstr "Phoenix LiveView und SQLite, mit KI von Claude Sonnet 5.5 oder GPT-5.6 Luna."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Score %{score}"
+msgstr "Wertung %{score}"
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Scores from benchlm.ai, Oct 2026. Prices per million input / output tokens."
+msgstr "Wertungen von benchlm.ai, Okt. 2026. Preise pro Million Input- / Output-Tokens."

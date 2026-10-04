@@ -1541,36 +1541,6 @@ msgstr ""
 msgid "Native API"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Occasionally misses a correction or explanation"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Tested models"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Very slightly better responses"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "default"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "~$1.40 / $4.40 per M tokens"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "~$3 / $15 per M tokens, and ~2× the tokens of GLM 5.2 — so ~6× the cost overall"
-msgstr ""
-
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "Daily reminders"
@@ -1583,5 +1553,15 @@ msgstr ""
 
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
-msgid "Phoenix LiveView and SQLite, with AI from GLM 5.2 or Claude."
+msgid "Phoenix LiveView and SQLite, with AI from Claude Sonnet 5.5 or GPT-5.6 Luna."
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Score %{score}"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Scores from benchlm.ai, Oct 2026. Prices per million input / output tokens."
 msgstr ""

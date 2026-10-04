@@ -1,7 +1,7 @@
 defmodule DailyOutput.PromptCacheTest do
   use DailyOutput.DataCase
 
-  alias DailyOutput.{Cache, PromptCache}
+  alias DailyOutput.PromptCache
 
   @prompts [%{"prompt" => "Was machst du?", "translation" => "What are you doing?"}]
 
@@ -32,7 +32,7 @@ defmodule DailyOutput.PromptCacheTest do
     PromptCache.put(:prompts, [], "de", "en", @prompts)
 
     DailyOutput.Repo.update_all(
-      from(c in Cache, where: like(c.key, "prompts:%")),
+      from(c in PromptCache, where: like(c.key, "prompts:%")),
       set: [updated_at: ~U[2020-01-01 00:00:00Z]]
     )
 
