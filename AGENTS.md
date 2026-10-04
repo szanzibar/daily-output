@@ -1,519 +1,152 @@
 # Daily Output
 
-A self-hosted daily language-practice journal (Phoenix LiveView). Each day the user
-writes a journal entry and has a role-play conversation with an AI partner, both in
-their target language; the AI proofreads and the app builds streaks, a focus pool of
-grammar points to practice, and progress stats. Single user, self-hosted, installable
-as a PWA. The current target language is German (`de`); UI is English/German.
+A self-hosted, single-user language-practice app (Phoenix LiveView, SQLite, installable
+PWA). Each day you write or talk in your target language, the AI corrects you, and your
+mistakes come back as flashcards. It works for any language pair; the maintainer learns
+German. The UI is English and German.
 
-## How to work in this codebase (read this first)
+We're mid-overhaul to a guided daily flow where the app decides everything. The plan and
+its locked decisions live in `docs/guided-daily-flow.md`. Code that disagrees with it is
+on its way out.
 
-These are the standards that matter here. They override generic habits.
+These standards override generic habits. When two of them pull against each other, pick
+whatever leaves the reader with less to hold in their head.
 
-- **Radical simplicity, never clever.** Reach for the plainest solution that reads
-  clearly and is easy to maintain. Prefer deriving state from data over adding tables,
-  schedulers, or caches (e.g. streak freezes are computed from history in
-  `FocusTopics.streak_info/0` — no extra table). Don't add abstraction for hypothetical
-  futures. If a "clever" trick is tempting, write the obvious version instead.
-- **Logic is always covered by good unit tests.** Keep logic in pure functions so it's
-  testable without the DB/API/browser (see `Clock`, `Stats`, `Markdown`,
-  `Reminders.due?/4`, the streak walk). Run **`mix precommit`** before you're done and
-  fix everything (it compiles with `--warnings-as-errors`, formats, and runs the Elixir
-  + JS test suites). Add/adjust tests for every behaviour change.
-- **Mobile-first and responsive.** Design every screen for a narrow phone first, then
-  scale up with `sm:`/`lg:`. Anything in a row must wrap or stack rather than overflow
-  (the top nav is a hamburger on mobile — see `nav-must-flex-wrap` memory). Always
-  sanity-check layouts at phone width.
-- **Consistency over novelty.** One interaction model per concern — e.g. settings
-  auto-save on change with a "Saved" toast; never mix that with per-field or page-level
-  save buttons. Reuse the brutalist component vocabulary and match surrounding naming and
-  idioms instead of inventing new patterns.
-- **Polished, fun, enticing — but never noisy.** Micro-interactions and clear feedback
-  (toasts auto-dismiss and the timer resets so the latest action shows). Loading and
+## Commands
+
+- `mix precommit` before you're done. It compiles with warnings as errors, formats, and
+  runs the Elixir and JS suites. Fix everything it reports.
+- `mix test path/to/file_test.exs` runs one file. Tests sit next to the code under `lib/`.
+- `mix ecto.gen.migration name_with_underscores` creates a migration.
+- `mix gettext.extract && mix gettext.merge priv/gettext` after changing UI strings.
+
+## Architecture
+
+We follow *A Philosophy of Software Design*.
+
+- **Simplicity first.** What can we avoid doing? What can we do simpler? Added complexity
+  needs a strong, clearly worded argument in the moduledoc or PR. Simple beats clever, and
+  there's no abstraction for hypothetical futures. Priority: simplicity, readability, then
+  performance.
+- **Build strategically.** Fix the design, not the symptom. A fix goes in the shared
+  function every caller routes through, not in the one caller the bug report names.
+- **Deep modules, small interfaces.** One domain module with plain function names beats a
+  pile of tiny single-verb modules. Hide the rules behind the interface. Names say what the
+  function actually does.
+- **Built to experiment.** We're still finding the flow that keeps practice daily. The web
+  layer asks one module what to do next and never encodes the flow itself. Picking rules
+  are pure functions that take their inputs, so swapping one is a local change.
+- **Derive state from data** instead of adding tables, schedulers, or caches. Streak
+  freezes come from walking the history, not a stored counter.
+- **AI cost and latency matter, scale doesn't.** It's one user on SQLite, so load the rows
+  and do it in Elixir if that's simpler. Every AI call costs tokens and makes the user
+  wait, so a new one has to earn its place. Check `api_usages` before and after prompt
+  changes.
+- **Don't over-extract.** Following small single-use functions around a file costs more
+  than it saves, so default to inline. Extract only when the code is reused, is a
+  genuinely separate concern, or multi-clause matching is its natural form. Merge a
+  function into its only consumer. No passthrough wrappers or `defdelegate` facades. A
+  value used once stays inline.
+- **Minimal error handling.** Let it crash for things that shouldn't happen: `=` matches
+  and bang functions. AI calls fail in normal use, so each gets one designed error state in
+  the UI, not per-reason plumbing. Losing what the user typed is never OK.
+- **Don't hedge.** No branches for edge cases that won't realistically happen. A cheap,
+  low-risk failure mode gets a one-line "known and accepted" comment, not a mechanism.
+- **Tunables live where they're used**, as module attributes, not settings or config.
+  Test-only values use `if(Mix.env() == :test, do: ..., else: ...)`. Config is for what a
+  deployment actually changes, like API keys.
+- **Comments are rare and say why**, in one or two plain lines. Don't restate the code,
+  explain the obvious, or narrate the history that got us here. Older code is
+  comment-heavy; code you write or rewrite follows this rule, but leave untouched code
+  alone.
+- **Logic has unit tests.** Keep logic pure so its tests don't need the DB, API, or
+  browser (see `Clock`, `Stats`, `Reminders.due?/4`). Every behavior change adds or
+  adjusts tests. No hidden helpers for a ~3 line setup; inline it in the test.
+
+## Product
+
+- **The app decides, not the user.** It picks the activity, topic, grammar focus, and
+  flashcards. Manual management is cognitive load, and cognitive load kills motivation. No
+  choice lists, regenerate buttons, or setup screens. The only escape hatches are for
+  fixing AI mistakes, like a bad flashcard, and they should rarely be needed.
+- **Polished and fun, never noisy.** Give clear feedback. Toasts auto-dismiss. Loading and
   empty states are designed, not afterthoughts.
-- **Inputs never lose what you typed.** Every text field/textarea the user types into must
-  survive a refresh or leaving and coming back. Use the `AutoExpand` hook with a stable
-  `data-persist-key` (restores on mount, saves on input, clears on submit) — see the chat
-  composer and the flashcard answer box. Never ship an input that drops draft text.
-- **Everything user-facing is translated.** Wrap strings in `gettext(...)`. After adding
-  or changing strings: `mix gettext.extract && mix gettext.merge priv/gettext`, then fill
-  in the German (`de`) `msgstr`s and clear any `fuzzy` flags (fuzzy/empty fall back to the
-  English msgid, so German silently breaks if you skip this).
-- **Never do UTC-naive day math.** "Today", streaks, day ranges, and reminders all go
-  through `DailyOutput.Clock` (user's timezone + a 4am logical-day boundary so late-night
-  sessions still count as today).
-- **Tooling etiquette.** Prefer the dedicated file/search tools over shell for reading and
-  editing. Create migrations with `mix ecto.gen.migration`. Don't hand-edit the
-  `usage-rules` block below (it's synced from deps). `mix precommit` and `mix ecto.*` are
-  the expected shell commands.
-- Use the included `:req` (`Req`) for HTTP. When building AI features, default to the
-  latest, most capable Claude models.
-
-## Architecture map (where things live)
-
-- **Contexts** (`lib/daily_output/`): `Journal` (entries), `Conversations` (+ `Message`),
-  `FocusTopics` (focus pool **and** daily-challenge / streak / freeze logic), `Settings`
-  (single-row `Config`), `Stats` (progress aggregation), `Push` (Web Push subscriptions),
-  `Cache` + `PromptCache` (day-long caches).
-- **`Clock`** — timezone + 4am day boundary; the single source of truth for day math.
-- **`Reminders`** — GenServer that fires the daily push nag; started in the supervision
-  tree, disabled in test via `config :daily_output, :start_reminders`.
-- **AI** (`lib/daily_output/ai/`): `DailyOutput.AI` delegates to `PromptGenerator`,
-  `TopicGenerator`, `Proofreader`, `ConversationPartner`, `FocusSummarizer`,
-  `LanguageProfile`. Generation is non-deterministic and cached for the day where it makes
-  sense.
-- **Web** (`lib/daily_output_web/`): LiveViews are `*Live` modules; shared UI in
-  `components/core_components.ex` (incl. `<.rich_text>` for AI Markdown, `<.icon>`,
-  `<.input>`, flash), plus `journal_components.ex` and `conversation_components.ex`; the
-  shell, nav, and flash group live in `components/layouts.ex`.
-- **Front-end**: JS hooks in `assets/js/app.js` (`AutoExpand`, `Reminders`, `Flash`, …);
-  pure JS logic is split into modules (e.g. `annotated_text.js`) and unit-tested with
-  `node --test`. The brutalist theme (custom CSS, no design-system dependency) lives in
-  `assets/css/app.css`: `brutal-btn`, `block-*` colour blocks, `brutal-hr`, loaders.
-  Only the `app.js`/`app.css` bundles are served — no external `<script>`/`<link>`, no
-  inline `<script>`; vendor deps are imported into the bundles.
-
-## Domain concepts
-
-- **Daily challenge**: one entry **and** one conversation per logical day, each "complete"
-  = has `feedback` AND `completed_at`.
-- **Streak (tiered + freezes)**: a day counts if at least *partial* (one task); *full* =
-  both. Freezes are earned 1 per 5 full days (cap 3) and bridge missed days; an unfinished
-  *today* never zeroes the streak. All derived in `FocusTopics.streak_info/0`.
-- **Focus pool**: grammar/usage tips distilled (`FocusSummarizer`) into reusable practice
-  targets; rendered as Markdown via `<.rich_text>`.
-- **Feedback `annotated_text`** marks corrections as `[[id:original||corrected]]`; `Stats`
-  derives words-written and corrections from it (corrections per 100 words is the headline
-  "am I improving" metric).
-- **Reminders / push**: Web Push via `web_push_elixir`. The VAPID keypair is generated and
-  stored in the DB on first boot (`DailyOutput.Vapid`) — no setup, no env vars, no override.
-  Reminders are **per device** — a device is "on" iff it holds a push subscription
-  (`push_subscriptions`, one row per device), so there is no global on/off flag. The service
-  worker (`priv/static/sw.js`) is registered in all environments; iOS requires the PWA be
-  installed to the home screen.
-
-## Phoenix / Tailwind specifics
-
-- Begin LiveView templates with `<Layouts.app flash={@flash} ...>`; `Layouts` is already
-  aliased. `<.flash_group>` is only ever used inside `layouts.ex`.
-- Use `<.icon name="hero-..." />` for icons (never `Heroicons` modules) and the imported
-  `<.input>` for form fields. Overriding `<.input class=...>` replaces all default classes,
-  so restyle fully.
-- Tailwind v4 (no config file) with the `@import "tailwindcss" source(none)` + `@source`
-  syntax already in `app.css` — keep it. Never use `@apply`.
-- **Build every screen for both light and dark mode** (default follows `prefers-color-scheme`;
-  user can override to light/dark via the Appearance setting, which sets `data-theme` on `<html>`).
-  `--color-ink`/`--color-paper` and
-  daisyUI's `base-content` flip between themes; the `block-*` accent colors
-  (`block-yellow`, `block-cyan`, `block-green`, …) do **not** — they're fixed brand
-  colors that already set their own readable text color. So never put a theme-flipping
-  text utility (`text-ink`, `text-base-content`) on a `block-*` background: in the
-  opposite theme the text inverts and contrast breaks (e.g. white text on yellow). Let
-  the block's own color show through, and use `opacity-*` to mute a label. Sanity-check
-  new UI in both themes before calling it done.
-- More detailed Elixir/Phoenix/LiveView/Ecto rules follow in the synced block below.
-
-
-<!-- usage-rules-start -->
-
-<!-- phoenix:elixir-start -->
-## Elixir guidelines
-
-- Elixir lists **do not support index based access via the access syntax**
-
-  **Never do this (invalid)**:
-
-      i = 0
-      mylist = ["blue", "green"]
-      mylist[i]
-
-  Instead, **always** use `Enum.at`, pattern matching, or `List` for index based list access, ie:
-
-      i = 0
-      mylist = ["blue", "green"]
-      Enum.at(mylist, i)
-
-- Elixir variables are immutable, but can be rebound, so for block expressions like `if`, `case`, `cond`, etc
-  you *must* bind the result of the expression to a variable if you want to use it and you CANNOT rebind the result inside the expression, ie:
-
-      # INVALID: we are rebinding inside the `if` and the result never gets assigned
-      if connected?(socket) do
-        socket = assign(socket, :val, val)
-      end
-
-      # VALID: we rebind the result of the `if` to a new variable
-      socket =
-        if connected?(socket) do
-          assign(socket, :val, val)
-        end
-
-- **Never** nest multiple modules in the same file as it can cause cyclic dependencies and compilation errors
-- **Never** use map access syntax (`changeset[:field]`) on structs as they do not implement the Access behaviour by default. For regular structs, you **must** access the fields directly, such as `my_struct.field` or use higher level APIs that are available on the struct if they exist, `Ecto.Changeset.get_field/2` for changesets
-- Elixir's standard library has everything necessary for date and time manipulation. Familiarize yourself with the common `Time`, `Date`, `DateTime`, and `Calendar` interfaces by accessing their documentation as necessary. **Never** install additional dependencies unless asked or for date/time parsing (which you can use the `date_time_parser` package)
-- Don't use `String.to_atom/1` on user input (memory leak risk)
-- Predicate function names should not start with `is_` and should end in a question mark. Names like `is_thing` should be reserved for guards
-- Elixir's builtin OTP primitives like `DynamicSupervisor` and `Registry`, require names in the child spec, such as `{DynamicSupervisor, name: MyApp.MyDynamicSup}`, then you can use `DynamicSupervisor.start_child(MyApp.MyDynamicSup, child_spec)`
-- Use `Task.async_stream(collection, callback, options)` for concurrent enumeration with back-pressure. The majority of times you will want to pass `timeout: :infinity` as option
-
-## Mix guidelines
-
-- Read the docs and options before using tasks (by using `mix help task_name`)
-- To debug test failures, run tests in a specific file with `mix test test/my_test.exs` or run all previously failed tests with `mix test --failed`
-- `mix deps.clean --all` is **almost never needed**. **Avoid** using it unless you have good reason
-
-## Test guidelines
-
-- **Always use `start_supervised!/1`** to start processes in tests as it guarantees cleanup between tests
-- **Avoid** `Process.sleep/1` and `Process.alive?/1` in tests
-  - Instead of sleeping to wait for a process to finish, **always** use `Process.monitor/1` and assert on the DOWN message:
-
-      ref = Process.monitor(pid)
-      assert_receive {:DOWN, ^ref, :process, ^pid, :normal}
-
-   - Instead of sleeping to synchronize before the next call, **always** use `_ = :sys.get_state/1` to ensure the process has handled prior messages
-<!-- phoenix:elixir-end -->
-
-<!-- phoenix:phoenix-start -->
-## Phoenix guidelines
-
-- Remember Phoenix router `scope` blocks include an optional alias which is prefixed for all routes within the scope. **Always** be mindful of this when creating routes within a scope to avoid duplicate module prefixes.
-
-- You **never** need to create your own `alias` for route definitions! The `scope` provides the alias, ie:
-
-      scope "/admin", AppWeb.Admin do
-        pipe_through :browser
-
-        live "/users", UserLive, :index
-      end
-
-  the UserLive route would point to the `AppWeb.Admin.UserLive` module
-
-- `Phoenix.View` no longer is needed or included with Phoenix, don't use it
-<!-- phoenix:phoenix-end -->
-
-<!-- phoenix:ecto-start -->
-## Ecto Guidelines
-
-- **Always** preload Ecto associations in queries when they'll be accessed in templates, ie a message that needs to reference the `message.user.email`
-- Remember `import Ecto.Query` and other supporting modules when you write `seeds.exs`
-- `Ecto.Schema` fields always use the `:string` type, even for `:text`, columns, ie: `field :name, :string`
-- `Ecto.Changeset.validate_number/2` **DOES NOT SUPPORT the `:allow_nil` option**. By default, Ecto validations only run if a change for the given field exists and the change value is not nil, so such as option is never needed
-- You **must** use `Ecto.Changeset.get_field(changeset, :field)` to access changeset fields
-- Fields which are set programmatically, such as `user_id`, must not be listed in `cast` calls or similar for security purposes. Instead they must be explicitly set when creating the struct
-- **Always** invoke `mix ecto.gen.migration migration_name_using_underscores` when generating migration files, so the correct timestamp and conventions are applied
-<!-- phoenix:ecto-end -->
-
-<!-- phoenix:html-start -->
-## Phoenix HTML guidelines
-
-- Phoenix templates **always** use `~H` or .html.heex files (known as HEEx), **never** use `~E`
-- **Always** use the imported `Phoenix.Component.form/1` and `Phoenix.Component.inputs_for/1` function to build forms. **Never** use `Phoenix.HTML.form_for` or `Phoenix.HTML.inputs_for` as they are outdated
-- When building forms **always** use the already imported `Phoenix.Component.to_form/2` (`assign(socket, form: to_form(...))` and `<.form for={@form} id="msg-form">`), then access those forms in the template via `@form[:field]`
-- **Always** add unique DOM IDs to key elements (like forms, buttons, etc) when writing templates, these IDs can later be used in tests (`<.form for={@form} id="product-form">`)
-- For "app wide" template imports, you can import/alias into the `my_app_web.ex`'s `html_helpers` block, so they will be available to all LiveViews, LiveComponent's, and all modules that do `use MyAppWeb, :html` (replace "my_app" by the actual app name)
-
-- Elixir supports `if/else` but **does NOT support `if/else if` or `if/elsif`**. **Never use `else if` or `elseif` in Elixir**, **always** use `cond` or `case` for multiple conditionals.
-
-  **Never do this (invalid)**:
-
-      <%= if condition do %>
-        ...
-      <% else if other_condition %>
-        ...
-      <% end %>
-
-  Instead **always** do this:
-
-      <%= cond do %>
-        <% condition -> %>
-          ...
-        <% condition2 -> %>
-          ...
-        <% true -> %>
-          ...
-      <% end %>
-
-- HEEx require special tag annotation if you want to insert literal curly's like `{` or `}`. If you want to show a textual code snippet on the page in a `<pre>` or `<code>` block you *must* annotate the parent tag with `phx-no-curly-interpolation`:
-
-      <code phx-no-curly-interpolation>
-        let obj = {key: "val"}
-      </code>
-
-  Within `phx-no-curly-interpolation` annotated tags, you can use `{` and `}` without escaping them, and dynamic Elixir expressions can still be used with `<%= ... %>` syntax
-
-- HEEx class attrs support lists, but you must **always** use list `[...]` syntax. You can use the class list syntax to conditionally add classes, **always do this for multiple class values**:
-
-      <a class={[
-        "px-2 text-white",
-        @some_flag && "py-5",
-        if(@other_condition, do: "border-red-500", else: "border-blue-100"),
-        ...
-      ]}>Text</a>
-
-  and **always** wrap `if`'s inside `{...}` expressions with parens, like done above (`if(@other_condition, do: "...", else: "...")`)
-
-  and **never** do this, since it's invalid (note the missing `[` and `]`):
-
-      <a class={
-        "px-2 text-white",
-        @some_flag && "py-5"
-      }> ...
-      => Raises compile syntax error on invalid HEEx attr syntax
-
-- **Never** use `<% Enum.each %>` or non-for comprehensions for generating template content, instead **always** use `<%= for item <- @collection do %>`
-- HEEx HTML comments use `<%!-- comment --%>`. **Always** use the HEEx HTML comment syntax for template comments (`<%!-- comment --%>`)
-- HEEx allows interpolation via `{...}` and `<%= ... %>`, but the `<%= %>` **only** works within tag bodies. **Always** use the `{...}` syntax for interpolation within tag attributes, and for interpolation of values within tag bodies. **Always** interpolate block constructs (if, cond, case, for) within tag bodies using `<%= ... %>`.
-
-  **Always** do this:
-
-      <div id={@id}>
-        {@my_assign}
-        <%= if @some_block_condition do %>
-          {@another_assign}
-        <% end %>
-      </div>
-
-  and **Never** do this – the program will terminate with a syntax error:
-
-      <%!-- THIS IS INVALID NEVER EVER DO THIS --%>
-      <div id="<%= @invalid_interpolation %>">
-        {if @invalid_block_construct do}
-        {end}
-      </div>
-<!-- phoenix:html-end -->
-
-<!-- phoenix:liveview-start -->
-## Phoenix LiveView guidelines
-
-- **Never** use the deprecated `live_redirect` and `live_patch` functions, instead **always** use the `<.link navigate={href}>` and  `<.link patch={href}>` in templates, and `push_navigate` and `push_patch` functions LiveViews
-- **Avoid LiveComponent's** unless you have a strong, specific need for them
-- LiveViews should be named like `AppWeb.WeatherLive`, with a `Live` suffix. When you go to add LiveView routes to the router, the default `:browser` scope is **already aliased** with the `AppWeb` module, so you can just do `live "/weather", WeatherLive`
-
-### LiveView streams
-
-- **Always** use LiveView streams for collections for assigning regular lists to avoid memory ballooning and runtime termination with the following operations:
-  - basic append of N items - `stream(socket, :messages, [new_msg])`
-  - resetting stream with new items - `stream(socket, :messages, [new_msg], reset: true)` (e.g. for filtering items)
-  - prepend to stream - `stream(socket, :messages, [new_msg], at: -1)`
-  - deleting items - `stream_delete(socket, :messages, msg)`
-
-- When using the `stream/3` interfaces in the LiveView, the LiveView template must 1) always set `phx-update="stream"` on the parent element, with a DOM id on the parent element like `id="messages"` and 2) consume the `@streams.stream_name` collection and use the id as the DOM id for each child. For a call like `stream(socket, :messages, [new_msg])` in the LiveView, the template would be:
-
-      <div id="messages" phx-update="stream">
-        <div :for={{id, msg} <- @streams.messages} id={id}>
-          {msg.text}
-        </div>
-      </div>
-
-- LiveView streams are *not* enumerable, so you cannot use `Enum.filter/2` or `Enum.reject/2` on them. Instead, if you want to filter, prune, or refresh a list of items on the UI, you **must refetch the data and re-stream the entire stream collection, passing reset: true**:
-
-      def handle_event("filter", %{"filter" => filter}, socket) do
-        # re-fetch the messages based on the filter
-        messages = list_messages(filter)
-
-        {:noreply,
-         socket
-         |> assign(:messages_empty?, messages == [])
-         # reset the stream with the new messages
-         |> stream(:messages, messages, reset: true)}
-      end
-
-- LiveView streams *do not support counting or empty states*. If you need to display a count, you must track it using a separate assign. For empty states, you can use Tailwind classes:
-
-      <div id="tasks" phx-update="stream">
-        <div class="hidden only:block">No tasks yet</div>
-        <div :for={{id, task} <- @streams.tasks} id={id}>
-          {task.name}
-        </div>
-      </div>
-
-  The above only works if the empty state is the only HTML block alongside the stream for-comprehension.
-
-- When updating an assign that should change content inside any streamed item(s), you MUST re-stream the items
-  along with the updated assign:
-
-      def handle_event("edit_message", %{"message_id" => message_id}, socket) do
-        message = Chat.get_message!(message_id)
-        edit_form = to_form(Chat.change_message(message, %{content: message.content}))
-
-        # re-insert message so @editing_message_id toggle logic takes effect for that stream item
-        {:noreply,
-         socket
-         |> stream_insert(:messages, message)
-         |> assign(:editing_message_id, String.to_integer(message_id))
-         |> assign(:edit_form, edit_form)}
-      end
-
-  And in the template:
-
-      <div id="messages" phx-update="stream">
-        <div :for={{id, message} <- @streams.messages} id={id} class="flex group">
-          {message.username}
-          <%= if @editing_message_id == message.id do %>
-            <%!-- Edit mode --%>
-            <.form for={@edit_form} id="edit-form-#{message.id}" phx-submit="save_edit">
-              ...
-            </.form>
-          <% end %>
-        </div>
-      </div>
-
-- **Never** use the deprecated `phx-update="append"` or `phx-update="prepend"` for collections
-
-### LiveView JavaScript interop
-
-- Remember anytime you use `phx-hook="MyHook"` and that JS hook manages its own DOM, you **must** also set the `phx-update="ignore"` attribute
-- **Always** provide an unique DOM id alongside `phx-hook` otherwise a compiler error will be raised
-
-LiveView hooks come in two flavors, 1) colocated js hooks for "inline" scripts defined inside HEEx,
-and 2) external `phx-hook` annotations where JavaScript object literals are defined and passed to the `LiveSocket` constructor.
-
-#### Inline colocated js hooks
-
-**Never** write raw embedded `<script>` tags in heex as they are incompatible with LiveView.
-Instead, **always use a colocated js hook script tag (`:type={Phoenix.LiveView.ColocatedHook}`)
-when writing scripts inside the template**:
-
-    <input type="text" name="user[phone_number]" id="user-phone-number" phx-hook=".PhoneNumber" />
-    <script :type={Phoenix.LiveView.ColocatedHook} name=".PhoneNumber">
-      export default {
-        mounted() {
-          this.el.addEventListener("input", e => {
-            let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
-            if(match) {
-              this.el.value = `${match[1]}-${match[2]}-${match[3]}`
-            }
-          })
-        }
-      }
-    </script>
-
-- colocated hooks are automatically integrated into the app.js bundle
-- colocated hooks names **MUST ALWAYS** start with a `.` prefix, i.e. `.PhoneNumber`
-
-#### External phx-hook
-
-External JS hooks (`<div id="myhook" phx-hook="MyHook">`) must be placed in `assets/js/` and passed to the
-LiveSocket constructor:
-
-    const MyHook = {
-      mounted() { ... }
-    }
-    let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: { MyHook }
-    });
-
-#### Pushing events between client and server
-
-Use LiveView's `push_event/3` when you need to push events/data to the client for a phx-hook to handle.
-**Always** return or rebind the socket on `push_event/3` when pushing events:
-
-    # re-bind socket so we maintain event state to be pushed
-    socket = push_event(socket, "my_event", %{...})
-
-    # or return the modified socket directly:
-    def handle_event("some_event", _, socket) do
-      {:noreply, push_event(socket, "my_event", %{...})}
-    end
-
-Pushed events can then be picked up in a JS hook with `this.handleEvent`:
-
-    mounted() {
-      this.handleEvent("my_event", data => console.log("from server:", data));
-    }
-
-Clients can also push an event to the server and receive a reply with `this.pushEvent`:
-
-    mounted() {
-      this.el.addEventListener("click", e => {
-        this.pushEvent("my_event", { one: 1 }, reply => console.log("got reply from server:", reply));
-      })
-    }
-
-Where the server handled it via:
-
-    def handle_event("my_event", %{"one" => 1}, socket) do
-      {:reply, %{two: 2}, socket}
-    end
-
-### LiveView tests
-
-- `Phoenix.LiveViewTest` module and `LazyHTML` (included) for making your assertions
-- Form tests are driven by `Phoenix.LiveViewTest`'s `render_submit/2` and `render_change/2` functions
-- Come up with a step-by-step test plan that splits major test cases into small, isolated files. You may start with simpler tests that verify content exists, gradually add interaction tests
-- **Always reference the key element IDs you added in the LiveView templates in your tests** for `Phoenix.LiveViewTest` functions like `element/2`, `has_element/2`, selectors, etc
-- **Never** tests again raw HTML, **always** use `element/2`, `has_element/2`, and similar: `assert has_element?(view, "#my-form")`
-- Instead of relying on testing text content, which can change, favor testing for the presence of key elements
-- Focus on testing outcomes rather than implementation details
-- Be aware that `Phoenix.Component` functions like `<.form>` might produce different HTML than expected. Test against the output HTML structure, not your mental model of what you expect it to be
-- When facing test failures with element selectors, add debug statements to print the actual HTML, but use `LazyHTML` selectors to limit the output, ie:
-
-      html = render(view)
-      document = LazyHTML.from_fragment(html)
-      matches = LazyHTML.filter(document, "your-complex-selector")
-      IO.inspect(matches, label: "Matches")
-
-### Form handling
-
-#### Creating a form from params
-
-If you want to create a form based on `handle_event` params:
-
-    def handle_event("submitted", params, socket) do
-      {:noreply, assign(socket, form: to_form(params))}
-    end
-
-When you pass a map to `to_form/1`, it assumes said map contains the form params, which are expected to have string keys.
-
-You can also specify a name to nest the params:
-
-    def handle_event("submitted", %{"user" => user_params}, socket) do
-      {:noreply, assign(socket, form: to_form(user_params, as: :user))}
-    end
-
-#### Creating a form from changesets
-
-When using changesets, the underlying data, form params, and errors are retrieved from it. The `:as` option is automatically computed too. E.g. if you have a user schema:
-
-    defmodule MyApp.Users.User do
-      use Ecto.Schema
-      ...
-    end
-
-And then you create a changeset that you pass to `to_form`:
-
-    %MyApp.Users.User{}
-    |> Ecto.Changeset.change()
-    |> to_form()
-
-Once the form is submitted, the params will be available under `%{"user" => user_params}`.
-
-In the template, the form form assign can be passed to the `<.form>` function component:
-
-    <.form for={@form} id="todo-form" phx-change="validate" phx-submit="save">
-      <.input field={@form[:field]} type="text" />
-    </.form>
-
-Always give the form an explicit, unique DOM ID, like `id="todo-form"`.
-
-#### Avoiding form errors
-
-**Always** use a form assigned via `to_form/2` in the LiveView, and the `<.input>` component in the template. In the template **always access forms this**:
-
-    <%!-- ALWAYS do this (valid) --%>
-    <.form for={@form} id="my-form">
-      <.input field={@form[:field]} type="text" />
-    </.form>
-
-And **never** do this:
-
-    <%!-- NEVER do this (invalid) --%>
-    <.form for={@changeset} id="my-form">
-      <.input field={@changeset[:field]} type="text" />
-    </.form>
-
-- You are FORBIDDEN from accessing the changeset in the template as it will cause errors
-- **Never** use `<.form let={f} ...>` in the template, instead **always use `<.form for={@form} ...>`**, then drive all form references from the form assign as in `@form[:field]`. The UI should **always** be driven by a `to_form/2` assigned in the LiveView module that is derived from a changeset
-<!-- phoenix:liveview-end -->
-
-<!-- usage-rules-end -->
+- **Inputs never lose what you typed.** Every text field survives a refresh or leaving and
+  coming back: use the `AutoExpand` hook with a stable `data-persist-key`.
+- **One interaction model per concern.** Settings auto-save on change with a "Saved"
+  toast. Never add save buttons.
+- **Any language pair.** Never hardcode German. Language behavior comes from settings and
+  `DailyOutput.AI.LanguageProfile`; name data generically (`target_text`, not `german`).
+
+## Codebase rules
+
+- **Day math goes through `DailyOutput.Clock`**: the user's timezone plus a 4am day
+  boundary, so a late-night session still counts as today. Never use `Date.utc_today/0`.
+- **Everything user-facing is translated.** Wrap strings in `gettext`, run extract and
+  merge, then fill in the German `msgstr`s and clear `fuzzy` flags. Fuzzy or empty entries
+  silently fall back to English.
+- **All AI calls go through `DailyOutput.AI.chat/2` with a `purpose:`**, so cost tracking
+  per feature works. Use `Req` for any other HTTP.
+- **Push reminders are per device.** A device is on if it has a `push_subscriptions`
+  row; there's no global flag. VAPID keys are generated into the DB on first boot, with no
+  env vars.
+
+### Web
+
+- **Mobile-first.** Design for a narrow phone, then scale up with `sm:`/`lg:`. Rows wrap or
+  stack, never overflow. The nav is a hamburger on mobile. Check every screen at phone
+  width.
+- **Light and dark mode.** `--color-ink`, `--color-paper`, and `base-content` flip between
+  themes; the `block-*` colors don't, and set their own readable text color. Never put
+  `text-ink` or `text-base-content` on a `block-*` background, because the text inverts in
+  the other theme. Mute labels there with `opacity-*`. Check new UI in both themes.
+- **Reuse the brutalist vocabulary** in `assets/css/app.css`: `brutal-btn`, `block-*`,
+  `brutal-hr`, and the loaders. It's Tailwind v4 with no config file. Keep the
+  `@import "tailwindcss" source(none)` + `@source` setup, and never use `@apply`.
+- **The layout comes from the router's `live_session`**, so templates don't wrap
+  themselves in `<Layouts.app>`. Use `<.icon name="hero-...">`, `<.input>`, and
+  `<.rich_text>` for AI Markdown. Passing `class` to `<.input>` replaces all its default
+  classes.
+- **Only the `app.js` and `app.css` bundles are served.** No external `<script>` or
+  `<link>`, and no inline `<script>`; vendor code is imported into the bundles. For
+  template JS, use a colocated hook (`<script :type={Phoenix.LiveView.ColocatedHook}
+  name=".Name">`). A `phx-hook` element needs a unique `id`, plus `phx-update="ignore"` if
+  the hook owns its DOM.
+- **Pure JS logic gets its own module** in `assets/js/` with a `node --test` file. Add new
+  test files to the `test` alias in `mix.exs`, because it lists them by name.
+- **LiveView tests assert on element IDs** with `has_element?/2`, not on raw HTML, so give
+  key elements stable IDs.
+
+## Writing
+
+This applies to docs, moduledocs, comments, commit messages, and PR text.
+
+- Trust the reader to have the context. Don't re-explain the domain or the alternatives.
+- Make the point in as few words as possible. One short paragraph per decision:
+  "<what> because <why>."
+- Use simple, casual, everyday speech. Never academic, stuffy, or fluffy.
+- Match the maintainer's voice, and reuse their own wording verbatim when it exists.
+- Follow [Google's developer style guide](https://developers.google.com/style/highlights):
+  active voice, present tense, short sentences.
+
+The voice we want:
+
+```
+`Today` decides what you do next. Pages ask `next_step/0` and render the answer, so
+reordering the flow is a one-line change here.
+
+The pick is seeded by the date, so a refresh never changes today's activity.
+
+Cards count as done when nothing is due, because a new user has no cards yet.
+```
+
+## Working style for agents
+
+- **Keep your context clean.** Focus on planning and the big picture. Delegate building,
+  checking, and searching to capable subagents, put these rules in every code-writing
+  brief, and relay only the conclusions.
+- **Verify external facts against the real source.** For model ids, prices, API response
+  shapes, and library behavior, curl it, read `deps/` and `mix.lock`, or make a one-off
+  call. Test stubs match what the real thing returns.
+- **Push back** when a request conflicts with these principles, even the maintainer's
+  own. A whole subsystem for one tiny value is a smell; say so before building it.
