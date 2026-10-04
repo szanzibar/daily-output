@@ -9,29 +9,30 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     {:ok, view, _html} = live(conn, ~p"/settings")
 
     view
-    |> form("#settings-form", config: %{timer_minutes: "9", language_level: "C1"})
+    |> form("#settings-form", config: %{about_you: "I sing in a choir.", language_level: "C1"})
     |> render_change()
 
     config = Settings.get_config()
-    assert config.timer_minutes == 9
+    assert config.about_you == "I sing in a choir."
     assert config.language_level == "C1"
     assert_push_event(view, "toast", %{kind: "info"})
   end
 
-  test "invalid input is rejected and the previous value stays saved", %{conn: conn} do
-    {:ok, config} = Settings.ensure_config()
-    {:ok, _} = Settings.update_config(config, %{timer_minutes: 5})
-
+  test "the About you field keeps a local draft", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/settings")
 
-    html =
-      view
-      |> form("#settings-form", config: %{timer_minutes: "0"})
-      |> render_change()
+    assert has_element?(
+             view,
+             ~s(#config_about_you[phx-hook="AutoExpand"][data-persist-key="settings-about-you"])
+           )
+  end
 
-    # zero is out of range → not saved, error shown inline
-    assert Settings.get_config().timer_minutes == 5
-    assert html =~ "less than or equal to" or html =~ "must be"
+  test "invalid input is rejected and the previous value stays saved", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/settings")
+
+    render_change(view, "save_form", %{"config" => %{"ai_model" => "gpt-9"}})
+
+    assert Settings.get_config().ai_model == "sonnet-5.5"
   end
 
   test "AI section saves model/provider and its key status follows the choice", %{conn: conn} do

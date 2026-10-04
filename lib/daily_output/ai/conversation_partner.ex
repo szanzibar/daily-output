@@ -22,7 +22,7 @@ defmodule DailyOutput.AI.ConversationPartner do
     target = Keyword.fetch!(opts, :target_language)
     native = Keyword.fetch!(opts, :native_language)
     level = Keyword.get(opts, :language_level, "B2")
-    context = Keyword.get(opts, :prompt_context, "")
+    context = Keyword.get(opts, :about_you, "")
     profile = LanguageProfile.resolve(target)
 
     rules =

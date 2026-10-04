@@ -11,31 +11,6 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/daily_output_web/live/conversation_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "%{count} exchanges"
-msgstr ""
-
-#: lib/daily_output_web/live/focus_topics_live.ex
-#, elixir-autogen, elixir-format
-msgid "%{count} mastered topics"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "%{count}/%{min} exchanges"
-msgstr ""
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "(Conversation)"
-msgstr ""
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "(empty)"
-msgstr ""
-
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "A daily language practice journal with AI feedback."
@@ -44,22 +19,6 @@ msgstr ""
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "AI conversations"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "AI error: %{reason}"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "ANTHROPIC_API_KEY not set."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "ANTHROPIC_API_KEY not set. Add it to the .env file and restart the server."
 msgstr ""
 
 #: lib/daily_output_web/components/layouts.ex
@@ -76,21 +35,6 @@ msgstr ""
 #: lib/daily_output_web/components/core_components.ex
 #, elixir-autogen, elixir-format
 msgid "Actions"
-msgstr ""
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "Activity"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Additional context for the AI. Tell it about your goals, weaknesses, or preferences."
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Additional instructions for the AI"
 msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
@@ -113,17 +57,9 @@ msgstr ""
 msgid "Auto (based on level)"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#: lib/daily_output_web/live/focus_topics_live.ex
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Back"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Back to entry"
 msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
@@ -136,56 +72,20 @@ msgstr ""
 msgid "Built with"
 msgstr ""
 
-#: lib/daily_output_web/live/entry_live/edit.ex
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/new.ex
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Choose Focus"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Choose a topic from your focus pool to concentrate on."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Continue"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Continue Conversation"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/home_live.ex
+#: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Conversation"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Conversation deleted."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Conversation with Corrections"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Conversation — %{date}"
 msgstr ""
 
 #: lib/daily_output_web/components/journal_components.ex
@@ -199,84 +99,20 @@ msgstr ""
 msgid "Corrections & tips"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Could not delete."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Could not generate prompts: %{reason}. You can still write freestyle!"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Could not load conversation openers: %{reason}"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Could not load feedback: %{reason}"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Could not save feedback."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Could not save message."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Could not save response."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Could not save."
 msgstr ""
 
 #: lib/daily_output_web/celebration.ex
-#: lib/daily_output_web/live/home_live.ex
+#: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Day complete!"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #, elixir-autogen, elixir-format
 msgid "Delete"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/edit.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Done"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Draft"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Edit"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Edit — %{date}"
 msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
@@ -284,20 +120,9 @@ msgstr ""
 msgid "Elementary"
 msgstr ""
 
-#: lib/daily_output_web/live/entry_live/show.ex
-#: lib/daily_output_web/live/home_live.ex
+#: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Entry"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Entry deleted."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Entry — %{date}"
 msgstr ""
 
 #: lib/daily_output_web/live/about_live.ex
@@ -306,24 +131,8 @@ msgid "Features"
 msgstr ""
 
 #: lib/daily_output_web/components/journal_components.ex
-#: lib/daily_output_web/live/entry_live/edit.ex
 #, elixir-autogen, elixir-format
 msgid "Feedback"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Feedback received!"
-msgstr ""
-
-#: lib/daily_output_web/components/layouts.ex
-#, elixir-autogen, elixir-format
-msgid "Focus"
-msgstr ""
-
-#: lib/daily_output_web/live/focus_topics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Focus Pool"
 msgstr ""
 
 #: lib/daily_output_web/components/journal_components.ex
@@ -336,32 +145,9 @@ msgstr ""
 msgid "Focus topics for targeted practice"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/edit.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Focus:"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Freestyle"
-msgstr ""
-
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "Generate language output every day as a habit. Get instant AI feedback on your writing and conversations. The only way to get better is to practice."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Go"
-msgstr ""
-
-#: lib/daily_output_web/components/journal_components.ex
-#, elixir-autogen, elixir-format
-msgid "I did use it"
 msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
@@ -394,32 +180,6 @@ msgstr ""
 msgid "Level"
 msgstr ""
 
-#: lib/daily_output_web/components/journal_components.ex
-#: lib/daily_output_web/live/focus_topics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Mastered"
-msgstr ""
-
-#: lib/daily_output_web/live/focus_topics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Mastered on %{date}"
-msgstr ""
-
-#: lib/daily_output_web/components/journal_components.ex
-#, elixir-autogen, elixir-format
-msgid "Mastered — remove from pool"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Min. exchanges per conversation"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Minutes per entry"
-msgstr ""
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Native language"
@@ -430,55 +190,9 @@ msgstr ""
 msgid "Near Native"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "New Conversation"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "New Entry"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "New Feedback"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "New Version"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "No"
-msgstr ""
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "No conversation yet today."
-msgstr ""
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "No entries yet. Start today!"
-msgstr ""
-
-#: lib/daily_output_web/live/focus_topics_live.ex
-#, elixir-autogen, elixir-format
-msgid "No focus topics yet. Add tips from your feedback!"
-msgstr ""
-
 #: lib/daily_output_web/components/journal_components.ex
 #, elixir-autogen, elixir-format
 msgid "Not used."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Open"
 msgstr ""
 
 #: lib/daily_output_web/live/about_live.ex
@@ -486,21 +200,9 @@ msgstr ""
 msgid "Open source"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Overridden — counts as used."
-msgstr ""
-
 #: lib/daily_output_web/components/conversation_components.ex
-#: lib/daily_output_web/live/conversation_live/continue.ex
 #, elixir-autogen, elixir-format
 msgid "Partner"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Prompt Context"
 msgstr ""
 
 #: lib/daily_output_web/live/about_live.ex
@@ -508,22 +210,10 @@ msgstr ""
 msgid "Purpose"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Really delete?"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Save"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Saved."
 msgstr ""
 
 #: lib/daily_output_web/components/layouts.ex
@@ -532,20 +222,9 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: lib/daily_output_web/live/conversation_live/new.ex
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Skip"
-msgstr ""
-
 #: lib/daily_output_web/components/layouts.ex
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Speak without a focus topic"
 msgstr ""
 
 #: lib/daily_output_web/components/journal_components.ex
@@ -573,35 +252,9 @@ msgstr ""
 msgid "Timed writing entries"
 msgstr ""
 
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Timer & Conversation"
-msgstr ""
-
 #: lib/daily_output_web/components/journal_components.ex
-#: lib/daily_output_web/live/conversation_live/show.ex
 #, elixir-autogen, elixir-format
 msgid "Tips"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Topic:"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Topics"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Topics for AI-generated writing prompts. What would you like to write about?"
-msgstr ""
-
-#: lib/daily_output_web/live/focus_topics_live.ex
-#, elixir-autogen, elixir-format
-msgid "Topics from your feedback tips to focus on while writing and speaking. Choose a focus topic before each entry or conversation."
 msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
@@ -624,35 +277,9 @@ msgstr ""
 msgid "We can't find the internet"
 msgstr ""
 
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "What will you write about?"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Write a message..."
-msgstr ""
-
 #: lib/daily_output_web/components/layouts.ex
 #, elixir-autogen, elixir-format
 msgid "Write every day."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Write something first!"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Write without a focus topic"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Yes"
 msgstr ""
 
 #: lib/daily_output_web/components/conversation_components.ex
@@ -665,161 +292,14 @@ msgstr ""
 msgid "Your CEFR level. Feedback is calibrated — only errors you should know at this level. From B2, feedback is in the target language."
 msgstr ""
 
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Your Text"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Your conversation is being reviewed"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Your text is being reviewed"
-msgstr ""
-
 #: lib/daily_output_web/components/core_components.ex
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "day"
-msgid_plural "days"
-msgstr[0] ""
-msgstr[1] ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "e.g. Work, Shopping, Neighbors..."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "v%{version} of %{total}"
-msgstr ""
-
 #: lib/daily_output_web/components/journal_components.ex
-#: lib/daily_output_web/live/entry_live/show.ex
 #, elixir-autogen, elixir-format
 msgid "words"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Could not complete conversation."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Could not complete entry."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/show.ex
-#: lib/daily_output_web/live/entry_live/show.ex
-#, elixir-autogen, elixir-format
-msgid "Could not override focus result."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Could not start conversation."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Could not start entry."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format
-msgid "Focus topic not used yet. Continue and resubmit to complete the day."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Focus topic not used yet. Edit and resubmit to complete the day."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Generate 5 openers"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Generate 5 prompts"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Generating openers"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Generating prompts"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Get fresh ideas tailored to your topics"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Give your partner a topic"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "In English or German — your partner opens the conversation about it"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Let your partner suggest a way in"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Need inspiration?"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/continue.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Partner is typing"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Regenerate"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Save Draft"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/new.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "Write about whatever you want — just start."
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Write the first message"
-msgstr ""
-
-#: lib/daily_output_web/live/conversation_live/new.ex
-#, elixir-autogen, elixir-format
-msgid "Your partner will respond to what you write"
 msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
@@ -888,11 +368,6 @@ msgstr ""
 msgid "Test notification — push is working."
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "Streak freezes — each one saves a missed day"
-msgstr ""
-
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Active days"
@@ -921,11 +396,6 @@ msgstr ""
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Finish an entry or conversation to start tracking your progress."
-msgstr ""
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Focus mastered"
 msgstr ""
 
 #: lib/daily_output_web/live/progress_live.ex
@@ -972,33 +442,6 @@ msgstr ""
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Saved"
-msgstr ""
-
-#: lib/daily_output_web/celebration.ex
-#, elixir-autogen, elixir-format
-msgid "%{count}-day streak!"
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "A suggested target — finish whenever you're ready."
-msgstr ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Just %{count} more word and you can finish."
-msgid_plural "Just %{count} more words and you can finish."
-msgstr[0] ""
-msgstr[1] ""
-
-#: lib/daily_output_web/live/entry_live/edit.ex
-#, elixir-autogen, elixir-format
-msgid "Target!"
-msgstr ""
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "No entry yet today."
 msgstr ""
 
 #: lib/daily_output_web/components/conversation_components.ex
@@ -1168,19 +611,9 @@ msgid "Card updated."
 msgstr ""
 
 #: lib/daily_output_web/components/layouts.ex
-#: lib/daily_output_web/live/home_live.ex
+#: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Cards"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "Cards per day"
-msgstr ""
-
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "Caught up"
 msgstr ""
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
@@ -1200,7 +633,6 @@ msgstr ""
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #: lib/daily_output_web/live/progress_live.ex
-#: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Flashcards"
 msgstr ""
@@ -1208,11 +640,6 @@ msgstr ""
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Home"
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
-msgid "How many cards make a full flashcard day. New cards are added automatically to fill this target."
 msgstr ""
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
@@ -1235,11 +662,6 @@ msgstr ""
 msgid "Nothing due right now. Come back tomorrow!"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format, fuzzy
-msgid "One task keeps your streak alive. All three make it a full day."
-msgstr ""
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
@@ -1252,7 +674,7 @@ msgid "Study"
 msgstr ""
 
 #: lib/daily_output_web/live/flashcard_live/study.ex
-#: lib/daily_output_web/live/home_live.ex
+#: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Today"
 msgstr ""
@@ -1366,11 +788,6 @@ msgstr ""
 msgid "Total today"
 msgstr ""
 
-#: lib/daily_output_web/live/home_live.ex
-#, elixir-autogen, elixir-format
-msgid "See time stats"
-msgstr ""
-
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "AI cost"
@@ -1393,11 +810,6 @@ msgstr ""
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
-msgid "Conversation openers"
-msgstr ""
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
 msgid "Conversation partner"
 msgstr ""
 
@@ -1408,17 +820,7 @@ msgstr ""
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
-msgid "Focus summaries"
-msgstr ""
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
 msgid "Proofreading"
-msgstr ""
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Writing prompts"
 msgstr ""
 
 #: lib/daily_output_web/live/progress_live.ex
@@ -1533,11 +935,6 @@ msgstr ""
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "e.g. I struggle with verb tenses. I'd like to practice the subjunctive."
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Native API"
 msgstr ""
 
@@ -1564,4 +961,19 @@ msgstr ""
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Scores from benchlm.ai, Oct 2026. Prices per million input / output tokens."
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format, fuzzy
+msgid "About you"
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "What you like to talk about, your goals, and anything else the AI should know. Today's topics and prompts come from this."
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "e.g. I sing in a choir, I'm moving to Zurich, and I struggle with verb tenses."
 msgstr ""

@@ -55,10 +55,6 @@ defmodule DailyOutputWeb.JournalComponents do
 
   attr :feedback, :map, required: true
   attr :error, :string, default: nil
-  attr :source_type, :string, default: nil
-  attr :source_id, :integer, default: nil
-  attr :focus_pool_texts, :any, default: %MapSet{}
-  attr :focus_mastered, :boolean, default: false
   slot :actions, required: true
 
   def feedback_view(assigns) do
@@ -93,44 +89,18 @@ defmodule DailyOutputWeb.JournalComponents do
       </div>
 
       <%!-- Focus Result --%>
-      <.focus_result_box
-        :if={@feedback["focus_result"]}
-        result={@feedback["focus_result"]}
-        focus_mastered={@focus_mastered}
-      />
+      <.focus_result_box :if={@feedback["focus_result"]} result={@feedback["focus_result"]} />
 
-      <%!-- Commentary / Tipps with "+" to add to focus pool --%>
+      <%!-- Commentary / Tipps --%>
       <div :if={@feedback["commentary"] != []} class="border-4 border-ink p-5">
         <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
           <span class="inline-block w-3 h-3 block-blue"></span> {gettext("Tips")}
         </h2>
-        <div
-          :for={item <- @feedback["commentary"] || []}
-          class="mb-3 last:mb-0 flex items-start gap-2"
-        >
-          <div class="flex-1">
-            <span class="text-xs font-mono uppercase px-2 py-0.5 border-2 border-ink mr-2">
-              {item["type"]}
-            </span>
-            <span class="text-sm">{item["text"]}</span>
-          </div>
-          <%= if @source_type do %>
-            <%= if item["text"] in @focus_pool_texts do %>
-              <span class="brutal-btn px-2 py-0.5 block-green text-xs shrink-0">
-                ✓
-              </span>
-            <% else %>
-              <button
-                phx-click="add_focus_topic"
-                phx-value-text={item["text"]}
-                phx-value-source_type={@source_type}
-                phx-value-source_id={@source_id}
-                class="brutal-btn px-2 py-0.5 block-blue text-xs shrink-0 phx-click-loading:opacity-50 phx-click-loading:animate-pulse"
-              >
-                +
-              </button>
-            <% end %>
-          <% end %>
+        <div :for={item <- @feedback["commentary"] || []} class="mb-3 last:mb-0">
+          <span class="text-xs font-mono uppercase px-2 py-0.5 border-2 border-ink mr-2">
+            {item["type"]}
+          </span>
+          <span class="text-sm">{item["text"]}</span>
         </div>
       </div>
 
@@ -146,7 +116,6 @@ defmodule DailyOutputWeb.JournalComponents do
   # ── Focus Result ────────────────────────────────────────
 
   attr :result, :any, required: true
-  attr :focus_mastered, :boolean, default: false
 
   def focus_result_box(assigns) do
     used = focus_flag(assigns.result, "used")
@@ -183,29 +152,6 @@ defmodule DailyOutputWeb.JournalComponents do
         <% end %>
       </p>
       <p :if={@comment} class="text-sm">{@comment}</p>
-      <div class="flex flex-wrap gap-2 mt-3">
-        <%= if @used && @correct do %>
-          <%= if @focus_mastered do %>
-            <span class="brutal-btn px-4 py-1.5 block-green text-xs">
-              ✓ {gettext("Mastered")}
-            </span>
-          <% else %>
-            <button
-              phx-click="master_focus_topic"
-              class="brutal-btn px-4 py-1.5 bg-ink text-paper text-xs"
-            >
-              {gettext("Mastered — remove from pool")}
-            </button>
-          <% end %>
-        <% end %>
-        <button
-          :if={!@used}
-          phx-click="override_focus_result"
-          class="brutal-btn px-4 py-1.5 block-dark text-xs"
-        >
-          {gettext("I did use it")}
-        </button>
-      </div>
     </div>
     """
   end

@@ -1,7 +1,7 @@
 defmodule DailyOutput.FlashcardsTest do
   use DailyOutput.DataCase
 
-  alias DailyOutput.{Clock, Flashcards, Repo, Settings}
+  alias DailyOutput.{Clock, Flashcards, Repo}
   alias DailyOutput.Flashcards.{Card, CompletedDay, Review}
 
   defp new_card(target \\ "Ich ging nach Hause.", native \\ "I went home.") do
@@ -18,63 +18,15 @@ defmodule DailyOutput.FlashcardsTest do
     card
   end
 
-  defp set_target(n) do
-    {:ok, config} = Settings.ensure_config()
-    {:ok, _} = Settings.update_config(config, %{flashcards_per_day: n})
-  end
+  describe "ingest/1" do
+    test "skips when there is nothing substantive to drill (no AI call)" do
+      activity = %{
+        feedback: %{"annotated_text" => "Das [[haus||Haus||spelling||capital]] ist schön."},
+        messages: [%{feedback: nil}, %{feedback: %{"annotated_text" => "Alles gut."}}]
+      }
 
-  describe "ingest_correction/4" do
-    test "skips when there is nothing to correct (no AI call)" do
-      assert {:ok, 0} = Flashcards.ingest_correction(:message, 1, nil)
-
-      assert {:ok, 0} =
-               Flashcards.ingest_correction(:message, 1, %{"annotated_text" => "Alles gut."})
-    end
-
-    test "skips a correction that is only a capitalization fix (no AI call)" do
-      feedback = %{"annotated_text" => "Das [[haus||Haus||spelling||capital]] ist schön."}
-
-      assert {:ok, 0} = Flashcards.ingest_correction(:entry, 1, feedback)
-      assert Flashcards.count_cards() == 0
-    end
-  end
-
-  describe "ingest_conversation/3" do
-    test "skips when no user message has substantive corrections (no AI call)" do
-      messages = [
-        %{role: "assistant", feedback: nil},
-        %{role: "user", feedback: nil},
-        %{role: "user", feedback: %{"annotated_text" => "Alles gut."}}
-      ]
-
-      assert {:ok, 0} = Flashcards.ingest_conversation(1, messages)
-      assert Flashcards.count_cards() == 0
-    end
-
-    test "skips when the only corrections are capitalization fixes (no AI call)" do
-      messages = [
-        %{
-          role: "user",
-          feedback: %{"annotated_text" => "Das [[haus||Haus||spelling||capital]] ist schön."}
-        }
-      ]
-
-      assert {:ok, 0} = Flashcards.ingest_conversation(1, messages)
-      assert Flashcards.count_cards() == 0
-    end
-
-    test "skips messages already turned into cards (no AI call)" do
-      # A substantive correction, but the message is already watermarked — as copied-forward
-      # turns are when a completed conversation is continued — so it must not be re-carded.
-      messages = [
-        %{
-          role: "user",
-          flashcards_at: DateTime.utc_now(),
-          feedback: %{"annotated_text" => "Ich [[gehe||ging||verb||past]] gestern heim."}
-        }
-      ]
-
-      assert {:ok, 0} = Flashcards.ingest_conversation(1, messages)
+      assert {:ok, 0} = Flashcards.ingest(activity)
+      assert {:ok, 0} = Flashcards.ingest(%{feedback: nil, messages: []})
       assert Flashcards.count_cards() == 0
     end
   end
@@ -123,54 +75,11 @@ defmodule DailyOutput.FlashcardsTest do
     end
   end
 
-  describe "progress + completed_dates" do
-    test "today_progress counts distinct cards reviewed today" do
-      set_target(5)
-      c1 = new_card()
-      c2 = new_card()
-      {:ok, _} = Flashcards.review(c1, :pass)
-      {:ok, _} = Flashcards.review(c2, :fail)
+  test "complete_day/1 records a day once" do
+    Flashcards.complete_day(Clock.today())
+    Flashcards.complete_day(Clock.today())
 
-      progress = Flashcards.today_progress()
-      assert progress.done == 2
-    end
-
-    test "today counts as complete once the quota is met" do
-      set_target(2)
-      c1 = new_card()
-      c2 = new_card()
-      {:ok, _} = Flashcards.review(c1, :pass)
-      {:ok, _} = Flashcards.review(c2, :pass)
-
-      assert Flashcards.today_progress().complete?
-      assert MapSet.member?(Flashcards.completed_dates(), Clock.today())
-    end
-
-    test "an under-target day is not complete while cards remain" do
-      set_target(5)
-      for _ <- 1..5, do: new_card()
-      [card | _] = Flashcards.due_today(5)
-      {:ok, _} = Flashcards.review(card, :pass)
-
-      refute Flashcards.today_progress().complete?
-      refute MapSet.member?(Flashcards.completed_dates(), Clock.today())
-    end
-
-    test "meeting the quota records a persistent completion for the day" do
-      set_target(1)
-      {:ok, _} = Flashcards.review(new_card(), :pass)
-
-      assert Repo.get_by(CompletedDay, day: Clock.today())
-    end
-
-    test "a completed past day stays complete after the target is raised" do
-      past = Date.add(Clock.today(), -1)
-      Repo.insert!(%CompletedDay{day: past})
-
-      # Raising the cap must NOT retroactively revoke a day that was already earned.
-      set_target(100)
-
-      assert MapSet.member?(Flashcards.completed_dates(), past)
-    end
+    assert Repo.aggregate(CompletedDay, :count) == 1
+    assert Flashcards.completed_days() == MapSet.new([Clock.today()])
   end
 end

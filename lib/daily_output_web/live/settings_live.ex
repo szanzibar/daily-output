@@ -14,7 +14,6 @@ defmodule DailyOutputWeb.SettingsLive do
        page_title: gettext("Settings"),
        config: config,
        form: to_form(changeset),
-       topic_input: "",
        push_configured: Push.configured?(),
        vapid_public_key: Push.vapid_public_key(),
        # Per-device push state. :unknown until the browser reports its
@@ -42,63 +41,6 @@ defmodule DailyOutputWeb.SettingsLive do
   end
 
   def handle_event("save_form", _params, socket), do: {:noreply, socket}
-
-  def handle_event("add_topic", %{"topic" => topic}, socket) do
-    topic = String.trim(topic)
-
-    if topic != "" and topic not in socket.assigns.config.topics do
-      new_topics = socket.assigns.config.topics ++ [topic]
-
-      case Settings.update_config(socket.assigns.config, %{topics: new_topics}) do
-        {:ok, config} ->
-          changeset = Settings.change_config(config)
-          {:noreply, assign(socket, config: config, form: to_form(changeset), topic_input: "")}
-
-        {:error, _} ->
-          {:noreply, socket}
-      end
-    else
-      {:noreply, assign(socket, topic_input: "")}
-    end
-  end
-
-  def handle_event("remove_topic", %{"topic" => topic}, socket) do
-    new_topics = List.delete(socket.assigns.config.topics, topic)
-
-    case Settings.update_config(socket.assigns.config, %{topics: new_topics}) do
-      {:ok, config} ->
-        changeset = Settings.change_config(config)
-        {:noreply, assign(socket, config: config, form: to_form(changeset))}
-
-      {:error, _} ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("update_topic_input", %{"key" => "Enter", "value" => value}, socket) do
-    # Enter pressed — add the topic
-    topic = String.trim(value)
-
-    if topic != "" and topic not in socket.assigns.config.topics do
-      new_topics = socket.assigns.config.topics ++ [topic]
-
-      case Settings.update_config(socket.assigns.config, %{topics: new_topics}) do
-        {:ok, config} ->
-          changeset = Settings.change_config(config)
-          {:noreply, assign(socket, config: config, form: to_form(changeset), topic_input: "")}
-
-        {:error, _} ->
-          {:noreply, socket}
-      end
-    else
-      {:noreply, assign(socket, topic_input: "")}
-    end
-  end
-
-  def handle_event("update_topic_input", params, socket) do
-    value = params["topic_input"] || params["value"] || ""
-    {:noreply, assign(socket, topic_input: value)}
-  end
 
   # ── Reminders & timezone ────────────────────────────────
 
@@ -228,62 +170,6 @@ defmodule DailyOutputWeb.SettingsLive do
         phx-debounce="500"
         class="space-y-6"
       >
-        <%!-- Timer + Exchanges --%>
-        <div class="border-4 border-ink p-5">
-          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-red"></span> {gettext("Timer & Conversation")}
-          </h2>
-          <%!-- Labels share the top row, inputs share the bottom row, so a label that
-               wraps to two lines never knocks its input out of line with the other. --%>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-            <label for={@form[:timer_minutes].id} class="label">
-              {gettext("Minutes per entry")}
-            </label>
-            <label for={@form[:min_exchanges].id} class="label">
-              {gettext("Min. exchanges per conversation")}
-            </label>
-            <.input
-              field={@form[:timer_minutes]}
-              type="number"
-              min="1"
-              max="60"
-              class="w-24 input font-mono text-lg border-3 border-ink"
-            />
-            <.input
-              field={@form[:min_exchanges]}
-              type="number"
-              min="1"
-              max="50"
-              class="w-24 input font-mono text-lg border-3 border-ink"
-            />
-          </div>
-        </div>
-
-        <%!-- Flashcards --%>
-        <div class="border-4 border-ink p-5">
-          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-cyan"></span> {gettext("Flashcards")}
-          </h2>
-          <p class="text-sm text-base-content/60 mb-3">
-            {gettext(
-              "How many cards make a full flashcard day. New cards are added automatically to fill this target."
-            )}
-          </p>
-          <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-            <label for={@form[:flashcards_per_day].id} class="label">
-              {gettext("Cards per day")}
-            </label>
-            <span></span>
-            <.input
-              field={@form[:flashcards_per_day]}
-              type="number"
-              min="1"
-              max="100"
-              class="w-24 input font-mono text-lg border-3 border-ink"
-            />
-          </div>
-        </div>
-
         <%!-- Languages --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
@@ -326,72 +212,28 @@ defmodule DailyOutputWeb.SettingsLive do
           />
         </div>
 
-        <%!-- Topics --%>
+        <%!-- About you --%>
         <div class="border-4 border-ink p-5">
           <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-yellow"></span> {gettext("Topics")}
-          </h2>
-          <p class="text-sm text-base-content/60 mb-3">
-            {gettext("Topics for AI-generated writing prompts. What would you like to write about?")}
-          </p>
-
-          <div class="flex gap-2 mb-3">
-            <input
-              type="text"
-              name="topic_input"
-              value={@topic_input}
-              phx-keyup="update_topic_input"
-              phx-key="Enter"
-              placeholder={gettext("e.g. Work, Shopping, Neighbors...")}
-              class="input border-3 border-ink flex-1 font-mono text-sm"
-              phx-change="update_topic_input"
-            />
-            <button
-              type="button"
-              phx-click="add_topic"
-              phx-value-topic={@topic_input}
-              class="brutal-btn px-4 py-2 block-green text-sm"
-            >
-              +
-            </button>
-          </div>
-
-          <div :if={@config.topics != []} class="flex flex-wrap gap-2">
-            <span
-              :for={topic <- @config.topics}
-              class="inline-flex items-center gap-1 px-3 py-1 border-3 border-ink bg-base-200 text-sm font-mono"
-            >
-              {topic}
-              <button
-                type="button"
-                phx-click="remove_topic"
-                phx-value-topic={topic}
-                class="ml-1 text-bold-red hover:text-ink cursor-pointer font-bold"
-              >
-                &times;
-              </button>
-            </span>
-          </div>
-        </div>
-
-        <%!-- Prompt Context --%>
-        <div class="border-4 border-ink p-5">
-          <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-            <span class="inline-block w-3 h-3 block-orange"></span> {gettext("Prompt Context")}
+            <span class="inline-block w-3 h-3 block-yellow"></span> {gettext("About you")}
           </h2>
           <p class="text-sm text-base-content/60 mb-3">
             {gettext(
-              "Additional context for the AI. Tell it about your goals, weaknesses, or preferences."
+              "What you like to talk about, your goals, and anything else the AI should know. Today's topics and prompts come from this."
             )}
           </p>
           <.input
-            field={@form[:prompt_context]}
+            field={@form[:about_you]}
             type="textarea"
-            label={gettext("Additional instructions for the AI")}
             placeholder={
-              gettext("e.g. I struggle with verb tenses. I'd like to practice the subjunctive.")
+              gettext(
+                "e.g. I sing in a choir, I'm moving to Zurich, and I struggle with verb tenses."
+              )
             }
             rows="4"
+            phx-hook="AutoExpand"
+            data-persist-key="settings-about-you"
+            data-no-enter-submit
             class="w-full textarea border-3 border-ink font-mono text-sm"
           />
         </div>

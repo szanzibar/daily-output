@@ -12,7 +12,7 @@ defmodule DailyOutput.SettingsTest do
 
   describe "ensure_config/0" do
     test "creates default config when none exists" do
-      assert {:ok, %Config{timer_minutes: 5, target_language: "de"}} = Settings.ensure_config()
+      assert {:ok, %Config{target_language: "de"}} = Settings.ensure_config()
     end
 
     test "returns existing config" do
@@ -33,29 +33,31 @@ defmodule DailyOutput.SettingsTest do
       {:ok, _} = Settings.ensure_config()
       config = Settings.get_config()
       assert config.id
-      assert config.timer_minutes == 5
     end
   end
 
   describe "update_config/2" do
     test "updates fields" do
       {:ok, config} = Settings.ensure_config()
-      {:ok, updated} = Settings.update_config(config, %{timer_minutes: 10, language_level: "C1"})
-      assert updated.timer_minutes == 10
+
+      {:ok, updated} =
+        Settings.update_config(config, %{about_you: "I sing.", language_level: "C1"})
+
+      assert updated.about_you == "I sing."
       assert updated.language_level == "C1"
     end
 
-    test "validates timer range" do
+    test "validates the theme" do
       {:ok, config} = Settings.ensure_config()
-      assert {:error, changeset} = Settings.update_config(config, %{timer_minutes: 0})
-      assert %{timer_minutes: _} = errors_on(changeset)
+      assert {:error, changeset} = Settings.update_config(config, %{theme: "neon"})
+      assert %{theme: _} = errors_on(changeset)
     end
   end
 
   describe "change_config/2" do
     test "returns changeset" do
       {:ok, config} = Settings.ensure_config()
-      changeset = Settings.change_config(config, %{timer_minutes: 15})
+      changeset = Settings.change_config(config, %{language_level: "A2"})
       assert changeset.valid?
     end
   end
@@ -63,12 +65,10 @@ defmodule DailyOutput.SettingsTest do
   describe "defaults" do
     test "has sensible defaults" do
       {:ok, config} = Settings.ensure_config()
-      assert config.timer_minutes == 5
       assert config.target_language == "de"
       assert config.native_language == "en"
       assert config.language_level == "B2"
-      assert config.min_exchanges == 5
-      assert config.topics == []
+      assert config.about_you == ""
       assert config.ai_provider == "direct"
       assert config.ai_model == "sonnet-5.5"
     end

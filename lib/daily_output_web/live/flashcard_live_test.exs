@@ -3,8 +3,8 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.{Conversations, Flashcards, Journal, Repo, Settings}
-  alias DailyOutput.Flashcards.Card
+  alias DailyOutput.{Activities, Flashcards, Repo, Today}
+  alias DailyOutput.Flashcards.{Card, Review}
 
   defp new_card(target, native) do
     {:ok, card} =
@@ -13,23 +13,6 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
       |> Repo.insert()
 
     card
-  end
-
-  defp set_target(n) do
-    {:ok, config} = Settings.ensure_config()
-    {:ok, _} = Settings.update_config(config, %{flashcards_per_day: n})
-  end
-
-  defp complete_entry_today do
-    {:ok, entry} = Journal.create_entry(%{body: "x", language: "de"})
-    {:ok, entry} = Journal.save_feedback(entry, %{"annotated_text" => "x"})
-    {:ok, _} = Journal.complete_entry(entry)
-  end
-
-  defp complete_conversation_today do
-    {:ok, convo} = Conversations.create_conversation(%{topic: "x", language: "de"})
-    {:ok, convo} = Conversations.save_feedback(convo, %{"annotated_text" => "x"})
-    {:ok, _} = Conversations.complete_conversation(convo)
   end
 
   describe "study page" do
@@ -61,7 +44,7 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
       # Brief green celebration showing the answer, with a confetti pop.
       assert html =~ "Ich ging nach Hause."
       assert_push_event(view, "confetti", %{})
-      assert Flashcards.today_progress().done == 1
+      assert Repo.aggregate(Review, :count) == 1
 
       # The scheduled tick auto-advances (only one card → done, no input).
       send(view.pid, :advance_after_correct)
@@ -105,27 +88,28 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
       assert Repo.get(Card, card.id).native_text == "I returned home."
     end
 
-    test "shows a goal-complete indicator once the daily target is met", %{conn: conn} do
-      set_target(1)
+    test "shows a goal-complete indicator once every card in the session is answered",
+         %{conn: conn} do
       new_card("Ich ging nach Hause.", "I went home.")
       {:ok, view, _html} = live(conn, ~p"/flashcards")
+      refute has_element?(view, "[data-role=goal-complete]")
 
       view |> form("form", %{answer: "Ich ging nach Hause."}) |> render_submit()
 
-      assert Flashcards.today_progress().complete?
       assert has_element?(view, "[data-role=goal-complete]")
     end
 
-    test "celebrates the whole day when flashcards are the finishing task", %{conn: conn} do
-      complete_entry_today()
-      complete_conversation_today()
-      set_target(1)
+    test "finishing the session passes the day and celebrates", %{conn: conn} do
+      activity = Activities.create(%{kind: "conversation"})
+      Activities.complete(activity, %{}, nil)
       new_card("Ich ging nach Hause.", "I went home.")
       {:ok, view, _html} = live(conn, ~p"/flashcards")
 
       view |> form("form", %{answer: "Ich ging nach Hause."}) |> render_submit()
+      send(view.pid, :advance_after_correct)
 
       assert_push_event(view, "celebrate", %{kind: "day"})
+      assert Today.next_step() == :done
     end
 
     test "the reveal offers an AI translation button", %{conn: conn} do
@@ -145,7 +129,7 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
       # Treated as a pass (confetti + recorded), with a gentle capitalization nudge that
       # shows the fixes (locale-independent, like the other UI assertions here).
       assert_push_event(view, "confetti", %{})
-      assert Flashcards.today_progress().done == 1
+      assert Repo.aggregate(Review, :count) == 1
       assert has_element?(view, "[data-role=case-warning]")
       assert has_element?(view, "[data-role=case-warning] .line-through", "ich")
     end

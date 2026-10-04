@@ -2,12 +2,8 @@ defmodule DailyOutput.Flashcards.CompletedDay do
   use Ecto.Schema
 
   @moduledoc """
-  A logical date whose flashcard quota was met — recorded once, as a settled fact.
-
-  Completion used to be recomputed from the review log against the *current* daily target,
-  so changing `flashcards_per_day` retroactively re-judged every past day. Recording the
-  outcome here instead means a day that was earned stays earned, no matter how the target
-  changes later.
+  A logical date whose card session was finished, or had nothing due. Recorded because which
+  cards were due on a past day can't be derived later.
   """
 
   schema "flashcard_completed_days" do

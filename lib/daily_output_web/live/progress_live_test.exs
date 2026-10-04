@@ -4,8 +4,7 @@ defmodule DailyOutputWeb.ProgressLiveTest do
   import Phoenix.LiveViewTest
   import Ecto.Query
 
-  alias DailyOutput.{Clock, Journal, Repo}
-  alias DailyOutput.Journal.Entry
+  alias DailyOutput.{Activities, Clock, Repo}
   alias DailyOutput.Stats.ApiUsage
 
   test "shows an empty state with no activity", %{conn: conn} do
@@ -14,18 +13,11 @@ defmodule DailyOutputWeb.ProgressLiveTest do
   end
 
   test "shows totals and the trend once there is completed work", %{conn: conn} do
-    {:ok, entry} = Journal.create_entry(%{body: "x", language: "de"})
-    at = DateTime.new!(Clock.today(), ~T[12:00:00], "Etc/UTC")
-
-    {1, _} =
-      Repo.update_all(
-        from(e in Entry, where: e.id == ^entry.id),
-        set: [
-          inserted_at: at,
-          completed_at: at,
-          feedback: %{"annotated_text" => "[[1:foo||bar]] one two three"}
-        ]
-      )
+    Activities.create(%{
+      kind: "journal",
+      feedback: %{"annotated_text" => "[[foo||bar||verb||v]] one two three"},
+      completed_at: DateTime.utc_now()
+    })
 
     {:ok, view, _html} = live(conn, ~p"/progress")
 

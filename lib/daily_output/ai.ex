@@ -13,55 +13,7 @@ defmodule DailyOutput.AI do
 
   require Logger
 
-  alias DailyOutput.AI.{
-    PromptGenerator,
-    Proofreader,
-    TopicGenerator,
-    ConversationPartner,
-    FocusSummarizer
-  }
-
-  alias DailyOutput.{PromptCache, Settings, Stats}
-
-  defdelegate generate_prompts(topics, target_language, native_language),
-    to: PromptGenerator
-
-  defdelegate generate_openers(topics, target_language, native_language),
-    to: TopicGenerator
-
-  defdelegate proofread(text, opts), to: Proofreader
-
-  defdelegate proofread_message(text, opts), to: Proofreader
-
-  defdelegate assess_conversation(messages, opts), to: Proofreader
-
-  defdelegate conversation_respond(messages, opts), to: ConversationPartner, as: :respond
-
-  defdelegate conversation_open(topic, opts), to: ConversationPartner, as: :open
-
-  defdelegate summarize_focus_topic(tip_text), to: FocusSummarizer, as: :summarize
-
-  @doc "Returns today's cached journal prompts, or `nil` if none have been generated yet."
-  def cached_prompts(topics, target_language, native_language),
-    do: PromptCache.get(:prompts, topics, target_language, native_language)
-
-  @doc "Generates a fresh set of journal prompts and caches them for the day."
-  def refresh_prompts(topics, target_language, native_language) do
-    with {:ok, prompts} <- generate_prompts(topics, target_language, native_language) do
-      {:ok, PromptCache.put(:prompts, topics, target_language, native_language, prompts)}
-    end
-  end
-
-  @doc "Returns today's cached conversation openers, or `nil` if none have been generated yet."
-  def cached_openers(topics, target_language, native_language),
-    do: PromptCache.get(:openers, topics, target_language, native_language)
-
-  @doc "Generates a fresh set of conversation openers and caches them for the day."
-  def refresh_openers(topics, target_language, native_language) do
-    with {:ok, openers} <- generate_openers(topics, target_language, native_language) do
-      {:ok, PromptCache.put(:openers, topics, target_language, native_language, openers)}
-    end
-  end
+  alias DailyOutput.{Settings, Stats}
 
   @key_vars %{
     anthropic: "ANTHROPIC_API_KEY",
@@ -149,14 +101,11 @@ defmodule DailyOutput.AI do
     _ -> nil
   end
 
-  @doc """
-  Maps a Settings `{ai_provider, ai_model}` pair to a ReqLLM "provider:model" spec.
-  Unknown or `nil` values fall back to direct Sonnet 5.5.
-  """
+  @doc "Maps a Settings `{ai_provider, ai_model}` pair to a ReqLLM \"provider:model\" spec."
   def spec_for("openrouter", "gpt-5.6-luna"), do: "openrouter:openai/gpt-5.6-luna"
-  def spec_for("openrouter", _sonnet), do: "openrouter:anthropic/claude-sonnet-5.5"
-  def spec_for(_direct, "gpt-5.6-luna"), do: "openai:gpt-5.6-luna"
-  def spec_for(_direct, _sonnet), do: "anthropic:claude-sonnet-5-5"
+  def spec_for("openrouter", "sonnet-5.5"), do: "openrouter:anthropic/claude-sonnet-5.5"
+  def spec_for("direct", "gpt-5.6-luna"), do: "openai:gpt-5.6-luna"
+  def spec_for("direct", "sonnet-5.5"), do: "anthropic:claude-sonnet-5-5"
 
   defp req_llm_chat(provider, api_key, model_id, opts) do
     # A struct, not a string, so ReqLLM doesn't warn about ids newer than its catalog.

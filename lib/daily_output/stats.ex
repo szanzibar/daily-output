@@ -3,15 +3,14 @@ defmodule DailyOutput.Stats do
   Aggregates the feedback the app already produces into progress metrics — the
   "I'm actually improving" view.
 
-  Corrections are marked `[[N:original||corrected]]`. From that we derive, uniformly across
-  entries and conversations:
+  Corrections are marked `[[before||after||type||explanation]]`. From that we derive, the
+  same way for journals and conversations:
 
     * **words written** — the user's text with markers reduced to what they wrote
     * **corrections** — the number of correction markers
 
-  Journal entries carry one `feedback["annotated_text"]`. Conversations are corrected
-  per-message, so we sum each user message's own `feedback` (older conversations that
-  predate per-message corrections fall back to the conversation-level blob).
+  A journal carries one `feedback["annotated_text"]`. Conversations are corrected per
+  message, so we sum each user message's own `feedback`.
 
   The headline metric is **corrections per 100 words by week** — when it trends down,
   you're getting better.
@@ -20,14 +19,9 @@ defmodule DailyOutput.Stats do
   import Ecto.Query
 
   alias DailyOutput.{Clock, Repo}
-  alias DailyOutput.Journal.Entry
-  alias DailyOutput.Conversations.Conversation
-  alias DailyOutput.FocusTopics.FocusTopic
+  alias DailyOutput.Activities.Activity
   alias DailyOutput.Stats.{ApiUsage, TimeLog}
 
-  # Current markers are [[before||after||type||explanation]]; older stored entries use the
-  # legacy [[N:before||after]] (with a numeric id). One capture grabs the inner of either,
-  # and marker_before_after/1 strips the legacy id so both count the same way.
   @marker ~r/\[\[([\s\S]*?)\]\]/
 
   # Sections we track time for.
@@ -43,10 +37,9 @@ defmodule DailyOutput.Stats do
 
     %{
       total_words: sum(samples, & &1.words),
-      entries: Enum.count(samples, &(&1.type == :entry)),
-      conversations: Enum.count(samples, &(&1.type == :conversation)),
+      journals: Enum.count(samples, &(&1.kind == "journal")),
+      conversations: Enum.count(samples, &(&1.kind == "conversation")),
       active_days: samples |> Enum.map(& &1.date) |> Enum.uniq() |> length(),
-      focus_mastered: mastered_count(),
       trend: trend(samples, today, weeks),
       recap: recap(samples, today),
       total_time: total_time(),
@@ -288,66 +281,28 @@ defmodule DailyOutput.Stats do
 
   # ── internals ──────────────────────────────────────────
 
+  # One sample per completed activity. A journal's text is its feedback; a conversation's is
+  # each user message's feedback, or its body when no correction came back.
   defp samples do
-    entry_rows() ++ conversation_rows()
-  end
-
-  defp entry_rows do
-    from(r in Entry,
-      where: is_nil(r.deleted_at) and not is_nil(r.feedback) and not is_nil(r.completed_at),
-      select: {r.inserted_at, r.feedback}
-    )
+    from(a in Activity, where: not is_nil(a.completed_at), preload: :messages)
     |> Repo.all()
-    |> Enum.map(fn {inserted_at, feedback} ->
-      text = feedback["annotated_text"] || ""
+    |> Enum.map(fn activity ->
+      texts =
+        if activity.kind == "journal" do
+          [activity.feedback["annotated_text"] || ""]
+        else
+          for msg <- activity.messages, msg.role == "user" do
+            (is_map(msg.feedback) && msg.feedback["annotated_text"]) || msg.body
+          end
+        end
 
       %{
-        type: :entry,
-        date: Clock.to_logical_date(inserted_at),
-        words: word_count(text),
-        corrections: correction_count(text)
+        kind: activity.kind,
+        date: activity.date,
+        words: sum(texts, &word_count/1),
+        corrections: sum(texts, &correction_count/1)
       }
     end)
-  end
-
-  defp conversation_rows do
-    from(c in Conversation,
-      where: is_nil(c.deleted_at) and not is_nil(c.feedback) and not is_nil(c.completed_at),
-      preload: [:messages]
-    )
-    |> Repo.all()
-    |> Enum.map(fn convo ->
-      {words, corrections} = conversation_counts(convo)
-
-      %{
-        type: :conversation,
-        date: Clock.to_logical_date(convo.inserted_at),
-        words: words,
-        corrections: corrections
-      }
-    end)
-  end
-
-  # New conversations are corrected per-message: sum each user message's own feedback
-  # (using its body when a message has no feedback). Conversations predating per-message
-  # corrections fall back to the conversation-level annotated_text blob.
-  defp conversation_counts(convo) do
-    user_messages = Enum.filter(convo.messages, &(&1.role == "user"))
-    legacy_text = (convo.feedback || %{})["annotated_text"] || ""
-
-    cond do
-      Enum.any?(user_messages, &is_map(&1.feedback)) ->
-        Enum.reduce(user_messages, {0, 0}, fn msg, {words, corrections} ->
-          text = (is_map(msg.feedback) && msg.feedback["annotated_text"]) || msg.body || ""
-          {words + word_count(text), corrections + correction_count(text)}
-        end)
-
-      legacy_text != "" ->
-        {word_count(legacy_text), correction_count(legacy_text)}
-
-      true ->
-        {sum(user_messages, &word_count(&1.body || "")), 0}
-    end
   end
 
   # Weekly buckets of the last `weeks` rolling 7-day windows, oldest → newest.
@@ -378,21 +333,8 @@ defmodule DailyOutput.Stats do
       days_active: window |> Enum.map(& &1.date) |> Enum.uniq() |> length(),
       words: words,
       corrections: sum(window, & &1.corrections),
-      error_rate: rate(sum(window, & &1.corrections), words),
-      focus_mastered: mastered_count(since: start)
+      error_rate: rate(sum(window, & &1.corrections), words)
     }
-  end
-
-  defp mastered_count(opts \\ []) do
-    query = from(t in FocusTopic, where: not is_nil(t.mastered_at))
-
-    query =
-      case Keyword.get(opts, :since) do
-        nil -> query
-        date -> from(t in query, where: t.mastered_at >= ^elem(Clock.day_range(date), 0))
-      end
-
-    Repo.aggregate(query, :count)
   end
 
   @doc false
@@ -425,10 +367,9 @@ defmodule DailyOutput.Stats do
     end)
   end
 
-  # Marker inner -> {before, after}, tolerating the legacy "N:" id prefix. A marker with no ||
-  # delimiter is :malformed (skipped/left as-is).
+  # Marker inner -> {before, after}. A marker with no || delimiter is :malformed.
   defp marker_before_after(inner) do
-    case String.split(Regex.replace(~r/^\d+:/, inner, ""), "||") do
+    case String.split(inner, "||") do
       [_single] -> :malformed
       [before | rest] -> {before, List.first(rest) || ""}
     end

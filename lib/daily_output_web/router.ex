@@ -16,16 +16,9 @@ defmodule DailyOutputWeb.Router do
     live_session :default,
       layout: {DailyOutputWeb.Layouts, :app},
       on_mount: {DailyOutputWeb.Locale, :set_locale} do
-      live "/", HomeLive
-      live "/entries/new", EntryLive.New
-      live "/entries/:id", EntryLive.Show
-      live "/entries/:id/edit", EntryLive.Edit
-      live "/conversations/new", ConversationLive.New
-      live "/conversations/:id", ConversationLive.Show
-      live "/conversations/:id/continue", ConversationLive.Continue
+      live "/", TodayLive
       live "/flashcards", FlashcardLive.Study
       live "/flashcards/manage", FlashcardLive.Manage
-      live "/focus", FocusTopicsLive
       live "/progress", ProgressLive
       live "/settings", SettingsLive
       live "/about", AboutLive

@@ -40,12 +40,6 @@ defmodule DailyOutputWeb.Layouts do
               {gettext("Cards")}
             </.link>
             <.link
-              navigate={~p"/focus"}
-              class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-blue no-underline text-center"
-            >
-              {gettext("Focus")}
-            </.link>
-            <.link
               navigate={~p"/progress"}
               class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-purple no-underline text-center"
             >

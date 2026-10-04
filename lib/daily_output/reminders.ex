@@ -12,7 +12,7 @@ defmodule DailyOutput.Reminders do
 
   use Gettext, backend: DailyOutputWeb.Gettext
 
-  alias DailyOutput.{Clock, FocusTopics, Push, Settings}
+  alias DailyOutput.{Clock, Push, Settings, Today}
 
   @tick :timer.minutes(1)
 
@@ -38,10 +38,11 @@ defmodule DailyOutput.Reminders do
   @doc "Checks the current state and sends a reminder if one is due. Returns :sent | :skip."
   def maybe_remind do
     config = Settings.get_config()
-    day_done? = FocusTopics.daily_challenge_status().all_done
+    streak = Today.streak()
+    day_done? = streak.today_status != :pending
 
     if Push.configured?() and Push.any?() and due?(config, Clock.now(), Clock.today(), day_done?) do
-      Push.send_to_all(notification(config))
+      Push.send_to_all(notification(config, streak.count))
       {:ok, saved} = Settings.ensure_config()
       Settings.update_config(saved, %{last_reminder_on: Clock.today()})
       :sent
@@ -71,9 +72,8 @@ defmodule DailyOutput.Reminders do
     state
   end
 
-  defp notification(config) do
+  defp notification(config, streak) do
     put_locale(config)
-    streak = FocusTopics.current_streak()
 
     body =
       if streak > 0 do

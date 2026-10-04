@@ -45,11 +45,6 @@ defmodule DailyOutput.AITest do
       assert AI.spec_for("openrouter", "sonnet-5.5") == "openrouter:anthropic/claude-sonnet-5.5"
       assert AI.spec_for("openrouter", "gpt-5.6-luna") == "openrouter:openai/gpt-5.6-luna"
     end
-
-    test "unknown or retired values fall back to direct Sonnet 5.5" do
-      assert AI.spec_for(nil, nil) == "anthropic:claude-sonnet-5-5"
-      assert AI.spec_for("direct", "glm-5.2") == "anthropic:claude-sonnet-5-5"
-    end
   end
 
   describe "API keys" do

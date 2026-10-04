@@ -1,7 +1,7 @@
 defmodule DailyOutputWeb.FlashcardLive.Study do
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.{Flashcards, FocusTopics, Settings, Stats}
+  alias DailyOutput.{Flashcards, Settings, Stats, Today}
   alias DailyOutput.AI.LanguageProfile
   alias DailyOutputWeb.Celebration
 
@@ -15,16 +15,15 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   @impl true
   def mount(_params, _session, socket) do
     config = Settings.get_config()
-    target = Flashcards.daily_target()
-    target_name = LanguageProfile.resolve(config.target_language || "de").language_name
+    target_name = LanguageProfile.resolve(config.target_language).language_name
+    queue = Today.card_queue()
 
     socket =
       socket
       |> assign(
         page_title: gettext("Flashcards"),
         target_language_name: target_name,
-        target: target,
-        progress: Flashcards.today_progress(),
+        goal: length(queue),
         input: "",
         diff: nil,
         case_diffs: [],
@@ -34,10 +33,11 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
         # `review_index` is an index into it, we're looking back instead of studying live.
         history: [],
         review_index: nil,
-        # If the day is already fully done, don't re-fire the day celebration mid-session.
-        day_celebrated: FocusTopics.daily_challenge_status().all_done
+        # If the day already passed, don't re-fire the day celebration.
+        day_celebrated: Today.streak().today_status != :pending
       )
-      |> load_card(Flashcards.due_today(target))
+      |> assign_progress()
+      |> load_card(queue)
 
     {:ok, socket}
   end
@@ -47,15 +47,20 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     assign(socket, current: card, queue: rest, phase: :prompt, input: "", diff: nil)
   end
 
+  # An empty queue finishes today's card session.
   defp load_card(socket, []) do
-    assign(socket,
+    Today.finish_cards()
+
+    socket
+    |> assign(
       current: nil,
       queue: [],
       phase: :done,
       input: "",
       diff: nil,
-      more_available: Flashcards.due_today(socket.assigns.target) != []
+      more_available: Today.card_queue() != []
     )
+    |> maybe_celebrate_day()
   end
 
   @impl true
@@ -65,18 +70,11 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
 
     {:ok, updated} = Flashcards.review(card, verdict.result, verdict.new_blank_indices)
 
-    socket =
-      socket
-      |> assign(progress: Flashcards.today_progress())
-      |> record_history(card, verdict)
-
-    # If this review just completed the whole day, fire the big celebration once.
-    {socket, day_completed?} = maybe_celebrate_day(socket)
+    socket = socket |> record_history(card, verdict) |> assign_progress()
 
     if verdict.result == :pass do
       Process.send_after(self(), :advance_after_correct, @correct_pause_ms)
-      # A small confetti pop for the win — unless the big day celebration already fired.
-      socket = if day_completed?, do: socket, else: push_event(socket, "confetti", %{})
+      socket = push_event(socket, "confetti", %{})
       {:noreply, assign(socket, phase: :correct, case_diffs: verdict.case_diffs)}
     else
       # Show what didn't match and re-drill this card (now eased) later in the session.
@@ -102,7 +100,13 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   def handle_event("resume", _params, socket), do: {:noreply, assign(socket, review_index: nil)}
 
   def handle_event("study_more", _params, socket) do
-    {:noreply, load_card(socket, Flashcards.due_today(socket.assigns.target))}
+    queue = Today.card_queue()
+
+    {:noreply,
+     socket
+     |> assign(goal: socket.assigns.progress.done + length(queue))
+     |> assign_progress()
+     |> load_card(queue)}
   end
 
   # Fix a bad card on the spot (e.g. an inexact translation) without leaving the session.
@@ -235,15 +239,19 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
 
   defp answer_from_params(_card, _params), do: %{}
 
-  # Fire the shared day-complete / streak celebration the moment a review completes the
-  # whole day (no matter which task was last). Returns {socket, fired?}.
+  # Distinct cards answered this session, against the session's size.
+  defp assign_progress(socket) do
+    done = socket.assigns.history |> Enum.uniq_by(& &1.card.id) |> length()
+    goal = max(socket.assigns.goal, done)
+    assign(socket, progress: %{done: done, goal: goal, complete?: done >= goal})
+  end
+
+  # Celebrate once, the moment finishing the cards passes the day.
   defp maybe_celebrate_day(socket) do
-    if not socket.assigns.day_celebrated and FocusTopics.daily_challenge_status().all_done do
-      streak = FocusTopics.streak_info()
-      socket = Celebration.maybe_push(socket, Celebration.after_completion(true, streak.count))
-      {assign(socket, day_celebrated: true), true}
+    if not socket.assigns.day_celebrated and Today.streak().today_status != :pending do
+      socket |> Celebration.maybe_push("day") |> assign(day_celebrated: true)
     else
-      {socket, false}
+      socket
     end
   end
 

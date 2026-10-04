@@ -54,9 +54,6 @@ defmodule DailyOutputWeb.ProgressLive do
   defp purpose_label("assessment"), do: gettext("Conversation review")
   defp purpose_label("conversation"), do: gettext("Conversation partner")
   defp purpose_label("flashcards"), do: gettext("Flashcards")
-  defp purpose_label("prompts"), do: gettext("Writing prompts")
-  defp purpose_label("openers"), do: gettext("Conversation openers")
-  defp purpose_label("focus_summary"), do: gettext("Focus summaries")
   defp purpose_label(other), do: other |> String.replace("_", " ") |> String.capitalize()
 
   @impl true
@@ -80,12 +77,7 @@ defmodule DailyOutputWeb.ProgressLive do
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <.stat label={gettext("Words written")} value={@overview.total_words} class="block-yellow" />
           <.stat label={gettext("Active days")} value={@overview.active_days} class="block-cyan" />
-          <.stat
-            label={gettext("Focus mastered")}
-            value={@overview.focus_mastered}
-            class="block-green"
-          />
-          <.stat label={gettext("Entries")} value={@overview.entries} class="bg-base-100" />
+          <.stat label={gettext("Entries")} value={@overview.journals} class="bg-base-100" />
           <.stat
             label={gettext("Conversations")}
             value={@overview.conversations}
@@ -249,14 +241,13 @@ defmodule DailyOutputWeb.ProgressLive do
         <%!-- This week recap --%>
         <div class="border-4 border-ink p-5 block-purple">
           <h2 class="text-lg font-black uppercase mb-3">{gettext("This week")}</h2>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <.recap label={gettext("Days")} value={@overview.recap.days_active} />
             <.recap label={gettext("Words")} value={@overview.recap.words} />
             <.recap
               label={gettext("Mistakes/100")}
               value={if @overview.recap.error_rate, do: @overview.recap.error_rate, else: "—"}
             />
-            <.recap label={gettext("Focus mastered")} value={@overview.recap.focus_mastered} />
           </div>
         </div>
       </div>

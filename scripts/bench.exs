@@ -190,7 +190,7 @@ opts = fn target, level ->
     target_language: target,
     native_language: "en",
     language_level: level,
-    prompt_context: "",
+    about_you: "",
     model: spec,
     thinking: thinking == "on"
   ]
@@ -300,7 +300,7 @@ assessment =
     )
   end)
 
-# Built from the conversation's corrections the same way Flashcards.ingest_conversation does.
+# Built from the conversation's corrections the same way Flashcards.ingest/1 does.
 corrections =
   Enum.flat_map(full_transcript, fn msg ->
     annotated = (msg.feedback || %{})["annotated_text"] || ""
