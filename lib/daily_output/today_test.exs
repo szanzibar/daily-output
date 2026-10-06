@@ -364,5 +364,33 @@ defmodule DailyOutput.TodayTest do
       assert transcript =~ "Partner: Hoi!"
       assert transcript =~ "(fixed: haus → Haus)"
     end
+
+    test "a message whose correction got lost is corrected before the review" do
+      activity = Activities.create(%{kind: "conversation", prompt: "Hoi!", focus: @focus})
+      message = Activities.add_message(activity, "user", "Das haus ist gross.")
+
+      expect_ai(%{
+        "corrected" => "Das Haus ist gross.",
+        "corrections" => [
+          %{"before" => "haus", "after" => "Haus", "type" => "spelling", "explanation" => "Nomen"}
+        ]
+      })
+
+      expect_ai(%{
+        "summary" => "You described a house.",
+        "focus_result" => %{"used" => false, "correct" => false, "comment" => "Nicht benutzt."}
+      })
+
+      assert {:ok, done} = Today.finish(activity)
+      assert Repo.get!(Message, message.id).feedback["annotations"] != []
+      assert done.feedback["improvement"]["total_corrections"] == 1
+
+      assert_received {:ai_request, _correction}
+
+      assert_received {:ai_request,
+                       %{"input" => [_system, %{"content" => [%{"text" => transcript}]}]}}
+
+      assert transcript =~ "(fixed: haus → Haus)"
+    end
   end
 end

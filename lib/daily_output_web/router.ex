@@ -17,8 +17,11 @@ defmodule DailyOutputWeb.Router do
       layout: {DailyOutputWeb.Layouts, :app},
       on_mount: {DailyOutputWeb.Locale, :set_locale} do
       live "/", TodayLive
+      live "/conversation/:id", ConversationLive
+      live "/journal/:id", JournalLive
       live "/flashcards", FlashcardLive.Study
       live "/flashcards/manage", FlashcardLive.Manage
+      live "/history", HistoryLive
       live "/progress", ProgressLive
       live "/settings", SettingsLive
       live "/about", AboutLive

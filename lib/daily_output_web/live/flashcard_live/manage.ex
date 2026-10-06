@@ -87,17 +87,9 @@ defmodule DailyOutputWeb.FlashcardLive.Manage do
   def render(assigns) do
     ~H"""
     <div class="max-w-3xl mx-auto space-y-5">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
-          {gettext("Manage Flashcards")}
-        </h1>
-        <.link
-          navigate={~p"/flashcards"}
-          class="brutal-btn px-3 py-1.5 text-xs block-green no-underline"
-        >
-          {gettext("Study")} &rarr;
-        </.link>
-      </div>
+      <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">
+        {gettext("Manage Flashcards")}
+      </h1>
 
       <p class="text-sm font-mono text-base-content/60">
         {ngettext("%{count} card", "%{count} cards", length(@cards), count: length(@cards))}

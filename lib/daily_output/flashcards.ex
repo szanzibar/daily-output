@@ -19,7 +19,6 @@ defmodule DailyOutput.Flashcards do
     Card,
     Cloze,
     CompletedDay,
-    Diff,
     Generator,
     Markers,
     Review,
@@ -177,9 +176,6 @@ defmodule DailyOutput.Flashcards do
       updated
     end)
   end
-
-  @doc "Unified word-level diff of the typed answer against the expected one (for the reveal)."
-  defdelegate diff(expected, actual), to: Diff, as: :unified
 
   @doc """
   Asks the AI for a clearer translation pair for `card` (when the prompt is too ambiguous

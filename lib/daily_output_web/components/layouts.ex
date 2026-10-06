@@ -17,7 +17,7 @@ defmodule DailyOutputWeb.Layouts do
         <div class="px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2">
           <a href="/" class="no-underline text-white">
             <span class="text-xl sm:text-3xl font-black tracking-tighter uppercase">
-              DAILY<span class="block-yellow text-ink px-1">OUTPUT</span>
+              DAILY<span class="block-yellow px-1">OUTPUT</span>
             </span>
           </a>
 
@@ -26,36 +26,30 @@ defmodule DailyOutputWeb.Layouts do
           <input type="checkbox" id="nav-toggle" class="peer hidden" aria-hidden="true" />
           <label
             for="nav-toggle"
-            class="sm:hidden brutal-btn px-3 py-2 block-yellow text-ink cursor-pointer"
+            class="sm:hidden brutal-btn px-3 py-2 block-yellow cursor-pointer"
             aria-label={gettext("Menu")}
           >
             <.icon name="hero-bars-3" class="w-6 h-6" />
           </label>
 
-          <nav class="hidden peer-checked:flex sm:flex basis-full sm:basis-auto flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <nav class="hidden peer-checked:flex sm:flex basis-full sm:basis-auto flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1 sm:gap-2">
             <.link
-              navigate={~p"/flashcards"}
-              class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-cyan no-underline text-center"
+              :for={
+                {label, path, color} <- [
+                  {gettext("Today"), ~p"/", "block-yellow"},
+                  {gettext("History"), ~p"/history", "block-cyan"},
+                  {gettext("Progress"), ~p"/progress", "block-purple"},
+                  {gettext("Settings"), ~p"/settings", "block-orange"},
+                  {gettext("About"), ~p"/about", "block-green"}
+                ]
+              }
+              navigate={path}
+              class={[
+                "brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm no-underline text-center",
+                color
+              ]}
             >
-              {gettext("Cards")}
-            </.link>
-            <.link
-              navigate={~p"/progress"}
-              class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-purple no-underline text-center"
-            >
-              {gettext("Progress")}
-            </.link>
-            <.link
-              navigate={~p"/settings"}
-              class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-orange no-underline text-center"
-            >
-              {gettext("Settings")}
-            </.link>
-            <.link
-              navigate={~p"/about"}
-              class="brutal-btn px-3 py-2 sm:py-1.5 text-xs sm:text-sm block-green no-underline text-center"
-            >
-              {gettext("About")}
+              {label}
             </.link>
           </nav>
         </div>

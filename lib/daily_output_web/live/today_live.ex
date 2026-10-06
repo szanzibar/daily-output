@@ -1,36 +1,119 @@
 defmodule DailyOutputWeb.TodayLive do
-  @moduledoc "Placeholder until phase 4: shows which step `Today.next_step/0` picked."
+  @moduledoc """
+  `/` asks `Today.next_step/0` and sends you to that step, or shows the done screen. Steps
+  only ever navigate back here, so the flow lives in `Today` alone.
+
+  The celebration fires here, once per day and status, because the browser remembers it
+  in localStorage.
+  """
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.Today
+  alias DailyOutput.{Clock, Today}
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: gettext("Today"), step: Today.next_step())}
+    # Replace, so Back from a step skips `/` instead of bouncing straight forward again.
+    case Today.next_step() do
+      {:activity, activity} ->
+        {:ok, push_navigate(socket, to: activity_path(activity), replace: true)}
+
+      :cards ->
+        {:ok, push_navigate(socket, to: ~p"/flashcards", replace: true)}
+
+      :done ->
+        {:ok,
+         assign(socket,
+           page_title: gettext("Today"),
+           streak: Today.streak(),
+           today: Clock.today()
+         )}
+    end
+  end
+
+  @impl true
+  def handle_event("bonus", _params, socket) do
+    Today.start_bonus()
+    {:noreply, push_navigate(socket, to: ~p"/", replace: true)}
   end
 
   @impl true
   def render(assigns) do
     ~H"""
     <div class="max-w-2xl mx-auto space-y-6">
-      <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">{gettext("Today")}</h1>
+      <h1 class="text-4xl sm:text-5xl font-black tracking-tighter uppercase">
+        {gettext("Done for today")}
+      </h1>
       <hr class="brutal-hr" />
-      <%= case @step do %>
-        <% {:activity, activity} -> %>
-          <p id="today-activity" data-kind={activity.kind} class="text-xl font-black uppercase">
-            {if activity.kind == "journal", do: gettext("Entry"), else: gettext("Conversation")}
+
+      <div
+        id="streak"
+        class="border-4 border-ink p-5 sm:p-6 flex flex-wrap items-end justify-between gap-4"
+      >
+        <div>
+          <p class="text-6xl sm:text-7xl font-black leading-none streak-active">{@streak.count}</p>
+          <p class="text-xs font-mono uppercase tracking-widest mt-2">
+            {ngettext("day in a row", "days in a row", @streak.count)}
           </p>
-        <% :cards -> %>
-          <.link
-            id="today-cards"
-            navigate={~p"/flashcards"}
-            class="brutal-btn inline-block px-6 py-3 block-cyan no-underline"
-          >
-            {gettext("Cards")} &rarr;
-          </.link>
-        <% :done -> %>
-          <p id="today-done" class="text-xl font-black uppercase">{gettext("Day complete!")}</p>
-      <% end %>
+        </div>
+        <div id="freezes" class="text-right">
+          <p :if={@streak.freezes_available > 0} class="text-2xl leading-none" aria-hidden="true">
+            {String.duplicate("❄", @streak.freezes_available)}
+          </p>
+          <p class="text-xs font-mono uppercase tracking-widest mt-2 text-base-content/60">
+            {ngettext(
+              "%{count} streak freeze",
+              "%{count} streak freezes",
+              @streak.freezes_available
+            )}
+          </p>
+        </div>
+      </div>
+
+      <button
+        :if={@streak.today_status == :passed}
+        id="bonus"
+        type="button"
+        phx-click="bonus"
+        class="brutal-btn w-full p-5 block-yellow text-left"
+      >
+        <span class="block text-lg">{gettext("Bonus round")} &rarr;</span>
+        <span class="block text-xs font-mono normal-case tracking-normal opacity-70 mt-1">
+          {gettext("Do the other activity too and bank a streak freeze.")}
+        </span>
+      </button>
+
+      <div
+        :if={@streak.today_status == :bonus}
+        id="bonus-done"
+        class="border-4 border-ink p-5 block-green"
+      >
+        <p class="text-lg font-black uppercase">{gettext("Bonus done")}</p>
+        <p class="text-sm font-mono">{gettext("+1 streak freeze")}</p>
+      </div>
+
+      <div
+        id="celebrate"
+        phx-hook=".Celebrate"
+        data-key={"#{@today}-#{@streak.today_status}"}
+        data-message={
+          if @streak.today_status == :bonus,
+            do: gettext("Bonus done!"),
+            else: gettext("Day complete!")
+        }
+        class="hidden"
+      >
+      </div>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".Celebrate">
+        // One key per day and status piles up in localStorage. Known and accepted.
+        export default {
+          mounted() {
+            const key = `celebrated:${this.el.dataset.key}`
+            if (localStorage.getItem(key)) return
+            localStorage.setItem(key, "1")
+            window.dispatchEvent(new CustomEvent("celebrate", {detail: {message: this.el.dataset.message}}))
+          }
+        }
+      </script>
     </div>
     """
   end

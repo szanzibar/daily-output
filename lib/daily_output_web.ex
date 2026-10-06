@@ -86,8 +86,7 @@ defmodule DailyOutputWeb do
       import Phoenix.HTML
       # Core UI components
       import DailyOutputWeb.CoreComponents
-      import DailyOutputWeb.JournalComponents
-      import DailyOutputWeb.ConversationComponents
+      import DailyOutputWeb.ActivityComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

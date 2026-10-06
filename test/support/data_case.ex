@@ -45,35 +45,43 @@ defmodule DailyOutput.DataCase do
   a map the structured object, sent as the forced tool's call. The request body comes to
   the test as `{:ai_request, body}`.
   """
-  def expect_ai(reply) do
+  def expect_ai(reply), do: expect_ai(1, fn _body -> reply end)
+
+  @doc """
+  Answers the next `count` AI calls with `reply_for.(request_body)`, for calls that run in
+  parallel and so arrive in any order.
+  """
+  def expect_ai(count, reply_for) do
     test = self()
 
-    output =
-      if is_binary(reply) do
-        %{
-          "id" => "msg_test",
-          "type" => "message",
-          "status" => "completed",
-          "content" => [
-            %{"type" => "output_text", "annotations" => [], "logprobs" => [], "text" => reply}
-          ],
-          "phase" => "final_answer",
-          "role" => "assistant"
-        }
-      else
-        %{
-          "id" => "fc_test",
-          "type" => "function_call",
-          "status" => "completed",
-          "arguments" => Jason.encode!(reply),
-          "call_id" => "call_test",
-          "name" => "structured_output"
-        }
-      end
-
-    Req.Test.expect(DailyOutput.AI, fn conn ->
+    Req.Test.expect(DailyOutput.AI, count, fn conn ->
       {:ok, body, conn} = Plug.Conn.read_body(conn)
-      send(test, {:ai_request, Jason.decode!(body)})
+      body = Jason.decode!(body)
+      send(test, {:ai_request, body})
+      reply = reply_for.(body)
+
+      output =
+        if is_binary(reply) do
+          %{
+            "id" => "msg_test",
+            "type" => "message",
+            "status" => "completed",
+            "content" => [
+              %{"type" => "output_text", "annotations" => [], "logprobs" => [], "text" => reply}
+            ],
+            "phase" => "final_answer",
+            "role" => "assistant"
+          }
+        else
+          %{
+            "id" => "fc_test",
+            "type" => "function_call",
+            "status" => "completed",
+            "arguments" => Jason.encode!(reply),
+            "call_id" => "call_test",
+            "name" => "structured_output"
+          }
+        end
 
       Req.Test.json(conn, %{
         "id" => "resp_test",

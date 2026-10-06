@@ -3,8 +3,8 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.{Activities, Flashcards, Repo, Today}
-  alias DailyOutput.Flashcards.{Card, Review}
+  alias DailyOutput.{Clock, Flashcards, Repo}
+  alias DailyOutput.Flashcards.{Card, CompletedDay, Review}
 
   defp new_card(target, native) do
     {:ok, card} =
@@ -15,109 +15,52 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
     card
   end
 
-  describe "study page" do
-    test "shows the empty state when nothing is due", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-      # No card to study: no input, and the done screen links home.
-      refute has_element?(view, "textarea[name=answer]")
-      assert has_element?(view, ~s(a[href="/"]))
+  describe "card session" do
+    test "with nothing due, the session is done and goes back to /", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/flashcards")
+      assert Repo.get_by(CompletedDay, day: Clock.today())
     end
 
-    test "shows the native prompt and an auto-focused input", %{conn: conn} do
-      new_card("Ich ging nach Hause.", "I went home.")
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-
-      assert has_element?(view, "textarea[name=answer]")
-      assert render(view) =~ "I went home."
-    end
-
-    test "a correct answer celebrates with confetti, records a review, then advances",
+    test "a correct answer celebrates, records a review, and the last one ends the session",
          %{conn: conn} do
-      new_card("Ich ging nach Hause.", "I went home.")
+      card = new_card("Ich ging nach Hause.", "I went home.")
       {:ok, view, _html} = live(conn, ~p"/flashcards")
+      assert has_element?(view, "#answer-#{card.id}[data-persist-key='flashcard-#{card.id}']")
 
-      html =
-        view
-        |> form("form", %{answer: "Ich ging nach Hause."})
-        |> render_submit()
+      view |> form("form", %{answer: "Ich ging nach Hause."}) |> render_submit()
 
-      # Brief green celebration showing the answer, with a confetti pop.
-      assert html =~ "Ich ging nach Hause."
       assert_push_event(view, "confetti", %{})
       assert Repo.aggregate(Review, :count) == 1
 
-      # The scheduled tick auto-advances (only one card → done, no input).
-      send(view.pid, :advance_after_correct)
-      refute has_element?(view, "textarea[name=answer]")
+      send(view.pid, :advance)
+      assert_redirect(view, ~p"/")
+      assert Repo.get_by(CompletedDay, day: Clock.today())
     end
 
-    test "a wrong answer reveals the word-level diff", %{conn: conn} do
-      new_card("Ich ging nach Hause.", "I went home.")
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-
-      html =
-        view
-        |> form("form", %{answer: "Ich gehe nach Hause."})
-        |> render_submit()
-
-      # Unified word-level diff: wrong word struck out, correct word in green.
-      assert html =~ "correction-deleted"
-      assert html =~ "correction-added"
-      assert has_element?(view, "button[phx-click=continue]")
-    end
-
-    test "the reveal keeps the english visible and lets you fix the card inline", %{conn: conn} do
+    test "a miss shows the fix and isn't asked again this session", %{conn: conn} do
       card = new_card("Ich ging nach Hause.", "I went home.")
       {:ok, view, _html} = live(conn, ~p"/flashcards")
 
-      html = view |> form("form", %{answer: "falsch"}) |> render_submit()
+      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
 
-      # English prompt stays visible on the reveal, with an edit affordance.
-      assert html =~ "I went home."
-      assert has_element?(view, "button[phx-click=edit]")
+      assert has_element?(view, "#card-fix-diff .correction-deleted", "gehe")
+      assert has_element?(view, "#card-fix-diff .correction-added", "ging")
+      # The miss narrows the card to a blank on the wrong word, for next time.
+      assert Repo.get(Card, card.id).blank_indices == [1]
 
-      # Open the inline editor, fix the translation, and save.
-      view |> element("button[phx-click=edit]") |> render_click()
-
-      view
-      |> form("#flashcard-edit-form", %{
-        card: %{native_text: "I returned home.", target_text: "Ich ging nach Hause."}
-      })
-      |> render_submit()
-
-      assert Repo.get(Card, card.id).native_text == "I returned home."
+      view |> element("button[phx-click=continue]") |> render_click()
+      assert_redirect(view, ~p"/")
     end
 
-    test "shows a goal-complete indicator once every card in the session is answered",
-         %{conn: conn} do
-      new_card("Ich ging nach Hause.", "I went home.")
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-      refute has_element?(view, "[data-role=goal-complete]")
-
-      view |> form("form", %{answer: "Ich ging nach Hause."}) |> render_submit()
-
-      assert has_element?(view, "[data-role=goal-complete]")
-    end
-
-    test "finishing the session passes the day and celebrates", %{conn: conn} do
-      activity = Activities.create(%{kind: "conversation"})
-      Activities.complete(activity, %{}, nil)
-      new_card("Ich ging nach Hause.", "I went home.")
+    test "a card you missed before comes back as fill-in-the-blank", %{conn: conn} do
+      card = new_card("Ich ging nach Hause.", "I went home.")
+      card |> Ecto.Changeset.change(blank_indices: [1]) |> Repo.update!()
       {:ok, view, _html} = live(conn, ~p"/flashcards")
 
-      view |> form("form", %{answer: "Ich ging nach Hause."}) |> render_submit()
-      send(view.pid, :advance_after_correct)
+      assert has_element?(view, "#cloze-#{card.id} textarea.cloze-blank[name='blank[1]']")
 
-      assert_push_event(view, "celebrate", %{kind: "day"})
-      assert Today.next_step() == :done
-    end
-
-    test "the reveal offers an AI translation button", %{conn: conn} do
-      new_card("Ich ging nach Hause.", "I went home.")
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-
-      view |> form("form", %{answer: "falsch"}) |> render_submit()
-      assert has_element?(view, "button[phx-click=ai_improve]")
+      view |> form("#cloze-#{card.id}", %{"blank" => %{"1" => "ging"}}) |> render_submit()
+      assert_push_event(view, "confetti", %{})
     end
 
     test "a case-only answer counts as correct but flags the capitalization", %{conn: conn} do
@@ -126,97 +69,39 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
 
       view |> form("form", %{answer: "ich ging nach hause."}) |> render_submit()
 
-      # Treated as a pass (confetti + recorded), with a gentle capitalization nudge that
-      # shows the fixes (locale-independent, like the other UI assertions here).
       assert_push_event(view, "confetti", %{})
-      assert Repo.aggregate(Review, :count) == 1
-      assert has_element?(view, "[data-role=case-warning]")
       assert has_element?(view, "[data-role=case-warning] .line-through", "ich")
     end
 
-    test "a miss narrows the card to fill-in-the-blank on just the wrong word", %{conn: conn} do
+    test "fix this card edits it in place", %{conn: conn} do
       card = new_card("Ich ging nach Hause.", "I went home.")
       {:ok, view, _html} = live(conn, ~p"/flashcards")
 
-      # One word wrong ("ging" → "gehe"): the card's mask narrows to that word.
-      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
-      assert Repo.get(Card, card.id).blank_indices == [1]
-
-      # Re-drilled this session, it's now a cloze: the right words are shown, the missed
-      # one is an inline blank you fill in.
-      view |> element("button[phx-click=continue]") |> render_click()
-      assert has_element?(view, "textarea.cloze-blank[name='blank[1]']")
-      assert render(view) =~ "nach Hause."
-
-      # Filling that blank correctly passes and holds the mask at the same level.
-      view |> form("#cloze-#{card.id}", %{"blank" => %{"1" => "ging"}}) |> render_submit()
-      assert_push_event(view, "confetti", %{})
-      assert Repo.get(Card, card.id).blank_indices == [1]
-    end
-
-    test "you can step back through answered cards and resume studying", %{conn: conn} do
-      a = new_card("Ich ging nach Hause.", "I went home.")
-      b = new_card("Wie geht es dir?", "How are you?")
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-
-      # `due_today` shuffles the queue, so either card can be first — answer whichever
-      # one is actually shown rather than assuming an order.
-      {first, second} = if render(view) =~ a.native_text, do: {a, b}, else: {b, a}
-
-      # Nothing answered yet → no Previous affordance.
-      refute has_element?(view, "button[phx-click=prev]")
-
-      # Answer the first card correctly and advance to the second.
-      view |> form("form", %{answer: first.target_text}) |> render_submit()
-      send(view.pid, :advance_after_correct)
-      assert render(view) =~ second.native_text
-      assert has_element?(view, "button[phx-click=prev]")
-
-      # Step back: a read-only review of the first card, marked correct.
-      html = view |> element("button[phx-click=prev]") |> render_click()
-      assert has_element?(view, "[data-role=card-review]")
-      assert has_element?(view, "[data-role=review-result][data-result=pass]")
-      assert html =~ first.native_text
-      assert html =~ first.target_text
-      # While looking back, the live card isn't shown.
-      refute has_element?(view, "textarea[name=answer]")
-
-      # Step forward past the newest entry → back to the live card.
-      view |> element("button[phx-click=next]") |> render_click()
-      assert has_element?(view, "textarea[name=answer]")
-      assert render(view) =~ second.native_text
-    end
-
-    test "a missed card is marked as missed in the history", %{conn: conn} do
-      new_card("Ich ging nach Hause.", "I went home.")
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-
-      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
-
-      # The arrow-key handler pushes the same "prev" event the button does.
-      html = render_hook(view, "prev", %{})
-      assert has_element?(view, "[data-role=review-result][data-result=fail]")
-      # Looking back replays the green/red corrections, not just the plain answer.
-      assert html =~ "correction-deleted"
-      assert html =~ "correction-added"
-    end
-
-    test "editing a card's answer text clears its fill-in-the-blank mask", %{conn: conn} do
-      card = new_card("Ich ging nach Hause.", "I went home.")
-      {:ok, view, _html} = live(conn, ~p"/flashcards")
-
-      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
-      assert Repo.get(Card, card.id).blank_indices == [1]
-
-      view |> element("button[phx-click=edit]") |> render_click()
+      view |> element("#fix-card") |> render_click()
 
       view
-      |> form("#flashcard-edit-form", %{
-        card: %{native_text: "I went home.", target_text: "Ich fuhr nach Hause."}
+      |> form("#fix-card-form", %{
+        card: %{native_text: "I walked home.", target_text: "Ich lief nach Hause."}
       })
       |> render_submit()
 
-      assert Repo.get(Card, card.id).blank_indices == nil
+      assert %{native_text: "I walked home.", target_text: "Ich lief nach Hause."} =
+               Repo.get(Card, card.id)
+
+      # Still on the prompt, now asking the fixed card.
+      assert has_element?(view, "#answer-#{card.id}")
+      assert has_element?(view, "#fix-card")
+    end
+
+    test "fix this card can delete a bad card, which moves on", %{conn: conn} do
+      new_card("Ich ging nach Hause.", "I went home.")
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      view |> element("#fix-card") |> render_click()
+      view |> element("#delete-card") |> render_click()
+
+      assert Flashcards.list_cards() == []
+      assert_redirect(view, ~p"/")
     end
   end
 

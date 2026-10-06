@@ -453,6 +453,14 @@ defmodule DailyOutputWeb.SettingsLive do
           )}
         </p>
       </div>
+
+      <.link
+        id="manage-cards"
+        navigate={~p"/flashcards/manage"}
+        class="inline-block text-sm font-mono underline text-base-content/60 hover:text-base-content"
+      >
+        {gettext("Manage Flashcards")} &rarr;
+      </.link>
     </div>
     """
   end

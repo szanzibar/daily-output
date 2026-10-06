@@ -32,17 +32,12 @@ msgstr "Über"
 msgid "About DailyOutput"
 msgstr "Über DailyOutput"
 
-#: lib/daily_output_web/components/core_components.ex
-#, elixir-autogen, elixir-format
-msgid "Actions"
-msgstr "Aktionen"
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Advanced"
 msgstr "Fachkundige Sprachkenntnisse"
 
-#: lib/daily_output_web/components/journal_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Attempted — keep practicing!"
 msgstr "Versucht — weiter üben!"
@@ -78,18 +73,19 @@ msgstr "Erstellt mit"
 msgid "Cancel"
 msgstr "Abbrechen"
 
+#: lib/daily_output_web/components/activity_components.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Continue"
-msgstr "Weiterführen"
+msgstr "Weiter"
 
-#: lib/daily_output_web/live/today_live.ex
+#: lib/daily_output_web/live/conversation_live.ex
+#: lib/daily_output_web/live/history_live.ex
 #, elixir-autogen, elixir-format
 msgid "Conversation"
 msgstr "Gespräch"
 
-#: lib/daily_output_web/components/journal_components.ex
-#: lib/daily_output_web/live/flashcard_live/study.ex
+#: lib/daily_output_web/live/journal_live.ex
 #, elixir-autogen, elixir-format
 msgid "Corrections"
 msgstr "Korrekturen"
@@ -104,13 +100,13 @@ msgstr "Korrekturen & Tipps"
 msgid "Could not save."
 msgstr "Konnte nicht gespeichert werden."
 
-#: lib/daily_output_web/celebration.ex
 #: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Day complete!"
 msgstr "Tag abgeschlossen!"
 
 #: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr "Löschen"
@@ -120,22 +116,12 @@ msgstr "Löschen"
 msgid "Elementary"
 msgstr "Grundlegende Kenntnisse"
 
-#: lib/daily_output_web/live/today_live.ex
-#, elixir-autogen, elixir-format
-msgid "Entry"
-msgstr "Eintrag"
-
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "Features"
 msgstr "Funktionen"
 
-#: lib/daily_output_web/components/journal_components.ex
-#, elixir-autogen, elixir-format
-msgid "Feedback"
-msgstr "Feedback"
-
-#: lib/daily_output_web/components/journal_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Focus Result"
 msgstr "Fokus-Ergebnis"
@@ -190,7 +176,7 @@ msgstr "Muttersprache"
 msgid "Near Native"
 msgstr "Annähernd muttersprachlich"
 
-#: lib/daily_output_web/components/journal_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Not used."
 msgstr "Nicht verwendet."
@@ -200,7 +186,8 @@ msgstr "Nicht verwendet."
 msgid "Open source"
 msgstr "Open Source"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
+#: lib/daily_output_web/live/conversation_live.ex
 #, elixir-autogen, elixir-format
 msgid "Partner"
 msgstr "Partner"
@@ -227,7 +214,7 @@ msgstr "Einstellungen"
 msgid "Something went wrong!"
 msgstr "Etwas ist schiefgelaufen!"
 
-#: lib/daily_output_web/components/journal_components.ex
+#: lib/daily_output_web/live/journal_live.ex
 #, elixir-autogen, elixir-format
 msgid "Start writing..."
 msgstr "Schreib los..."
@@ -262,7 +249,7 @@ msgstr "Oberflächensprache"
 msgid "Upper Intermediate"
 msgstr "Selbständige Sprachverwendung"
 
-#: lib/daily_output_web/components/journal_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Used correctly!"
 msgstr "Richtig verwendet!"
@@ -277,7 +264,7 @@ msgstr "Keine Internetverbindung"
 msgid "Write every day."
 msgstr "Schreib jeden Tag."
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "You"
 msgstr "Du"
@@ -291,11 +278,6 @@ msgstr "Dein GER-Niveau. Feedback wird kalibriert — nur Fehler, die du auf die
 #, elixir-autogen, elixir-format
 msgid "close"
 msgstr "Schliessen"
-
-#: lib/daily_output_web/components/journal_components.ex
-#, elixir-autogen, elixir-format
-msgid "words"
-msgstr "Wörter"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -439,87 +421,87 @@ msgstr "Aktuelle Zeitzone verwenden"
 msgid "Saved"
 msgstr "Gespeichert"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Looks good"
 msgstr "Sieht gut aus"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "checking"
 msgstr "wird geprüft"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Errors / 100 words"
 msgstr "Fehler / 100 Wörter"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Not enough data yet — keep chatting!"
 msgstr "Noch nicht genug Daten — chatte weiter!"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Progress this conversation"
 msgstr "Fortschritt in diesem Gespräch"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Still working on"
 msgstr "Daran arbeiten wir noch"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Stopped repeating"
 msgstr "Nicht mehr wiederholt"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "agreement"
 msgstr "Kongruenz"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "case"
 msgstr "Kasus"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "gender"
 msgstr "Genus"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "other"
 msgstr "Sonstiges"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "preposition"
 msgstr "Präposition"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "punctuation"
 msgstr "Zeichensetzung"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "spelling"
 msgstr "Rechtschreibung"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "verb"
 msgstr "Verb"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "vocabulary"
 msgstr "Wortschatz"
 
-#: lib/daily_output_web/components/conversation_components.ex
+#: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "word order"
 msgstr "Wortstellung"
@@ -583,11 +565,6 @@ msgid_plural "%{count} cards"
 msgstr[0] "%{count} Karte"
 msgstr[1] "%{count} Karten"
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "All caught up!"
-msgstr "Alles erledigt!"
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
@@ -595,6 +572,7 @@ msgid "Answer (target)"
 msgstr "Antwort (Zielsprache)"
 
 #: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Card deleted."
 msgstr "Karte gelöscht."
@@ -605,8 +583,7 @@ msgstr "Karte gelöscht."
 msgid "Card updated."
 msgstr "Karte aktualisiert."
 
-#: lib/daily_output_web/components/layouts.ex
-#: lib/daily_output_web/live/today_live.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Cards"
 msgstr "Karten"
@@ -617,6 +594,7 @@ msgid "Check"
 msgstr "Prüfen"
 
 #: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Delete this card?"
 msgstr "Diese Karte löschen?"
@@ -626,23 +604,13 @@ msgstr "Diese Karte löschen?"
 msgid "Enter"
 msgstr "Enter"
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Flashcards"
 msgstr "Karteikarten"
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Home"
-msgstr "Start"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Manage"
-msgstr "Verwalten"
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
+#: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Manage Flashcards"
 msgstr "Karteikarten verwalten"
@@ -652,23 +620,13 @@ msgstr "Karteikarten verwalten"
 msgid "No flashcards yet. They are created from your corrections."
 msgstr "Noch keine Karteikarten. Sie entstehen aus deinen Korrekturen."
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Nothing due right now. Come back tomorrow!"
-msgstr "Im Moment ist nichts fällig. Komm morgen wieder!"
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Prompt (native)"
 msgstr "Vorgabe (Muttersprache)"
 
-#: lib/daily_output_web/live/flashcard_live/manage.ex
-#, elixir-autogen, elixir-format
-msgid "Study"
-msgstr "Üben"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
+#: lib/daily_output_web/components/layouts.ex
 #: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Today"
@@ -684,13 +642,7 @@ msgstr "Übersetzen"
 msgid "Type in %{language}..."
 msgstr "Auf %{language} eingeben..."
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "You studied %{count} card(s) today."
-msgstr "Du hast heute %{count} Karte(n) geübt."
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Edit card"
 msgstr "Karte bearbeiten"
@@ -701,7 +653,6 @@ msgid "Not quite — here's the fix"
 msgstr "Nicht ganz — so ist es richtig"
 
 #: lib/daily_output_web/live/flashcard_live/manage.ex
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "AI suggested a clearer translation — review and save."
 msgstr "Die KI hat eine klarere Übersetzung vorgeschlagen — prüfen und speichern."
@@ -712,15 +663,9 @@ msgid "Active time per section. Today, then the last 7 days."
 msgstr "Aktive Zeit pro Bereich. Heute, dann die letzten 7 Tage."
 
 #: lib/daily_output_web/live/flashcard_live/manage.ex
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Ask AI for a clearer translation"
 msgstr "Die KI um eine klarere Übersetzung bitten"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Asking AI for a clearer translation"
-msgstr "Frage die KI nach einer klareren Übersetzung"
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
@@ -733,40 +678,14 @@ msgid "Convo today"
 msgstr "Gespräch heute"
 
 #: lib/daily_output_web/live/flashcard_live/manage.ex
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Could not get an AI suggestion. Please try again."
 msgstr "Konnte keinen KI-Vorschlag erhalten. Bitte versuche es erneut."
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Daily goal complete!"
-msgstr "Tagesziel erreicht!"
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Entry today"
 msgstr "Eintrag heute"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Goal complete"
-msgstr "Ziel erreicht"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Goal reached — keep going for extra practice, or finish anytime."
-msgstr "Ziel erreicht — mach für extra Übung weiter oder hör jederzeit auf."
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Keep going"
-msgstr "Weitermachen"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Nice work!"
-msgstr "Gut gemacht!"
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
@@ -832,41 +751,6 @@ msgstr "Richtig — achte auf die Großschreibung"
 #, elixir-autogen, elixir-format
 msgid "Fill in the blank"
 msgstr "Lücke ausfüllen"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Answer"
-msgstr "Antwort"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Back to studying"
-msgstr "Zurück zum Lernen"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Correct"
-msgstr "Richtig"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Missed"
-msgstr "Verpasst"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Next"
-msgstr "Weiter"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Previous"
-msgstr "Zurück"
-
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Reviewing"
-msgstr "Rückblick"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -982,3 +866,150 @@ msgstr "Geschätzte KI-Ausgaben pro Tag, nach Funktion. Die letzten 7 Tage."
 #, elixir-autogen, elixir-format
 msgid "Phoenix LiveView and SQLite, with AI from GPT-6.1 Sol or GPT-6 Luna."
 msgstr "Phoenix LiveView und SQLite, mit KI von GPT-6.1 Sol oder GPT-6 Luna."
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} streak freeze"
+msgid_plural "%{count} streak freezes"
+msgstr[0] "%{count} Serien-Joker"
+msgstr[1] "%{count} Serien-Joker"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "+1 streak freeze"
+msgstr "+1 Serien-Joker"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Bonus done"
+msgstr "Bonus geschafft"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Bonus done!"
+msgstr "Bonus geschafft!"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Bonus round"
+msgstr "Bonusrunde"
+
+#: lib/daily_output_web/components/activity_components.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't check this one."
+msgstr "Konnte das nicht prüfen."
+
+#: lib/daily_output_web/components/activity_components.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't get today's session ready."
+msgstr "Die heutige Übung konnte nicht vorbereitet werden."
+
+#: lib/daily_output_web/live/journal_live.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't review your text."
+msgstr "Dein Text konnte nicht geprüft werden."
+
+#: lib/daily_output_web/live/conversation_live.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't wrap up the conversation."
+msgstr "Das Gespräch konnte nicht abgeschlossen werden."
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Do the other activity too and bank a streak freeze."
+msgstr "Mach auch die andere Übung und sichere dir einen Serien-Joker."
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Done for today"
+msgstr "Fertig für heute"
+
+#: lib/daily_output_web/live/journal_live.ex
+#, elixir-autogen, elixir-format
+msgid "Finish"
+msgstr "Fertig"
+
+#: lib/daily_output_web/live/journal_live.ex
+#, elixir-autogen, elixir-format
+msgid "Finish in %{time}"
+msgstr "Fertig in %{time}"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Fix this card"
+msgstr "Karte korrigieren"
+
+#: lib/daily_output_web/components/activity_components.ex
+#, elixir-autogen, elixir-format
+msgid "Focus"
+msgstr "Fokus"
+
+#: lib/daily_output_web/components/activity_components.ex
+#: lib/daily_output_web/components/layouts.ex
+#: lib/daily_output_web/live/history_live.ex
+#, elixir-autogen, elixir-format
+msgid "History"
+msgstr "Verlauf"
+
+#: lib/daily_output_web/live/history_live.ex
+#: lib/daily_output_web/live/journal_live.ex
+#, elixir-autogen, elixir-format
+msgid "Journal"
+msgstr "Tagebuch"
+
+#: lib/daily_output_web/live/history_live.ex
+#, elixir-autogen, elixir-format
+msgid "Nothing here yet. Finished activities show up here."
+msgstr "Noch nichts da. Abgeschlossene Übungen erscheinen hier."
+
+#: lib/daily_output_web/live/conversation_live.ex
+#, elixir-autogen, elixir-format
+msgid "Partner is typing"
+msgstr "Partner schreibt"
+
+#: lib/daily_output_web/live/conversation_live.ex
+#, elixir-autogen, elixir-format
+msgid "Picking today's focus and writing your opener"
+msgstr "Fokus und Gesprächseinstieg werden vorbereitet"
+
+#: lib/daily_output_web/live/journal_live.ex
+#, elixir-autogen, elixir-format
+msgid "Picking today's focus and writing your prompt"
+msgstr "Fokus und Schreibanlass werden vorbereitet"
+
+#: lib/daily_output_web/live/conversation_live.ex
+#, elixir-autogen, elixir-format
+msgid "Send"
+msgstr "Senden"
+
+#: lib/daily_output_web/components/activity_components.ex
+#, elixir-autogen, elixir-format
+msgid "Try again"
+msgstr "Nochmal versuchen"
+
+#: lib/daily_output_web/live/conversation_live.ex
+#, elixir-autogen, elixir-format
+msgid "Wrapping up your conversation"
+msgstr "Dein Gespräch wird ausgewertet"
+
+#: lib/daily_output_web/live/conversation_live.ex
+#, elixir-autogen, elixir-format
+msgid "Write a message..."
+msgstr "Schreib eine Nachricht..."
+
+#: lib/daily_output_web/live/conversation_live.ex
+#, elixir-autogen, elixir-format
+msgid "Your partner didn't answer."
+msgstr "Dein Partner hat nicht geantwortet."
+
+#: lib/daily_output_web/live/journal_live.ex
+#, elixir-autogen, elixir-format
+msgid "Your text is being reviewed"
+msgstr "Dein Text wird geprüft"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "day in a row"
+msgid_plural "days in a row"
+msgstr[0] "Tag in Folge"
+msgstr[1] "Tage in Folge"

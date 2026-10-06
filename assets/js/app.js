@@ -154,15 +154,6 @@ const Hooks = {
     }
   },
 
-  // Auto-save textarea content to LiveView on input
-  AutoSave: {
-    mounted() {
-      this.el.addEventListener("input", () => {
-        this.pushEvent("update_body", { body: this.el.value })
-      })
-    }
-  },
-
   // Auto-expanding textarea. Grows to fit its content as you type.
   // Submits on Enter unless `data-no-enter-submit` is set (multi-line composers),
   // and persists across navigation when `data-persist-key` is present.
@@ -183,29 +174,6 @@ const Hooks = {
     resize() {
       this.el.style.height = "auto"
       this.el.style.height = this.el.scrollHeight + "px"
-    }
-  },
-
-  // Left/Right arrows step through previously-answered cards. Ignored while a field is
-  // focused so the arrows keep moving the text cursor as usual.
-  KeyNav: {
-    mounted() {
-      this.handler = (e) => {
-        if (e.metaKey || e.ctrlKey || e.altKey) return
-        const t = e.target
-        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return
-        if (e.key === "ArrowLeft") {
-          e.preventDefault()
-          this.pushEvent("prev", {})
-        } else if (e.key === "ArrowRight") {
-          e.preventDefault()
-          this.pushEvent("next", {})
-        }
-      }
-      window.addEventListener("keydown", this.handler)
-    },
-    destroyed() {
-      window.removeEventListener("keydown", this.handler)
     }
   },
 
@@ -393,9 +361,8 @@ function dismissToast(el) {
 
 window.addEventListener("phx:toast", e => showToast(e.detail.message, e.detail.kind))
 
-// Brutalist celebration: falling color blocks + a stamped headline. Fired by the
-// server via `push_event(socket, "celebrate", %{kind, message})` when a day is
-// completed or a streak milestone is hit. Pure DOM + CSS keyframes (see app.css),
+// Brutalist celebration: falling color blocks + a stamped headline. The done screen's
+// Celebrate hook fires it once per day and status. Pure DOM + CSS keyframes (see app.css),
 // reduced-motion aware, and self-removing.
 const CELEBRATE_COLORS = ["block-red", "block-blue", "block-yellow", "block-green", "block-pink", "block-cyan"]
 
@@ -427,7 +394,7 @@ function celebrate(detail = {}) {
   setTimeout(() => overlay.remove(), 2800)
 }
 
-window.addEventListener("phx:celebrate", e => celebrate(e.detail))
+window.addEventListener("celebrate", e => celebrate(e.detail))
 
 // A quick, lightweight confetti pop for small wins (a correct flashcard). Fewer blocks,
 // short and snappy, no headline, and self-removing so consecutive answers each get one.

@@ -188,14 +188,26 @@ defmodule DailyOutput.Today do
   Reviews the activity and completes it. A journal gets proofread; a conversation, already
   corrected message by message, gets its improvement panel. Both get the focus graded and a
   summary for next time.
+
+  A refresh can kill a message's correction mid-flight, so any message still without one
+  gets corrected first, and the grade and the cards never miss it.
   """
   def finish(%Activity{} = activity) do
     activity = Activities.get!(activity.id)
+    uncorrected = for %Message{role: "user", feedback: nil} = m <- activity.messages, do: m
 
-    with {:ok, review} <- review(activity, profile() ++ [focus: activity.focus]) do
+    with :ok <- correct_all(uncorrected),
+         activity = Activities.get!(activity.id),
+         {:ok, review} <- review(activity, profile() ++ [focus: activity.focus]) do
       {summary, feedback} = Map.pop!(review, "summary")
       {:ok, Activities.complete(activity, feedback, summary)}
     end
+  end
+
+  defp correct_all([]), do: :ok
+
+  defp correct_all([message | rest]) do
+    with {:ok, _} <- correct_message(message), do: correct_all(rest)
   end
 
   defp review(%Activity{kind: "journal"} = activity, opts),

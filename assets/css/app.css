@@ -567,12 +567,6 @@ h1, h2, h3 {
   100% { width: 95%; }
 }
 
-/* Writing target reached — the timer is a goal, not a lock */
-.timer-met {
-  color: oklch(60% 0.20 155);
-  font-weight: 900;
-}
-
 /* ── Celebration (day complete / streak milestone) ── */
 
 .celebrate-overlay {
