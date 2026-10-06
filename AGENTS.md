@@ -5,9 +5,8 @@ PWA). Each day you write or talk in your target language, the AI corrects you, a
 mistakes come back as flashcards. It works for any language pair; the maintainer learns
 German. The UI is English and German.
 
-We're mid-overhaul to a guided daily flow where the app decides everything. The plan and
-its locked decisions live in `docs/guided-daily-flow.md`. Code that disagrees with it is
-on its way out.
+It runs a guided daily flow where the app decides everything. `docs/guided-daily-flow.md`
+is the record of the flow's decisions and why we made them.
 
 These standards override generic habits. When two of them pull against each other, pick
 whatever leaves the reader with less to hold in their head.
@@ -60,7 +59,7 @@ We follow *A Philosophy of Software Design*.
   comment-heavy; code you write or rewrite follows this rule, but leave untouched code
   alone.
 - **Logic has unit tests.** Keep logic pure so its tests don't need the DB, API, or
-  browser (see `Clock`, `Stats`, `Reminders.due?/4`). Every behavior change adds or
+  browser (see `Planner`, `Streak`, `Reminders.due?/4`). Every behavior change adds or
   adjusts tests. No hidden helpers for a ~3 line setup; inline it in the test.
 
 ## Product

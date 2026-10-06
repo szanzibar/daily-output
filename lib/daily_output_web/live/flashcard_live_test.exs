@@ -38,18 +38,28 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
     end
 
     test "a miss shows the fix and isn't asked again this session", %{conn: conn} do
-      card = new_card("Ich ging nach Hause.", "I went home.")
+      cards = [
+        new_card("Ich ging nach Hause.", "I went home."),
+        new_card("Ich ging zur Schule.", "I went to school.")
+      ]
+
       {:ok, view, _html} = live(conn, ~p"/flashcards")
+      assert has_element?(view, "#card-count", "1 / 2")
 
-      view |> form("form", %{answer: "Ich gehe nach Hause."}) |> render_submit()
+      # The queue is shuffled, so miss whichever card comes first.
+      card = Enum.find(cards, &has_element?(view, "#answer-#{&1.id}"))
+      answer = String.replace(card.target_text, "ging", "gehe")
+      view |> form("form", %{answer: answer}) |> render_submit()
 
+      # Still card 1 while its fix shows.
+      assert has_element?(view, "#card-count", "1 / 2")
       assert has_element?(view, "#card-fix-diff .correction-deleted", "gehe")
       assert has_element?(view, "#card-fix-diff .correction-added", "ging")
       # The miss narrows the card to a blank on the wrong word, for next time.
       assert Repo.get(Card, card.id).blank_indices == [1]
 
       view |> element("button[phx-click=continue]") |> render_click()
-      assert_redirect(view, ~p"/")
+      assert has_element?(view, "#card-count", "2 / 2")
     end
 
     test "a card you missed before comes back as fill-in-the-blank", %{conn: conn} do

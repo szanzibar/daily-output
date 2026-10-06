@@ -132,7 +132,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
       <div class="flex items-baseline justify-between gap-2">
         <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">{gettext("Cards")}</h1>
         <span id="card-count" class="text-xs font-mono font-bold text-base-content/60">
-          {min(@done + 1, @total)} / {@total}
+          {min(@done + if(@phase == :prompt, do: 1, else: 0), @total)} / {@total}
         </span>
       </div>
 

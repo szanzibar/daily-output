@@ -124,6 +124,13 @@ describe("wrapLines", () => {
     assert.equal(wrapLines(tokens, 10).length, 2)
   })
 
+  it("never breaks between a correction and the punctuation after it", () => {
+    const segments = parseMarkers("Ich bin mit dem Zug [[zurück gefahren||zurückgefahren||spelling||x]].")
+    const lines = wrapLines(tokenize(segments), 30)
+    assert.equal(lines.at(-1).segments.at(-1).text, ".")
+    assert.equal(lines.at(-1).segments.at(-2).type, "correction")
+  })
+
   it("respects newlines", () => {
     const tokens = tokenize([{ type: "text", text: "line1\nline2" }])
     assert.equal(wrapLines(tokens, 80).length, 2)

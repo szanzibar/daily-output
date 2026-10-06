@@ -68,9 +68,9 @@ defmodule DailyOutputWeb.ProgressLive do
 
       <hr class="brutal-hr" />
 
-      <div :if={!@has_data} class="border-4 border-ink p-6 text-center">
+      <div :if={!@has_data} id="progress-empty" class="border-4 border-ink p-6 text-center">
         <p class="text-sm font-mono text-base-content/60">
-          {gettext("Finish an entry or conversation to start tracking your progress.")}
+          {gettext("Finish your first day and your progress shows up here.")}
         </p>
       </div>
 
@@ -79,7 +79,7 @@ defmodule DailyOutputWeb.ProgressLive do
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <.stat label={gettext("Words written")} value={@overview.total_words} class="block-yellow" />
           <.stat label={gettext("Active days")} value={@overview.active_days} class="block-cyan" />
-          <.stat label={gettext("Entries")} value={@overview.journals} class="bg-base-100" />
+          <.stat label={gettext("Journals")} value={@overview.journals} class="bg-base-100" />
           <.stat
             label={gettext("Conversations")}
             value={@overview.conversations}
@@ -107,7 +107,7 @@ defmodule DailyOutputWeb.ProgressLive do
           </p>
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            <.recap label={gettext("Entry today")} value={dur(@overview.time_today.entry)} />
+            <.recap label={gettext("Journal today")} value={dur(@overview.time_today.journal)} />
             <.recap label={gettext("Convo today")} value={dur(@overview.time_today.conversation)} />
             <.recap label={gettext("Cards today")} value={dur(@overview.time_today.flashcards)} />
             <.recap label={gettext("Total today")} value={dur(@overview.time_today.total)} />
@@ -253,13 +253,6 @@ defmodule DailyOutputWeb.ProgressLive do
           </div>
         </div>
       </div>
-
-      <.link
-        navigate={~p"/"}
-        class="brutal-btn inline-block px-6 py-3 block-yellow no-underline text-lg"
-      >
-        &larr; {gettext("Back")}
-      </.link>
     </div>
     """
   end

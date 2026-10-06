@@ -2,8 +2,9 @@ defmodule DailyOutputWeb.JournalLive do
   @moduledoc """
   One page for a journal entry: write, finish, and results.
 
-  The draft autosaves as you type, and Finish shows up at `Today.journal_finish_at/1` by
-  wall clock, so a refresh keeps both.
+  The draft autosaves as you type. Finish shows up once the TimeTracker hook has logged
+  enough active time today (`Today.journal_seconds_left/1`), so the countdown only runs
+  while you're writing.
   """
   use DailyOutputWeb, :live_view
 
@@ -22,7 +23,7 @@ defmodule DailyOutputWeb.JournalLive do
         running: nil,
         failed: nil
       )
-      |> countdown()
+      |> count_down()
 
     if connected?(socket) and is_nil(activity.prompt) and is_nil(activity.completed_at),
       do: {:ok, run(socket, :prepare)},
@@ -44,7 +45,7 @@ defmodule DailyOutputWeb.JournalLive do
 
   def handle_event("track_time", %{"section" => section, "seconds" => seconds}, socket) do
     Stats.track(section, seconds)
-    {:noreply, socket}
+    {:noreply, count_down(socket)}
   end
 
   @impl true
@@ -56,9 +57,6 @@ defmodule DailyOutputWeb.JournalLive do
     {:noreply, assign(socket, running: nil, failed: call)}
   end
 
-  @impl true
-  def handle_info(:tick, socket), do: {:noreply, countdown(socket)}
-
   defp run(socket, call) do
     activity = socket.assigns.activity
     socket = assign(socket, running: call, failed: nil)
@@ -69,12 +67,9 @@ defmodule DailyOutputWeb.JournalLive do
     end
   end
 
-  # Ticks every second until Finish shows up.
-  defp countdown(socket) do
-    finish_at = Today.journal_finish_at(socket.assigns.activity)
-    left = max(DateTime.diff(finish_at, DateTime.utc_now()), 0)
-    if left > 0 and connected?(socket), do: Process.send_after(self(), :tick, 1000)
-    assign(socket, seconds_left: left)
+  defp count_down(socket) do
+    logged = Stats.time_for_day(socket.assigns.activity.date).journal
+    assign(socket, seconds_left: Today.journal_seconds_left(logged))
   end
 
   @impl true
@@ -85,7 +80,9 @@ defmodule DailyOutputWeb.JournalLive do
         :if={is_nil(@activity.completed_at)}
         id="journal-time-tracker"
         phx-hook="TimeTracker"
-        data-section="entry"
+        data-section="journal"
+        data-seconds-left={@seconds_left}
+        data-countdown="finish-countdown-time"
         class="hidden"
       >
       </div>
@@ -133,14 +130,16 @@ defmodule DailyOutputWeb.JournalLive do
               class="journal-editor"
             >{@activity.body}</textarea>
             <div class="flex flex-wrap items-center justify-end gap-3">
+              <%!-- The hook ticks the time down between reports, so the server leaves it be. --%>
               <span
                 :if={@seconds_left > 0}
                 id="finish-countdown"
                 class="timer-display text-sm text-base-content/50"
               >
-                {gettext("Finish in %{time}",
-                  time: Calendar.strftime(Time.from_seconds_after_midnight(@seconds_left), "%-M:%S")
-                )}
+                {gettext("Finish in")}
+                <span id="finish-countdown-time" phx-update="ignore">
+                  {Calendar.strftime(Time.from_seconds_after_midnight(@seconds_left), "%-M:%S")}
+                </span>
               </span>
               <button
                 :if={@seconds_left == 0}

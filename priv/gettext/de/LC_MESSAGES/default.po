@@ -11,16 +11,6 @@ msgstr ""
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "A daily language practice journal with AI feedback."
-msgstr "Ein tägliches Sprachlern-Journal mit KI-Feedback."
-
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "AI conversations"
-msgstr "KI-Gespräche"
-
 #: lib/daily_output_web/components/layouts.ex
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
@@ -51,11 +41,6 @@ msgstr "Verbindung wird wiederhergestellt"
 #, elixir-autogen, elixir-format
 msgid "Auto (based on level)"
 msgstr "Automatisch (nach Niveau)"
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Back"
-msgstr "Zurück"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -90,11 +75,6 @@ msgstr "Gespräch"
 msgid "Corrections"
 msgstr "Korrekturen"
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Corrections & tips"
-msgstr "Korrekturen & Tipps"
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Could not save."
@@ -116,25 +96,10 @@ msgstr "Löschen"
 msgid "Elementary"
 msgstr "Grundlegende Kenntnisse"
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Features"
-msgstr "Funktionen"
-
 #: lib/daily_output_web/components/activity_components.ex
 #, elixir-autogen, elixir-format
 msgid "Focus Result"
 msgstr "Fokus-Ergebnis"
-
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Focus topics for targeted practice"
-msgstr "Fokus-Themen für gezieltes Üben"
-
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Generate language output every day as a habit. Get instant AI feedback on your writing and conversations. The only way to get better is to practice."
-msgstr "Erzeuge jeden Tag Sprachoutput als Gewohnheit. Erhalte sofortiges KI-Feedback zu deinem Schreiben und deinen Gesprächen. Der einzige Weg besser zu werden ist zu üben."
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -192,11 +157,6 @@ msgstr "Open Source"
 msgid "Partner"
 msgstr "Partner"
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Purpose"
-msgstr "Zweck"
-
 #: lib/daily_output_web/live/flashcard_live/manage.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
@@ -219,11 +179,6 @@ msgstr "Etwas ist schiefgelaufen!"
 msgid "Start writing..."
 msgstr "Schreib los..."
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Streak tracking"
-msgstr "Streak-Tracking"
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Target language"
@@ -233,11 +188,6 @@ msgstr "Zielsprache"
 #, elixir-autogen, elixir-format
 msgid "This project is open source. Contributions welcome."
 msgstr "Dieses Projekt ist Open Source. Beiträge sind willkommen."
-
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Timed writing entries"
-msgstr "Schreibeinträge mit Timer"
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -320,16 +270,6 @@ msgstr "Zeitzone"
 msgid "Unknown timezone."
 msgstr "Unbekannte Zeitzone."
 
-#: lib/daily_output/reminders.ex
-#, elixir-autogen, elixir-format
-msgid "You haven't practiced yet today. A few minutes is all it takes."
-msgstr "Du hast heute noch nicht geübt. Ein paar Minuten genügen."
-
-#: lib/daily_output/reminders.ex
-#, elixir-autogen, elixir-format
-msgid "Your %{n}-day streak ends soon — one quick entry keeps it alive."
-msgstr "Deine %{n}-Tage-Serie endet bald — ein kurzer Eintrag hält sie am Leben."
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "No notification sent. Make sure reminders are enabled on this device."
@@ -364,16 +304,6 @@ msgstr "Korrekturen pro 100 Wörter, pro Woche. Weniger ist besser ↓"
 #, elixir-autogen, elixir-format
 msgid "Days"
 msgstr "Tage"
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Entries"
-msgstr "Einträge"
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Finish an entry or conversation to start tracking your progress."
-msgstr "Schließe einen Eintrag oder ein Gespräch ab, um deinen Fortschritt zu verfolgen."
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
@@ -684,11 +614,6 @@ msgstr "Konnte keinen KI-Vorschlag erhalten. Bitte versuche es erneut."
 
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
-msgid "Entry today"
-msgstr "Eintrag heute"
-
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
 msgid "Time"
 msgstr "Zeit"
 
@@ -812,16 +737,6 @@ msgstr "Setze %{var} in deiner .env-Datei."
 msgid "Native API"
 msgstr "Native API"
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Daily reminders"
-msgstr "Tägliche Erinnerungen"
-
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Flashcards from your mistakes"
-msgstr "Karteikarten aus deinen Fehlern"
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Score %{score}"
@@ -929,11 +844,6 @@ msgstr "Fertig für heute"
 msgid "Finish"
 msgstr "Fertig"
 
-#: lib/daily_output_web/live/journal_live.ex
-#, elixir-autogen, elixir-format
-msgid "Finish in %{time}"
-msgstr "Fertig in %{time}"
-
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Fix this card"
@@ -1013,3 +923,88 @@ msgid "day in a row"
 msgid_plural "days in a row"
 msgstr[0] "Tag in Folge"
 msgstr[1] "Tage in Folge"
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "A short conversation or a journal entry. The app picks which."
+msgstr "Ein kurzes Gespräch oder ein Tagebucheintrag. Welches, entscheidet die App."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Corrections on everything you write."
+msgstr "Korrekturen zu allem, was du schreibst."
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Do the other activity too. Your streak freezes are already full."
+msgstr "Mach auch die andere Übung. Deine Serien-Joker sind schon voll."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Done? The bonus round does the other activity and banks a streak freeze, which saves your streak on a day you miss."
+msgstr "Fertig? In der Bonusrunde machst du auch die andere Übung und sicherst dir einen Serien-Joker. Der rettet deine Serie an einem Tag, den du verpasst."
+
+#: lib/daily_output_web/live/journal_live.ex
+#, elixir-autogen, elixir-format
+msgid "Finish in"
+msgstr "Fertig in"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Finish your first day and your progress shows up here."
+msgstr "Schließ deinen ersten Tag ab, dann siehst du hier deinen Fortschritt."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Flashcards made from your mistakes."
+msgstr "Karteikarten aus deinen Fehlern."
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Journal today"
+msgstr "Tagebuch heute"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Journals"
+msgstr "Tagebücher"
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "One grammar point to focus on, picked from your own mistakes."
+msgstr "Ein Grammatikpunkt als Fokus, ausgewählt aus deinen eigenen Fehlern."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Practice your language every day. The app plans it, you show up."
+msgstr "Übe deine Sprache jeden Tag. Die App plant, du legst einfach los."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Speaking and writing every day is what makes a language stick. There's nothing to set up or pick, so nothing stands between you and practice."
+msgstr "Jeden Tag sprechen und schreiben — so bleibt eine Sprache hängen. Es gibt nichts einzurichten oder auszuwählen, also steht nichts zwischen dir und dem Üben."
+
+#: lib/daily_output/reminders.ex
+#, elixir-autogen, elixir-format
+msgid "Today's practice is ready: a short chat or journal, then a few cards."
+msgstr "Deine Übung für heute ist bereit: ein kurzes Gespräch oder Tagebuch, dann ein paar Karten."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Why"
+msgstr "Warum"
+
+#: lib/daily_output/reminders.ex
+#, elixir-autogen, elixir-format
+msgid "Your %{n}-day streak is waiting. Today's practice is ready."
+msgstr "Deine %{n}-Tage-Serie wartet. Die Übung für heute ist bereit."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Your day"
+msgstr "Dein Tag"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Your streak freezes are full."
+msgstr "Deine Serien-Joker sind voll."

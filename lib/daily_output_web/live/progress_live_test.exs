@@ -8,8 +8,8 @@ defmodule DailyOutputWeb.ProgressLiveTest do
   alias DailyOutput.Stats.ApiUsage
 
   test "shows an empty state with no activity", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/progress")
-    assert html =~ "start tracking your progress" or html =~ "Fortschritt"
+    {:ok, view, _html} = live(conn, ~p"/progress")
+    assert has_element?(view, "#progress-empty")
   end
 
   test "shows totals and the trend once there is completed work", %{conn: conn} do

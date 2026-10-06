@@ -3,37 +3,37 @@ defmodule DailyOutputWeb.JournalLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.{Activities, Clock, Repo}
-  alias DailyOutput.Activities.Activity
+  alias DailyOutput.{Activities, Stats}
 
   @focus %{"category" => "verb", "title" => "Perfekt mit sein", "body" => "Bewegung: sein."}
 
-  defp journal(minutes_ago, body \\ nil) do
-    Repo.insert!(%Activity{
+  defp journal(body \\ nil) do
+    Activities.create(%{
       kind: "journal",
-      date: Clock.today(),
       prompt: "Erzähl von deinem Wochenende.",
       focus: @focus,
-      body: body,
-      inserted_at:
-        DateTime.utc_now() |> DateTime.add(-minutes_ago, :minute) |> DateTime.truncate(:second)
+      body: body
     })
   end
 
-  test "Finish stays hidden until 5:00 after the start", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/journal/#{journal(1).id}")
+  test "Finish shows up once 5:00 of writing time is logged", %{conn: conn} do
+    Stats.track("journal", 299)
+    {:ok, view, _html} = live(conn, ~p"/journal/#{journal("Hallo").id}")
     assert has_element?(view, "#focus-banner")
     assert has_element?(view, "#prompt")
-    assert has_element?(view, "#finish-countdown")
+    assert has_element?(view, "#finish-countdown-time", "0:01")
     refute has_element?(view, "#finish")
 
-    {:ok, view, _html} = live(conn, ~p"/journal/#{journal(6, "Hallo").id}")
+    view
+    |> element("#journal-time-tracker")
+    |> render_hook("track_time", %{"section" => "journal", "seconds" => 1})
+
     assert has_element?(view, "#finish")
     refute has_element?(view, "#finish-countdown")
   end
 
   test "the draft autosaves and keeps a local copy", %{conn: conn} do
-    activity = journal(1)
+    activity = journal()
     {:ok, view, _html} = live(conn, ~p"/journal/#{activity.id}")
 
     assert has_element?(view, "#journal-editor[data-persist-key='journal-#{activity.id}']")
@@ -43,7 +43,8 @@ defmodule DailyOutputWeb.JournalLiveTest do
   end
 
   test "Finish reviews the text, then shows the results", %{conn: conn} do
-    activity = journal(6)
+    Stats.track("journal", 300)
+    activity = journal()
 
     expect_ai(%{
       "corrected" => "Am Samstag bin ich gewandert.",
@@ -65,7 +66,8 @@ defmodule DailyOutputWeb.JournalLiveTest do
   end
 
   test "a failed review keeps the text and offers a retry", %{conn: conn} do
-    activity = journal(6)
+    Stats.track("journal", 300)
+    activity = journal()
 
     Req.Test.expect(DailyOutput.AI, fn conn ->
       conn

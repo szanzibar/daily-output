@@ -4,7 +4,7 @@ defmodule DailyOutputWeb.TodayLiveTest do
   import Phoenix.LiveViewTest
 
   alias DailyOutput.{Activities, Clock, Repo, Today}
-  alias DailyOutput.Flashcards.Card
+  alias DailyOutput.Flashcards.{Card, CompletedDay}
 
   test "a fresh day redirects to today's activity", %{conn: conn} do
     assert {:error, {:live_redirect, %{to: path}}} = live(conn, ~p"/")
@@ -57,5 +57,24 @@ defmodule DailyOutputWeb.TodayLiveTest do
     assert has_element?(view, "#bonus-done")
     assert has_element?(view, "#celebrate[data-key='#{Clock.today()}-bonus']")
     refute has_element?(view, "#bonus")
+  end
+
+  test "with freezes at the cap, the bonus says they're full instead of +1", %{conn: conn} do
+    for days_ago <- 1..3 do
+      date = Date.add(Clock.today(), -days_ago)
+
+      for kind <- ~w(conversation journal),
+          do: Activities.create(%{kind: kind, date: date, completed_at: DateTime.utc_now()})
+
+      Repo.insert!(%CompletedDay{day: date})
+    end
+
+    {:activity, main} = Today.next_step()
+    Activities.complete(main, %{}, nil)
+    Today.next_step()
+    Activities.complete(Today.start_bonus(), %{}, nil)
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    assert has_element?(view, "#bonus-done #freezes-full")
   end
 end

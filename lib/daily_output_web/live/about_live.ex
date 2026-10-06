@@ -16,30 +16,36 @@ defmodule DailyOutputWeb.AboutLive do
 
       <div class="border-4 border-ink p-4 block-yellow font-mono">
         <p class="text-lg font-bold uppercase">
-          {gettext("A daily language practice journal with AI feedback.")}
+          {gettext("Practice your language every day. The app plans it, you show up.")}
         </p>
       </div>
 
-      <div class="border-4 border-ink p-4 block-blue text-white font-mono space-y-2">
-        <h2 class="text-xl font-black uppercase">{gettext("Purpose")}</h2>
+      <div class="border-4 border-ink p-4 block-blue font-mono space-y-2">
+        <h2 class="text-xl font-black uppercase">{gettext("Why")}</h2>
         <p>
           {gettext(
-            "Generate language output every day as a habit. Get instant AI feedback on your writing and conversations. The only way to get better is to practice."
+            "Speaking and writing every day is what makes a language stick. There's nothing to set up or pick, so nothing stands between you and practice."
           )}
         </p>
       </div>
 
       <div class="border-4 border-ink p-4 block-pink font-mono space-y-3">
-        <h2 class="text-xl font-black uppercase">{gettext("Features")}</h2>
-        <ul class="space-y-1 list-none">
-          <li class="font-bold">{gettext("Timed writing entries")}</li>
-          <li class="font-bold">{gettext("AI conversations")}</li>
-          <li class="font-bold">{gettext("Corrections & tips")}</li>
-          <li class="font-bold">{gettext("Flashcards from your mistakes")}</li>
-          <li class="font-bold">{gettext("Focus topics for targeted practice")}</li>
-          <li class="font-bold">{gettext("Streak tracking")}</li>
-          <li class="font-bold">{gettext("Daily reminders")}</li>
-        </ul>
+        <h2 class="text-xl font-black uppercase">{gettext("Your day")}</h2>
+        <ol class="space-y-2 list-decimal list-inside">
+          <li class="font-bold">
+            {gettext("A short conversation or a journal entry. The app picks which.")}
+          </li>
+          <li class="font-bold">
+            {gettext("One grammar point to focus on, picked from your own mistakes.")}
+          </li>
+          <li class="font-bold">{gettext("Corrections on everything you write.")}</li>
+          <li class="font-bold">{gettext("Flashcards made from your mistakes.")}</li>
+        </ol>
+        <p>
+          {gettext(
+            "Done? The bonus round does the other activity and banks a streak freeze, which saves your streak on a day you miss."
+          )}
+        </p>
       </div>
 
       <div class="border-4 border-ink p-4 block-green font-mono space-y-2">

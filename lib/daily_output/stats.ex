@@ -25,7 +25,7 @@ defmodule DailyOutput.Stats do
   @marker ~r/\[\[([\s\S]*?)\]\]/
 
   # Sections we track time for.
-  @time_sections ~w(entry conversation flashcards)
+  @time_sections ~w(journal conversation flashcards)
 
   @doc """
   One pass over history → everything the progress page needs:
@@ -76,7 +76,7 @@ defmodule DailyOutput.Stats do
 
   def track(_section, _seconds), do: {:ok, :ignored}
 
-  @doc "Today's time breakdown: `%{entry, conversation, flashcards, total}` (seconds)."
+  @doc "Today's time breakdown: `%{journal, conversation, flashcards, total}` (seconds)."
   def time_today, do: time_for_day(Clock.today())
 
   @doc "Time breakdown for a logical `date`."
@@ -121,7 +121,7 @@ defmodule DailyOutput.Stats do
     by_section = Map.new(section_seconds)
 
     %{
-      entry: Map.get(by_section, "entry", 0),
+      journal: Map.get(by_section, "journal", 0),
       conversation: Map.get(by_section, "conversation", 0),
       flashcards: Map.get(by_section, "flashcards", 0),
       total: section_seconds |> Enum.map(&elem(&1, 1)) |> Enum.sum()

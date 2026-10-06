@@ -1,5 +1,7 @@
 # Guided daily flow: overhaul plan
 
+**Status:** all five phases shipped (Oct 2026). One change since: the journal's 5:00 counts active time on the page, not wall clock.
+
 **Goal:** open the app and it tells you what to do. No setup screens, no choice lists,
 no focus-pool curation. One activity plus a short card session passes the day; a second
 activity is a bonus.
@@ -197,8 +199,9 @@ rule sits behind a small interface, so steps can be reordered or swapped to expe
 
 1. "5 conversations" means 5 of *your* messages. The partner's 5th reply wraps up, then
    results load automatically. You can't keep chatting past that.
-2. The journal Finish button appears 5:00 after the entry was started (wall clock, so it
-   survives a refresh) and needs non-empty text. There's no word floor.
+2. The journal Finish button appears after 5:00 of active time on the page, from the
+   `time_logs` the TimeTracker hook already writes, and needs non-empty text. There's no
+   word floor.
 3. The OpenAI key is an env var like the others, not entered in the UI.
 4. Reasoning effort is per model: Sol low, Luna medium.
 5. The bonus activity reuses today's focus.

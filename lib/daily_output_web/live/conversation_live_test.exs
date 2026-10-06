@@ -3,7 +3,7 @@ defmodule DailyOutputWeb.ConversationLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.{Activities, Clock}
+  alias DailyOutput.{Activities, Clock, Today}
 
   @focus %{"category" => "verb", "title" => "Perfekt mit sein", "body" => "Bewegung: sein."}
   # No corrections, so finishing never asks the AI for flashcards.
@@ -95,6 +95,15 @@ defmodule DailyOutputWeb.ConversationLiveTest do
     assert has_element?(view, "#correction-#{sent.id}")
     assert has_element?(view, "#message-#{reply.id}", "Schön! Was machst du heute?")
     assert has_element?(view, "#chat-form")
+    # The input comes back focused, so you can keep typing.
+    assert has_element?(view, "#chat-input[phx-mounted]")
+  end
+
+  test "a quiet counter shows your messages out of the limit", %{conn: conn} do
+    activity = conversation([{"user", "Gut."}, {"assistant", "Und du?"}])
+
+    {:ok, view, _html} = live(conn, ~p"/conversation/#{activity.id}")
+    assert has_element?(view, "#message-counter", "1 / #{Today.message_limit()}")
   end
 
   test "the 5th message ends the conversation, then the results load", %{conn: conn} do

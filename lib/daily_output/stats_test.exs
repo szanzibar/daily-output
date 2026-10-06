@@ -40,11 +40,11 @@ defmodule DailyOutput.StatsTest do
     test "track/2 accumulates seconds per section for today" do
       Stats.track("flashcards", 30)
       Stats.track("flashcards", 45)
-      Stats.track("entry", 60)
+      Stats.track("journal", 60)
 
       today = Stats.time_today()
       assert today.flashcards == 75
-      assert today.entry == 60
+      assert today.journal == 60
       assert today.conversation == 0
       assert today.total == 135
     end
@@ -66,7 +66,7 @@ defmodule DailyOutput.StatsTest do
     end
 
     test "total_time/0 sums everything" do
-      Stats.track("entry", 10)
+      Stats.track("journal", 10)
       Stats.track("flashcards", 5)
       assert Stats.total_time() == 15
     end

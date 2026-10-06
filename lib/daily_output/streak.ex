@@ -28,6 +28,9 @@ defmodule DailyOutput.Streak do
     %{count: count, freezes_available: freezes, today_status: today_status}
   end
 
+  @doc "The most freezes you can bank."
+  def max_freezes, do: @max_freezes
+
   defp status(%{activities: n, cards?: true}) when n >= 2, do: :bonus
   defp status(%{activities: n, cards?: true}) when n >= 1, do: :passed
   defp status(_), do: :pending

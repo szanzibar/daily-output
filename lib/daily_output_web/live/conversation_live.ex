@@ -138,6 +138,14 @@ defmodule DailyOutputWeb.ConversationLive do
           message={gettext("Your partner didn't answer.")}
         />
 
+        <p
+          :if={is_nil(@activity.completed_at)}
+          id="message-counter"
+          class="text-right text-xs font-mono font-bold text-base-content/50"
+        >
+          {Enum.count(@activity.messages, &(&1.role == "user"))} / {Today.message_limit()}
+        </p>
+
         <form
           :if={
             is_nil(@activity.completed_at) and not your_message_last?(@activity) and
@@ -147,13 +155,16 @@ defmodule DailyOutputWeb.ConversationLive do
           phx-submit="send"
           class="flex items-end gap-2"
         >
+          <%!-- The hook owns the text, so a landing AI call never wipes what you're typing.
+               Focus on mount keeps the keyboard ready for your next message. --%>
           <textarea
             id="chat-input"
             name="message"
             rows="1"
             phx-hook="AutoExpand"
-            data-persist-key={"chat-#{@activity.id}"}
+            phx-update="ignore"
             phx-mounted={JS.focus()}
+            data-persist-key={"chat-#{@activity.id}"}
             placeholder={gettext("Write a message...")}
             class="chat-input flex-1"
           ></textarea>

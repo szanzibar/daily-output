@@ -102,6 +102,11 @@ function tokenCharWidth(tok) {
   return tok.text.length;
 }
 
+const tokenText = (tok, edge) =>
+  tok.type === 'text' ? tok.text : edge === 'start' ? tok.original || tok.corrected : tok.corrected || tok.original;
+const startsWithSpace = (tok) => /^\s/.test(tokenText(tok, 'start'));
+const endsWithSpace = (tok) => /\s$/.test(tokenText(tok, 'end'));
+
 /**
  * Word-wrap tokens into lines of at most maxChars characters.
  * Each line has: segments[] and corrections[] (indexes only — positioning is done via DOM measurement).
@@ -122,8 +127,10 @@ export function wrapLines(tokens, maxChars) {
     }
 
     const tokLen = tokenCharWidth(tok);
+    const prev = curLine.segments[curLine.segments.length - 1];
 
-    if (curLine.charPos > 0 && curLine.charPos + tokLen > maxChars) {
+    // Only break at a space, so "." after a correction never lands alone on the next line.
+    if (curLine.charPos > 0 && curLine.charPos + tokLen > maxChars && (endsWithSpace(prev) || startsWithSpace(tok))) {
       lines.push(curLine);
       newLine();
     }

@@ -111,9 +111,11 @@ defmodule DailyOutput.TodayTest do
     assert Today.streak() == %{count: 1, freezes_available: 0, today_status: :pending}
   end
 
-  test "journal_finish_at/1 is 5 minutes after the start" do
-    activity = %Activity{inserted_at: ~U[2026-10-04 10:00:00Z]}
-    assert Today.journal_finish_at(activity) == ~U[2026-10-04 10:05:00Z]
+  test "journal_seconds_left/1 counts down 5 minutes of logged time" do
+    assert Today.journal_seconds_left(0) == 300
+    assert Today.journal_seconds_left(299) == 1
+    assert Today.journal_seconds_left(300) == 0
+    assert Today.journal_seconds_left(900) == 0
   end
 
   test "conversation_over?/1 after the 5th user message" do

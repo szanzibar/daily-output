@@ -77,9 +77,9 @@ defmodule DailyOutput.Reminders do
 
     body =
       if streak > 0 do
-        gettext("Your %{n}-day streak ends soon — one quick entry keeps it alive.", n: streak)
+        gettext("Your %{n}-day streak is waiting. Today's practice is ready.", n: streak)
       else
-        gettext("You haven't practiced yet today. A few minutes is all it takes.")
+        gettext("Today's practice is ready: a short chat or journal, then a few cards.")
       end
 
     %{title: gettext("Daily Output"), body: body, url: "/"}

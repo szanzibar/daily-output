@@ -171,9 +171,10 @@ const Hooks = {
       if (this.el.dataset.persistKey) persistField(this.el)
       this.resize()
     },
+    // scrollHeight leaves out the border, so add it back or the text overflows by that much.
     resize() {
       this.el.style.height = "auto"
-      this.el.style.height = this.el.scrollHeight + "px"
+      this.el.style.height = this.el.scrollHeight + this.el.offsetHeight - this.el.clientHeight + "px"
     }
   },
 
@@ -219,7 +220,9 @@ const Hooks = {
   // click, tap, or scroll) within the last `idleMs` — so a page left open while you walk
   // away stops counting after the idle window instead of banking wall-clock time.
   // Flushes periodically and on hide/unmount. Set `data-section` to
-  // ("entry" | "conversation" | "flashcards").
+  // ("journal" | "conversation" | "flashcards").
+  // With `data-seconds-left` and `data-countdown` (an element id), it also ticks the server's
+  // seconds left down between reports, and reports the moment they run out.
   TimeTracker: {
     // How long after the last interaction we keep counting (covers reading/thinking
     // pauses between actions). Bump this if genuine think-time gets undercounted.
@@ -257,6 +260,16 @@ const Hooks = {
         this.accumulate()
         this.flush()
       }, 20000)
+      if (this.el.dataset.countdown) this.ticker = setInterval(() => this.tick(), 1000)
+    },
+    tick() {
+      const left = Number(this.el.dataset.secondsLeft)
+      if (!left) return
+      this.accumulate()
+      const shown = Math.max(left - Math.floor(this.accMs / 1000), 0)
+      const target = document.getElementById(this.el.dataset.countdown)
+      if (target) target.textContent = `${Math.floor(shown / 60)}:${String(shown % 60).padStart(2, "0")}`
+      if (shown === 0) this.flush()
     },
     accumulate() {
       const now = Date.now()
@@ -279,6 +292,7 @@ const Hooks = {
       this.accumulate()
       this.flush()
       clearInterval(this.interval)
+      clearInterval(this.ticker)
       this.activityEvents.forEach((evt) => {
         document.removeEventListener(evt, this.onActivity, {capture: true})
       })
@@ -287,10 +301,10 @@ const Hooks = {
     }
   },
 
-  // Renders annotated text — DOM measurement only, logic in annotated_text.js
+  // Renders annotated text — DOM measurement only, logic in annotated_text.js. The element
+  // is phx-update="ignore" and its corrections never change, so it draws once.
   AnnotatedText: {
     mounted() { this.render() },
-    updated() { this.render() },
 
     render() {
       const raw = this.el.dataset.annotatedText || ""

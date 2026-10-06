@@ -239,9 +239,14 @@ defmodule DailyOutput.Today do
   @doc "Marks today's card session done."
   def finish_cards, do: Flashcards.complete_day(Clock.today())
 
-  @doc "When a journal's Finish button appears. Wall clock from the start, so a refresh keeps it."
-  def journal_finish_at(%Activity{inserted_at: started}),
-    do: DateTime.add(started, @journal_minutes, :minute)
+  @doc """
+  Seconds until a journal's Finish button appears, from the active time logged on the page
+  today. Only one journal happens per day, so the day's journal time is this journal's.
+  """
+  def journal_seconds_left(logged_seconds), do: max(@journal_minutes * 60 - logged_seconds, 0)
+
+  @doc "How many messages you write in a conversation."
+  def message_limit, do: @user_messages
 
   @doc "A conversation ends after your #{@user_messages}th message."
   def conversation_over?(%Activity{messages: messages}),

@@ -1,32 +1,38 @@
 # DailyOutput
 
-**Write and speak in your target language every day, get instant level-appropriate corrections — then drill your own mistakes as flashcards.**
+**Open the app and it tells you what to do. Write or talk in your target language, get corrected, then drill your own mistakes as flashcards.**
 
-A self-hosted, single-user language-practice journal built with Phoenix LiveView and SQLite. AI runs through [ReqLLM](https://hex.pm/packages/req_llm) — **GPT-6.1 Sol by default, or GPT-6 Luna** — direct or via OpenRouter. Installable as a PWA. Brutalist UI, no external design system.
+A self-hosted, single-user language-practice app built with Phoenix LiveView and SQLite. AI runs through [ReqLLM](https://hex.pm/packages/req_llm): **GPT-6.1 Sol by default, or GPT-6 Luna**, direct or via OpenRouter. Installable as a PWA. Brutalist UI, no external design system.
 
 ## Why
 
-The only way to get better at a language is to produce output — writing and speaking — regularly. DailyOutput gives you a daily structure: a timed journal entry, an AI role-play conversation, detailed corrections, and a streak to keep you honest. Feedback is calibrated to your CEFR level, so you only see mistakes you should actually know at that level, and every correction can become a flashcard you review later.
+The only way to get better at a language is to produce output, writing and speaking, every day. DailyOutput takes every decision off your plate: open it and it tells you what to do. Feedback is calibrated to your CEFR level, so you only see mistakes you should know at that level, and your mistakes come back as flashcards.
+
+## Your day
+
+1. **One activity, picked for you.** Usually a conversation with an AI partner; about one day in three, a journal. A conversation ends after your 5th message; a journal's Finish button shows up after 5 minutes of writing.
+2. **A focus.** A grammar point picked from your own recent mistakes, shown as a banner while you write and graded at the end.
+3. **Corrections.** A clean rewrite with word-level strikethrough and inserts plus a short note on each change. It catches unnatural phrasing, not just outright errors.
+4. **Cards.** Up to 20 flashcards made from your mistakes, with SM-2 spaced repetition and progressive fill-in-the-blank. Skipped when nothing is due.
+5. **Done.** That passes the day and grows your streak. The bonus round does the other activity too and banks a streak freeze (up to 3), which covers a day you miss.
+
+Reopening the app always picks up the exact step you're on.
 
 ## Features
 
-- **Timed journaling** — AI-generated prompts at your level, a focus timer, and a distraction-free editor that never loses a draft.
-- **AI conversations** — natural role-play with a partner in your target language.
-- **Inline corrections** — a clean rewrite with word-level strikethrough/insert markers and a short note on each change; catches unnatural phrasing, not just outright errors.
-- **Flashcards** — cards distilled from your own mistakes, drilled with SM-2 spaced repetition and progressive fill-in-the-blank.
-- **Focus pool** — save grammar tips from feedback and pick one to practice before each session.
-- **Streaks** — a daily challenge (one entry + one conversation) with tiered streaks and earned freezes so one missed day doesn't reset you.
-- **Progress** — words written and corrections per 100 words over time, plus your daily AI spend.
-- **Daily reminders** — opt-in push notifications, managed per device.
-- **Choice of model** — GPT-6.1 Sol (default) or GPT-6 Luna, via OpenAI's native API or OpenRouter.
-- **Installable PWA** — add to your home screen; English/German UI that switches to your target language at B1+.
+- **The app decides** the activity, the topic, the focus, and the cards. No setup screens or choice lists.
+- **History** of every finished conversation and journal, with its corrections.
+- **Progress**: words written, corrections per 100 words over time, time spent, and your daily AI spend.
+- **Daily reminders**: opt-in push notifications, managed per device.
+- **Two models**: GPT-6.1 Sol (default) or GPT-6 Luna (much cheaper), through OpenAI's API or OpenRouter.
+- **Installable PWA**: add it to your home screen. English or German UI, which switches to your target language at B1+.
 
 ## Screenshots
 
 | | |
 |---|---|
-| ![Conversation prompts](priv/static/images/screenshots/conversation-prompts.png) | ![Conversation](priv/static/images/screenshots/conversation.png) |
-| ![Corrections](priv/static/images/screenshots/conversation-corrections.png) | ![About](priv/static/images/screenshots/about.png) |
+| ![Today's focus and the conversation](priv/static/images/screenshots/focus-and-chat.png) | ![Inline corrections](priv/static/images/screenshots/corrections.png) |
+| ![A card session](priv/static/images/screenshots/cards.png) | ![The done screen](priv/static/images/screenshots/done.png) |
 
 ## Quick start
 
@@ -74,11 +80,9 @@ Everything else is set on the in-app **Settings** page:
 | Setting | Description |
 |---|---|
 | AI model & provider | GPT-6.1 Sol or GPT-6 Luna; native API or OpenRouter |
-| Timer & exchanges | Minutes per entry; minimum conversation turns to complete |
-| Flashcards per day | Target number of cards that make a full flashcard day |
 | Target / native language | The language you're learning and your first language |
 | CEFR level | A1–C2 — calibrates feedback difficulty and the UI-language switch |
-| Topics & prompt context | Themes and custom instructions for AI-generated prompts |
+| About you | What you like to talk about and your goals; openers and prompts draw on it |
 | Daily reminder | Per-device push notifications at a chosen time |
 | UI language & appearance | Auto/English/German; light, dark, or follow OS |
 
@@ -119,16 +123,17 @@ mix run scripts/bench.exs openai:gpt-6.1-sol
 - **Phoenix LiveView** — every page is a stateful LiveView; no REST API.
 - **Ecto + SQLite** — a single file-based database, no Postgres.
 - **ReqLLM** — one client across providers (OpenAI, OpenRouter, Anthropic).
-- **Tailwind v4** — a custom brutalist theme; JS is limited to DOM measurement and textarea auto-expand.
+- **Tailwind v4** — a custom brutalist theme; JS is limited to DOM measurement, textarea auto-expand, and time tracking.
 - **Gettext** — English source strings, German translations.
 
 | Context | Purpose |
 |---|---|
-| `Journal` / `Conversations` | Entries and role-play chats, with versioning |
-| `AI` | Prompt generation, conversation, proofreading, flashcard/focus summaries |
+| `Today` | The daily flow: what to do next, the bonus, and the streak. Pages ask it and render the answer |
+| `Planner` / `Focus` / `Streak` | Pure pickers and the streak walk, seeded by the date |
+| `Activities` | Conversations and journals, one table for both |
+| `AI` | One client for every call: openers, partner replies, proofreading, focus banners, flashcards |
 | `Flashcards` | Spaced-repetition cards built from corrections |
-| `FocusTopics` | Focus pool, daily challenge, streaks and freezes |
-| `Stats` | Progress aggregation (words, corrections, spend) |
+| `Stats` | Progress aggregation (words, corrections, time, spend) |
 | `Settings` | Single-row user configuration |
 | `Push` / `Reminders` | Web Push subscriptions and the daily nudge |
 | `Clock` | Timezone + 4am logical-day boundary — the source of truth for day math |

@@ -86,6 +86,7 @@ defmodule DailyOutputWeb.ActivityComponents do
     <div
       id={@id}
       phx-hook="AnnotatedText"
+      phx-update="ignore"
       class="annotated-text"
       data-annotated-text={@feedback["annotated_text"]}
       data-annotations={Jason.encode!(@feedback["annotations"] || [])}
@@ -308,28 +309,24 @@ defmodule DailyOutputWeb.ActivityComponents do
     """
   end
 
+  @doc "The one loading state every AI call gets: bouncing blocks, what's happening, a bar."
   attr :message, :string, required: true
 
   def retro_loader(assigns) do
     ~H"""
-    <div class="py-8 sm:py-12">
-      <div class="loading-retro">
-        <div class="loading-blocks">
-          <span class="loading-block block-red"></span>
-          <span class="loading-block block-blue"></span>
-          <span class="loading-block block-yellow"></span>
-          <span class="loading-block block-green"></span>
-          <span class="loading-block block-pink"></span>
-        </div>
-        <div class="loading-typewriter">
-          <span class="loading-cursor">_</span>
-        </div>
-        <p class="text-sm font-mono text-base-content/60 mt-4 text-center tracking-widest uppercase">
-          {@message}
-        </p>
-        <div class="loading-bar">
-          <div class="loading-bar-fill"></div>
-        </div>
+    <div class="loading-retro border-4 border-ink px-5 py-8 sm:py-10 shadow-[6px_6px_0_var(--color-ink)]">
+      <div class="loading-blocks" aria-hidden="true">
+        <span class="loading-block block-red"></span>
+        <span class="loading-block block-blue"></span>
+        <span class="loading-block block-yellow"></span>
+        <span class="loading-block block-green"></span>
+        <span class="loading-block block-pink"></span>
+      </div>
+      <p class="text-sm font-mono font-bold text-center tracking-widest uppercase" role="status">
+        {@message}<span class="loading-cursor" aria-hidden="true">_</span>
+      </p>
+      <div class="loading-bar" aria-hidden="true">
+        <div class="loading-bar-fill"></div>
       </div>
     </div>
     """

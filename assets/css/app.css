@@ -120,6 +120,8 @@ body {
   background-color: var(--color-paper);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+  /* German compounds are longer than a phone is wide. */
+  overflow-wrap: break-word;
 }
 
 /* Light/dark custom variables — light is the default */
@@ -145,7 +147,7 @@ body {
     --color-border-subtle: oklch(30% 0.01 260);
     --color-ann-text: oklch(78% 0.08 264);
     --color-ann-id: oklch(82% 0.15 264);
-    --color-correct-del: oklch(65% 0.27 29);
+    --color-correct-del: oklch(72% 0.2 25);
     --color-correct-add: oklch(70% 0.20 155);
     --color-correct-case: oklch(72% 0.13 29);
     --color-ghost: oklch(40% 0 0);
@@ -160,7 +162,7 @@ body {
   --color-border-subtle: oklch(30% 0.01 260);
   --color-ann-text: oklch(78% 0.08 264);
   --color-ann-id: oklch(82% 0.15 264);
-  --color-correct-del: oklch(65% 0.27 29);
+  --color-correct-del: oklch(72% 0.2 25);
   --color-correct-add: oklch(70% 0.20 155);
   --color-correct-case: oklch(72% 0.13 29);
   --color-ghost: oklch(40% 0 0);
@@ -248,7 +250,8 @@ h1, h2, h3 {
 }
 
 /* ── Writing area ── */
-/* Pure CSS height: fills viewport. No JS needed. */
+/* Fills the viewport, then AutoExpand grows it with the text. A min-height, not a height,
+   so the first keystroke's resize never shrinks it. */
 .journal-editor {
   font-family: var(--font-mono);
   font-size: 1.125rem;
@@ -261,8 +264,7 @@ h1, h2, h3 {
   resize: none;
   outline: none;
   width: 100%;
-  height: calc(100dvh - 16rem);
-  min-height: 300px;
+  min-height: max(300px, calc(100dvh - 16rem));
 }
 
 .journal-editor:focus {
@@ -285,6 +287,7 @@ h1, h2, h3 {
 
 .ann-text-line {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   line-height: 1.6;
 }
 
@@ -456,7 +459,8 @@ h1, h2, h3 {
   color: var(--color-ink);
   resize: none;
   outline: none;
-  overflow: hidden;
+  /* Scrolls past max-height instead of hiding what you typed. */
+  overflow-y: auto;
   /* Wrap long lines instead of scrolling horizontally (and break unbroken words). */
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -475,7 +479,7 @@ h1, h2, h3 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 @keyframes typing-bounce {
@@ -513,14 +517,7 @@ h1, h2, h3 {
   }
 }
 
-/* Blinking cursor */
-.loading-typewriter {
-  font-family: var(--font-mono);
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: 0.3em;
-}
-
+/* Blinking cursor after the loading message */
 .loading-cursor {
   animation: cursor-blink 0.6s step-end infinite;
 }
@@ -607,7 +604,6 @@ h1, h2, h3 {
   font-size: clamp(1.5rem, 6vw, 2.5rem);
   text-transform: uppercase;
   letter-spacing: -0.03em;
-  color: var(--color-ink);
   box-shadow: 8px 8px 0 var(--color-ink);
   animation: celebrate-pop 2.8s ease forwards;
 }

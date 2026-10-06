@@ -8,7 +8,7 @@ defmodule DailyOutputWeb.TodayLive do
   """
   use DailyOutputWeb, :live_view
 
-  alias DailyOutput.{Clock, Today}
+  alias DailyOutput.{Clock, Streak, Today}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -21,10 +21,13 @@ defmodule DailyOutputWeb.TodayLive do
         {:ok, push_navigate(socket, to: ~p"/flashcards", replace: true)}
 
       :done ->
+        streak = Today.streak()
+
         {:ok,
          assign(socket,
            page_title: gettext("Today"),
-           streak: Today.streak(),
+           streak: streak,
+           freezes_full?: streak.freezes_available >= Streak.max_freezes(),
            today: Clock.today()
          )}
     end
@@ -78,7 +81,9 @@ defmodule DailyOutputWeb.TodayLive do
       >
         <span class="block text-lg">{gettext("Bonus round")} &rarr;</span>
         <span class="block text-xs font-mono normal-case tracking-normal opacity-70 mt-1">
-          {gettext("Do the other activity too and bank a streak freeze.")}
+          {if @freezes_full?,
+            do: gettext("Do the other activity too. Your streak freezes are already full."),
+            else: gettext("Do the other activity too and bank a streak freeze.")}
         </span>
       </button>
 
@@ -88,7 +93,10 @@ defmodule DailyOutputWeb.TodayLive do
         class="border-4 border-ink p-5 block-green"
       >
         <p class="text-lg font-black uppercase">{gettext("Bonus done")}</p>
-        <p class="text-sm font-mono">{gettext("+1 streak freeze")}</p>
+        <p :if={!@freezes_full?} class="text-sm font-mono">{gettext("+1 streak freeze")}</p>
+        <p :if={@freezes_full?} id="freezes-full" class="text-sm font-mono">
+          {gettext("Your streak freezes are full.")}
+        </p>
       </div>
 
       <div
