@@ -465,11 +465,6 @@ msgstr[1] ""
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "Reminders are temporarily unavailable — push keys could not be loaded. Check the server logs and restart."
-msgstr ""
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Reminders off for this device."
 msgstr ""
 
@@ -1007,4 +1002,14 @@ msgstr ""
 #: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Your streak freezes are full."
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Notifications are blocked. Allow them in your browser settings."
+msgstr ""
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "This browser doesn't support notifications."
 msgstr ""

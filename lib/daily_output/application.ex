@@ -7,16 +7,18 @@ defmodule DailyOutput.Application do
 
   @impl true
   def start(_type, _args) do
+    # ReqLLM's model catalog loads lazily and takes over a second, so warm it here instead of
+    # in the first AI call after a boot.
+    {:ok, _} = LLMDB.load()
+
     children =
       [
-        DailyOutputWeb.Telemetry,
         DailyOutput.Repo,
         {Ecto.Migrator,
          repos: Application.fetch_env!(:daily_output, :ecto_repos), skip: skip_migrations?()}
       ] ++
         vapid_child() ++
         [
-          {DNSCluster, query: Application.get_env(:daily_output, :dns_cluster_query) || :ignore},
           {Phoenix.PubSub, name: DailyOutput.PubSub},
           # Start to serve requests, typically the last entry
           DailyOutputWeb.Endpoint
@@ -29,7 +31,7 @@ defmodule DailyOutput.Application do
   end
 
   # Generates/loads the VAPID keypair right after migrations, before we serve
-  # requests. Disabled in tests, which assert on the unconfigured state.
+  # requests. Tests set their own keys inside their sandbox.
   defp vapid_child do
     if Application.get_env(:daily_output, :ensure_vapid, true) do
       [DailyOutput.Vapid]
@@ -54,8 +56,6 @@ defmodule DailyOutput.Application do
     :ok
   end
 
-  defp skip_migrations?() do
-    # By default, sqlite migrations are run when using a release
-    System.get_env("RELEASE_NAME") == nil
-  end
+  # A release migrates on every start, `bin/server` or plain `bin/daily_output start`.
+  defp skip_migrations?(), do: System.get_env("RELEASE_NAME") == nil
 end

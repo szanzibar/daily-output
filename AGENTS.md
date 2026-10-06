@@ -82,9 +82,9 @@ We follow *A Philosophy of Software Design*.
 - **Day math goes through `DailyOutput.Clock`**: the user's timezone plus a 4am day
   boundary, so a late-night session still counts as today. Never use `Date.utc_today/0`.
 - **Everything user-facing is translated.** Wrap strings in `gettext`, run extract and
-  merge, then fill in the German `msgstr`s and clear `fuzzy` flags. Fuzzy or empty entries
-  silently fall back to English.
-- **All AI calls go through `DailyOutput.AI.chat/2` with a `purpose:`**, so cost tracking
+  merge, then fill in the German `msgstr`s and clear `fuzzy` flags. Empty entries silently
+  fall back to English, and fuzzy ones show merge's guess as is.
+- **All AI calls go through `DailyOutput.AI.chat/1` with a `purpose:`**, so cost tracking
   per feature works. Use `Req` for any other HTTP.
 - **Push reminders are per device.** A device is on if it has a `push_subscriptions`
   row; there's no global flag. VAPID keys are generated into the DB on first boot, with no

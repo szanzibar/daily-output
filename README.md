@@ -64,6 +64,8 @@ That's it. On first boot the container generates its `SECRET_KEY_BASE`, creates 
 
 **Behind a reverse proxy (production):** DailyOutput serves plain HTTP on container port `4000` and expects HTTPS origin checks for `PHX_HOST`. Terminate TLS at your proxy and forward to the published `PORT`, which maps to container `:4000`.
 
+**Put auth in front of it.** DailyOutput has no login, so anyone who reaches it can use it and your AI key. Add auth at the proxy: basic auth, SSO, or keep it on a private network like Tailscale.
+
 ## Configuration
 
 The only thing DailyOutput needs is **one AI key**, matching the provider you choose in Settings:
@@ -97,7 +99,7 @@ The **UI** is available in English (default) and German, and auto-switches to yo
 
 ## Local development
 
-Requires Elixir `~> 1.15` (with Erlang/OTP) and Node.js (for the JS test suite).
+Requires Elixir 1.20, Erlang/OTP 29, and Node.js 24 (for the JS test suite). `mise.toml` pins them, so `mise install` sets them up.
 
 ```bash
 mix setup                # deps, DB, assets

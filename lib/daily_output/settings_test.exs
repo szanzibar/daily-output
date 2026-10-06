@@ -93,4 +93,23 @@ defmodule DailyOutput.SettingsTest do
       assert %{ai_model: _} = errors_on(cs)
     end
   end
+
+  describe "ui_locale/1" do
+    test "auto is the target language from B1 up, when the UI has it" do
+      for {level, target, locale} <- [
+            {"A2", "de", "en"},
+            {"B1", "de", "de"},
+            {"C2", "de", "de"},
+            {"B2", "fr", "en"}
+          ] do
+        config = %Config{ui_language: "auto", language_level: level, target_language: target}
+        assert Settings.ui_locale(config) == locale
+      end
+    end
+
+    test "a picked UI language wins over the level" do
+      assert Settings.ui_locale(%Config{ui_language: "en", language_level: "C2"}) == "en"
+      assert Settings.ui_locale(%Config{ui_language: "de", language_level: "A1"}) == "de"
+    end
+  end
 end

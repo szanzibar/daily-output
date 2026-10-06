@@ -7,7 +7,6 @@ defmodule DailyOutputWeb.Layouts do
   embed_templates "layouts/*"
 
   attr :flash, :map, required: true
-  attr :current_scope, :map, default: nil
   slot :inner_block
 
   def app(assigns) do

@@ -34,4 +34,16 @@ defmodule DailyOutput.Settings do
   def change_config(%Config{} = config, attrs \\ %{}) do
     Config.changeset(config, attrs)
   end
+
+  @doc """
+  The UI language for `config`. "auto" is the target language from B1 up, when the UI has it,
+  and English otherwise. The pages and the push reminders both read it here.
+  """
+  def ui_locale(%Config{ui_language: "auto"} = config) do
+    if config.language_level in ~w(B1 B2 C1 C2) and config.target_language in ~w(en de),
+      do: config.target_language,
+      else: "en"
+  end
+
+  def ui_locale(%Config{ui_language: locale}), do: locale
 end

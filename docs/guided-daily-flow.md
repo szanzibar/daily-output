@@ -152,13 +152,13 @@ rule sits behind a small interface, so steps can be reordered or swapped to expe
      phase 3 builds them.
 
    What the audit found has to change first:
-   - The scripts ignore their model arg, because Settings beats `:ai_model` in
-     `resolve_model/2`. The bench sets the model per call.
+   - The scripts ignore their model arg, because Settings beats it. The bench sets the
+     model per call.
    - Production hides parse misses: `proofread_message` falls back to the uncorrected
      text and flashcards to `[]`. Both return an error instead, which the UI shows with
      its one error state.
-   - `normalize_response/2` threw away ReqLLM's `reasoning_tokens` and `total_cost`. Keep
-     both.
+   - The bench reads ReqLLM's `reasoning_tokens` from its telemetry, since production
+     doesn't store them.
    - Structured calls reason fine now. Direct calls use ReqLLM's strict forced tool.
      OpenRouter's forced tool isn't strict, so it uses json_schema. Direct stays on the tool
      because json_schema made Luna reason about twice as long on the same calls.

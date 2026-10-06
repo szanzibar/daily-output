@@ -5,8 +5,8 @@ defmodule DailyOutput.Activities.Message do
   schema "messages" do
     field :role, :string
     field :body, :string
-    # Per-message corrections, %{"annotated_text" => ..., "annotations" => [...]}. Only on
-    # user messages, once their correction is back.
+    # Per-message corrections, %{"annotated_text" => ...}. Only on user messages, once their
+    # correction is back.
     field :feedback, :map
 
     belongs_to :activity, DailyOutput.Activities.Activity

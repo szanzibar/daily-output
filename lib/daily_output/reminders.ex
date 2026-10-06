@@ -41,7 +41,7 @@ defmodule DailyOutput.Reminders do
     streak = Today.streak()
     day_done? = streak.today_status != :pending
 
-    if Push.configured?() and Push.any?() and due?(config, Clock.now(), Clock.today(), day_done?) do
+    if Push.any?() and due?(config, Clock.now(), Clock.today(), day_done?) do
       Push.send_to_all(notification(config, streak.count))
       {:ok, saved} = Settings.ensure_config()
       Settings.update_config(saved, %{last_reminder_on: Clock.today()})
@@ -72,8 +72,9 @@ defmodule DailyOutput.Reminders do
     state
   end
 
-  defp notification(config, streak) do
-    put_locale(config)
+  @doc false
+  def notification(config, streak) do
+    Gettext.put_locale(DailyOutputWeb.Gettext, Settings.ui_locale(config))
 
     body =
       if streak > 0 do
@@ -83,10 +84,5 @@ defmodule DailyOutput.Reminders do
       end
 
     %{title: gettext("Daily Output"), body: body, url: "/"}
-  end
-
-  defp put_locale(config) do
-    locale = if config.ui_language in ~w(en de), do: config.ui_language, else: "en"
-    Gettext.put_locale(DailyOutputWeb.Gettext, locale)
   end
 end

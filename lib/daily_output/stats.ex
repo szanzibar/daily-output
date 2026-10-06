@@ -3,11 +3,11 @@ defmodule DailyOutput.Stats do
   Aggregates the feedback the app already produces into progress metrics — the
   "I'm actually improving" view.
 
-  Corrections are marked `[[before||after||type||explanation]]`. From that we derive, the
-  same way for journals and conversations:
+  From the corrections in `annotated_text` we derive, the same way for journals and
+  conversations:
 
-    * **words written** — the user's text with markers reduced to what they wrote
-    * **corrections** — the number of correction markers
+    * **words written** — the text as the user wrote it
+    * **corrections** — the number of corrections
 
   A journal carries one `feedback["annotated_text"]`. Conversations are corrected per
   message, so we sum each user message's own `feedback`.
@@ -18,11 +18,9 @@ defmodule DailyOutput.Stats do
 
   import Ecto.Query
 
-  alias DailyOutput.{Clock, Repo}
+  alias DailyOutput.{Clock, Markers, Repo}
   alias DailyOutput.Activities.Activity
   alias DailyOutput.Stats.{ApiUsage, TimeLog}
-
-  @marker ~r/\[\[([\s\S]*?)\]\]/
 
   # Sections we track time for.
   @time_sections ~w(journal conversation flashcards)
@@ -34,6 +32,7 @@ defmodule DailyOutput.Stats do
   def overview(weeks \\ 8) do
     samples = samples()
     today = Clock.today()
+    {week_start, _} = Clock.day_range(Date.add(today, -6))
 
     %{
       total_words: sum(samples, & &1.words),
@@ -45,17 +44,11 @@ defmodule DailyOutput.Stats do
       total_time: total_time(),
       time_today: time_for_day(today),
       time_days: time_by_day(7),
-      usage_total: usage_total(),
-      usage_today: usage_today(),
-      usage_week: usage_since(Date.add(today, -6)),
+      usage_total: usage_cost(ApiUsage),
+      usage_week: usage_cost(from(u in ApiUsage, where: u.inserted_at >= ^week_start)),
       usage_days: usage_by_day(7),
       usage_by_purpose: usage_by_purpose()
     }
-  end
-
-  @doc "Corrections per 100 words across `text`, or nil when there are no words."
-  def error_rate(text) do
-    rate(correction_count(text), word_count(text))
   end
 
   # ── Time tracking ──────────────────────────────────────
@@ -76,10 +69,7 @@ defmodule DailyOutput.Stats do
 
   def track(_section, _seconds), do: {:ok, :ignored}
 
-  @doc "Today's time breakdown: `%{journal, conversation, flashcards, total}` (seconds)."
-  def time_today, do: time_for_day(Clock.today())
-
-  @doc "Time breakdown for a logical `date`."
+  @doc "Time breakdown for a logical `date`: `%{journal, conversation, flashcards, total}` (seconds)."
   def time_for_day(%Date{} = date) do
     from(t in TimeLog, where: t.day == ^date, select: {t.section, t.seconds})
     |> Repo.all()
@@ -138,62 +128,26 @@ defmodule DailyOutput.Stats do
     sonnet: %{input: 2.0, output: 10.0, cache_read: 0.2}
   }
 
-  @doc """
-  Records one API call's token usage from the `AI.chat/2` `response`, tagged with
-  `purpose`. Tolerant: a response without a `"usage"` map is ignored, so this never
-  breaks the calling AI flow.
-  """
-  def record_usage(purpose, %{"usage" => usage} = response) when is_map(usage) do
-    %ApiUsage{
-      purpose: to_string(purpose || "other"),
-      model: response["model"] || "unknown",
-      input_tokens: usage["input_tokens"] || 0,
-      output_tokens: usage["output_tokens"] || 0,
-      cache_read_tokens: usage["cache_read_input_tokens"] || 0,
-      cache_creation_tokens: usage["cache_creation_input_tokens"] || 0
-    }
-    |> Repo.insert()
+  @doc "Records one `AI.chat/1` call's token usage, ReqLLM's usage map, under `purpose`."
+  def record_usage(purpose, model, usage) do
+    Repo.insert!(%ApiUsage{
+      purpose: purpose,
+      model: model,
+      input_tokens: usage.input_tokens,
+      output_tokens: usage.output_tokens,
+      cache_read_tokens: usage.cached_tokens,
+      cache_creation_tokens: usage.cache_creation_tokens
+    })
   end
 
-  def record_usage(_purpose, _response), do: {:ok, :ignored}
-
-  @doc "Lifetime API spend: `%{cost, input_tokens, output_tokens, calls}` (cost in USD)."
-  def usage_total, do: aggregate_cost(from(u in ApiUsage))
-
-  @doc "Today's API spend (same shape as `usage_total/0`)."
-  def usage_today, do: usage_for_day(Clock.today())
-
-  defp usage_for_day(%Date{} = date) do
-    {start, finish} = Clock.day_range(date)
-
-    aggregate_cost(
-      from(u in ApiUsage, where: u.inserted_at >= ^start and u.inserted_at <= ^finish)
-    )
-  end
-
-  defp usage_since(%Date{} = start_date) do
-    {start, _finish} = Clock.day_range(start_date)
-    aggregate_cost(from(u in ApiUsage, where: u.inserted_at >= ^start))
-  end
-
-  # Sum tokens grouped by model, then price each model group with its own rates.
-  defp aggregate_cost(query) do
+  # USD spent by the calls in `query`, each model priced at its own rates.
+  defp usage_cost(query) do
     from(u in query,
       group_by: u.model,
-      select:
-        {u.model, sum(u.input_tokens), sum(u.output_tokens), sum(u.cache_read_tokens),
-         count(u.id)}
+      select: {u.model, sum(u.input_tokens), sum(u.output_tokens), sum(u.cache_read_tokens)}
     )
     |> Repo.all()
-    |> Enum.reduce(%{cost: 0.0, input_tokens: 0, output_tokens: 0, calls: 0}, fn
-      {model, input, output, cache_read, calls}, acc ->
-        %{
-          cost: acc.cost + cost(model, input, output, cache_read),
-          input_tokens: acc.input_tokens + (input || 0),
-          output_tokens: acc.output_tokens + (output || 0),
-          calls: acc.calls + calls
-        }
-    end)
+    |> sum(fn {model, input, output, cache_read} -> cost(model, input, output, cache_read) end)
   end
 
   @doc """
@@ -257,8 +211,6 @@ defmodule DailyOutput.Stats do
 
   @doc "USD cost of one call's tokens on `model`. `input` includes the `cache_read` tokens."
   def cost(model, input, output, cache_read) do
-    model = model || ""
-
     p =
       cond do
         model =~ "luna" -> @pricing.luna
@@ -266,10 +218,7 @@ defmodule DailyOutput.Stats do
         true -> @pricing.sol
       end
 
-    cache_read = cache_read || 0
-
-    (((input || 0) - cache_read) * p.input + cache_read * p.cache_read + (output || 0) * p.output) /
-      1_000_000
+    ((input - cache_read) * p.input + cache_read * p.cache_read + output * p.output) / 1_000_000
   end
 
   @doc "Formats a USD `amount` compactly: `$1.23`, `<$0.01`, or `$0.00`."
@@ -278,15 +227,6 @@ defmodule DailyOutput.Stats do
       amount <= 0 -> "$0.00"
       amount < 0.01 -> "<$0.01"
       true -> "$" <> :erlang.float_to_binary(amount * 1.0, decimals: 2)
-    end
-  end
-
-  @doc "Formats a token count compactly: `1.2M`, `34.5k`, `812`."
-  def format_tokens(n) when is_integer(n) do
-    cond do
-      n >= 1_000_000 -> "#{Float.round(n / 1_000_000, 1)}M"
-      n >= 1_000 -> "#{Float.round(n / 1_000, 1)}k"
-      true -> Integer.to_string(n)
     end
   end
 
@@ -311,7 +251,7 @@ defmodule DailyOutput.Stats do
         kind: activity.kind,
         date: activity.date,
         words: sum(texts, &word_count/1),
-        corrections: sum(texts, &correction_count/1)
+        corrections: sum(texts, &length(Markers.parse(&1)))
       }
     end)
   end
@@ -324,12 +264,7 @@ defmodule DailyOutput.Stats do
       window = Enum.filter(samples, &within?(&1.date, start, finish))
       words = sum(window, & &1.words)
 
-      %{
-        start: start,
-        finish: finish,
-        words: words,
-        error_rate: rate(sum(window, & &1.corrections), words)
-      }
+      %{finish: finish, error_rate: rate(sum(window, & &1.corrections), words)}
     end
   end
 
@@ -339,51 +274,15 @@ defmodule DailyOutput.Stats do
     words = sum(window, & &1.words)
 
     %{
-      start: start,
-      finish: today,
       days_active: window |> Enum.map(& &1.date) |> Enum.uniq() |> length(),
       words: words,
-      corrections: sum(window, & &1.corrections),
       error_rate: rate(sum(window, & &1.corrections), words)
     }
   end
 
   @doc false
   def word_count(text) do
-    text
-    |> strip_markers()
-    |> String.split(~r/\s+/, trim: true)
-    |> length()
-  end
-
-  @doc false
-  def correction_count(text) do
-    @marker
-    |> Regex.scan(text || "")
-    |> Enum.count(fn [_, inner] ->
-      case marker_before_after(inner) do
-        {before, after_} -> before != after_
-        :malformed -> false
-      end
-    end)
-  end
-
-  # Replace each marker with the student's original text for word counting.
-  defp strip_markers(text) do
-    Regex.replace(@marker, text || "", fn whole, inner ->
-      case marker_before_after(inner) do
-        {before, _after} -> before
-        :malformed -> whole
-      end
-    end)
-  end
-
-  # Marker inner -> {before, after}. A marker with no || delimiter is :malformed.
-  defp marker_before_after(inner) do
-    case String.split(inner, "||") do
-      [_single] -> :malformed
-      [before | rest] -> {before, List.first(rest) || ""}
-    end
+    text |> Markers.original_text() |> String.split(~r/\s+/, trim: true) |> length()
   end
 
   defp within?(date, start, finish) do

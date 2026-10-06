@@ -17,13 +17,17 @@ config :daily_output, DailyOutputWeb.Endpoint,
   secret_key_base: "/xD6yxGcMt2uKnXA1oFAmtgWR7UndlZm4oflvTu7oN2aFGFtepvSJMzuoN1wxgwR",
   server: false
 
-# Don't run the reminder scheduler during tests, and don't auto-generate VAPID
-# keys — the push tests assert on the unconfigured state. AI calls answer through
-# Req.Test stubs (see DailyOutput.AI), so the key is a dummy.
+# Don't run the reminder scheduler during tests. VAPID keys would be generated outside any
+# test's sandbox at boot, so push tests set their own (see DataCase.push_device/1). AI calls
+# answer through Req.Test stubs (see DailyOutput.AI), so the key is a dummy.
 config :daily_output,
   start_reminders: false,
   ensure_vapid: false,
   openai_api_key: "test"
+
+# WebPushElixir takes no Req options, so push sends answer through this stub. AI calls pass
+# their own.
+config :req, default_options: [plug: {Req.Test, DailyOutput.Push}]
 
 # Print only warnings and errors during test
 config :logger, level: :warning

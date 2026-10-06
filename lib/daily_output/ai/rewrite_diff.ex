@@ -1,35 +1,22 @@
 defmodule DailyOutput.AI.RewriteDiff do
   @moduledoc """
-  Turns a model's *rewrite* of the student's message into inline correction markers.
-
-  Experiments showed that asking the model to hand-place
-  `[[before||after||type||explanation]]` markers is the source of the garbled/duplicated
-  corrections — it cannot express a word-order MOVE as a before/after span (the moved word ends
-  up both inside and outside the span), so it garbles delimiters or gives up. So instead the
-  model only does what it is reliably good at: rewrite the sentence naturally and list each
-  change as `{after, type, explanation}`. WE compute the spans here, with a deterministic
-  word diff of original↔rewrite, and emit the exact same marker format the rest of the app
-  already reads. Malformed markers are impossible by construction.
-
-  `annotate/3` returns the `annotated_text` string (original verbatim outside markers, all
-  whitespace and line breaks preserved). Empty result falls back to the original.
+  Turns a model's rewrite of the student's text into the inline correction markers
+  `Markers` reads, `[[before||after||type||explanation]]`. The model can't place markers
+  around a word-order move without garbling them, so it only rewrites and lists its changes,
+  and the spans come from a word diff here.
   """
-
-  # A change region between two aligned anchors: the original words that were deleted/replaced
-  # (`before`, verbatim slice of the original) and the words that replace them (`after`).
-  # Byte offsets into the original so we can rebuild it without touching a single other char.
 
   @doc """
   Builds `annotated_text` for `original` given the model's `corrected` rewrite and its
   `corrections` list (`[%{"before" => ..., "after" => ..., "type" => ..., "explanation" => ...}]`).
-  Spans come from the diff; type/explanation are matched to each span from the list.
+  Spans come from the diff; type/explanation are matched to each span from the list. Outside
+  the markers the original stays verbatim, line breaks included.
   """
-  def annotate(original, corrected, corrections)
-      when is_binary(original) and is_binary(corrected) do
+  def annotate(original, corrected, corrections) do
     orig = tokens_with_offsets(original)
     corr = Enum.map(tokens_with_offsets(corrected), & &1.text)
     regions = regions(orig, corr, byte_size(original))
-    metas = match(regions, orig, corr, List.wrap(corrections))
+    metas = match(regions, orig, corr, corrections)
 
     {out, cursor} =
       regions
@@ -44,11 +31,8 @@ defmodule DailyOutput.AI.RewriteDiff do
         {out <> verbatim <> seg, r.stop}
       end)
 
-    result = out <> binary_part(original, cursor, byte_size(original) - cursor)
-    if String.trim(result) == "", do: original, else: result
+    out <> binary_part(original, cursor, byte_size(original) - cursor)
   end
-
-  def annotate(original, _corrected, _corrections), do: original
 
   defp marker(before, after_, %{"type" => type, "explanation" => expl}) do
     "[[#{before}||#{after_}||#{type}||#{String.trim(expl)}]]"
@@ -56,36 +40,30 @@ defmodule DailyOutput.AI.RewriteDiff do
 
   # ── Region diff ─────────────────────────────────────────────────────────────
   # Word tokens of the original carry their byte offset so the rebuild preserves every
-  # original space/newline outside a region. The rewrite is compared by word text only.
+  # original space/newline outside a region. The rewrite is compared by word text only, and
+  # case-sensitively, because a capital is a real correction here.
   defp regions(orig, corr, orig_bytes) do
-    a = orig |> Enum.map(& &1.text) |> List.to_tuple()
-    {ai, bi} = lcs(a, List.to_tuple(corr))
+    orig
+    |> Enum.map(& &1.text)
+    |> List.myers_difference(corr)
+    |> Enum.chunk_by(&(elem(&1, 0) == :eq))
+    |> Enum.flat_map_reduce({0, 0}, fn
+      [{:eq, words}], {oi, ci} ->
+        {[], {oi + length(words), ci + length(words)}}
 
-    build_regions(orig, corr, Enum.zip(ai, bi), orig_bytes)
-  end
-
-  # Walk matched (orig_idx, corr_idx) pairs; between two anchors, the original words in the gap
-  # are the deletion and the rewrite words in the gap are the insertion → one region.
-  defp build_regions(orig, corr, pairs, orig_bytes) do
-    {regions, oi, ci} =
-      Enum.reduce(pairs, {[], 0, 0}, fn {mo, mc}, {regions, oi, ci} ->
-        regions = add_region(regions, orig, corr, oi, mo, ci, mc, orig_bytes)
-        {regions, mo + 1, mc + 1}
-      end)
-
-    add_region(regions, orig, corr, oi, length(orig), ci, length(corr), orig_bytes)
-    |> Enum.reverse()
+      # A run of deleted and inserted words between two kept ones is one region.
+      changes, {oi, ci} ->
+        mo = oi + Enum.sum(for {:del, words} <- changes, do: length(words))
+        mc = ci + Enum.sum(for {:ins, words} <- changes, do: length(words))
+        {[region(orig, corr, oi, mo, ci, mc, orig_bytes)], {mo, mc}}
+    end)
+    |> elem(0)
   end
 
   # Region for deleted original words [oi, mo) and inserted rewrite words [ci, mc).
-  defp add_region(regions, _orig, _corr, oi, mo, ci, mc, _bytes) when oi == mo and ci == mc,
-    do: regions
-
-  defp add_region(regions, orig, corr, oi, mo, ci, mc, orig_bytes) do
+  defp region(orig, corr, oi, mo, ci, mc, orig_bytes) do
     del = Enum.slice(orig, oi, mo - oi)
     ins = Enum.slice(corr, ci, mc - ci)
-    before = del |> Enum.map(& &1.text) |> Enum.join(" ")
-    after_ = Enum.join(ins, " ")
 
     {start, stop} =
       case del do
@@ -95,21 +73,18 @@ defmodule DailyOutput.AI.RewriteDiff do
           {point, point}
 
         _ ->
-          first = List.first(del)
           last = List.last(del)
-          {first.start, last.start + last.len}
+          {hd(del).start, last.start + last.len}
       end
 
-    region = %{
-      before: before,
-      after: after_,
+    %{
+      before: Enum.map_join(del, " ", & &1.text),
+      after: Enum.join(ins, " "),
       start: start,
       stop: stop,
       orig: {oi, mo},
       corr: {ci, mc}
     }
-
-    [region | regions]
   end
 
   defp tokens_with_offsets(text) do
@@ -186,43 +161,4 @@ defmodule DailyOutput.AI.RewriteDiff do
 
   defp wordset(a, b), do: MapSet.new(needle(a) ++ needle(b)) |> MapSet.delete("")
   defp overlap(a, b), do: MapSet.size(MapSet.intersection(a, b))
-
-  # ── Longest common subsequence of two word tuples (case-sensitive) ──────────
-  # Returns {matched_indices_in_a, matched_indices_in_b}. Same shape as Flashcards.Diff but
-  # case-sensitive — German capitalization is a real correction, not a soft warning here.
-  defp lcs(a, b) do
-    n = tuple_size(a)
-    m = tuple_size(b)
-
-    dp =
-      for i <- n..0//-1, j <- m..0//-1, reduce: %{} do
-        acc ->
-          v =
-            cond do
-              i == n or j == m -> 0
-              elem(a, i) == elem(b, j) -> 1 + Map.get(acc, {i + 1, j + 1}, 0)
-              true -> max(Map.get(acc, {i + 1, j}, 0), Map.get(acc, {i, j + 1}, 0))
-            end
-
-          Map.put(acc, {i, j}, v)
-      end
-
-    back(a, b, n, m, dp, 0, 0, [], [])
-  end
-
-  defp back(_a, _b, n, m, _dp, i, j, xa, xb) when i == n or j == m,
-    do: {Enum.reverse(xa), Enum.reverse(xb)}
-
-  defp back(a, b, n, m, dp, i, j, xa, xb) do
-    cond do
-      elem(a, i) == elem(b, j) ->
-        back(a, b, n, m, dp, i + 1, j + 1, [i | xa], [j | xb])
-
-      Map.get(dp, {i + 1, j}, 0) >= Map.get(dp, {i, j + 1}, 0) ->
-        back(a, b, n, m, dp, i + 1, j, xa, xb)
-
-      true ->
-        back(a, b, n, m, dp, i, j + 1, xa, xb)
-    end
-  end
 end

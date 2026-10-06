@@ -8,8 +8,7 @@ defmodule DailyOutput.Flashcards.Scheduler do
 
   States: `new` (never studied), `review` (graduated, scheduled in days),
   `learning` (a new card that was just missed) and `relearning` (a graduated card
-  that lapsed). Missed cards get a short minutes-away `due_at` so they also resurface
-  in the same sitting (the study session additionally re-queues them in memory).
+  that lapsed). Missed cards get a short minutes-away `due_at`, so they come back soon.
 
   Intervals follow SM-2: first graduation = 1 day, then 6 days, then `interval * ease`.
   `ease` starts at 2.5, is unchanged on a pass (SM-2 quality ≈ 4), and drops by

@@ -48,7 +48,8 @@ const Hooks = {
   },
 
   // Daily-reminder controls: subscribe/unsubscribe to Web Push per device and
-  // detect timezone. The element carries data-vapid-key and data-timezone.
+  // detect timezone. The element carries data-vapid-key, data-timezone, and the
+  // translated data-error-* messages.
   // Reminder state is per device: this browser is "on" iff it has a push
   // subscription the server knows about, so we report our endpoint on mount and
   // the server tells us which buttons to show.
@@ -81,13 +82,11 @@ const Hooks = {
     async enable() {
       try {
         if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-          return this.error("This browser doesn't support notifications.")
+          return this.error(this.el.dataset.errorUnsupported)
         }
-        const key = this.el.dataset.vapidKey
-        if (!key) return this.error("Push keys aren't configured on the server.")
 
         const permission = await Notification.requestPermission()
-        if (permission !== "granted") return this.error("Notifications are blocked. Allow them in your browser settings.")
+        if (permission !== "granted") return this.error(this.el.dataset.errorBlocked)
 
         const reg = await navigator.serviceWorker.ready
 
@@ -98,14 +97,14 @@ const Hooks = {
 
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(key)
+          applicationServerKey: urlBase64ToUint8Array(this.el.dataset.vapidKey)
         })
 
         this.error("")
         this.pushEvent("enable_reminders", { subscription: sub.toJSON() })
       } catch (e) {
         console.error("enable reminders failed:", e)
-        this.error(`Could not enable reminders: ${e.message || e.name}`)
+        this.error(`${this.el.dataset.errorFailed} (${e.message || e.name})`)
       }
     },
 
@@ -308,14 +307,10 @@ const Hooks = {
 
     render() {
       const raw = this.el.dataset.annotatedText || ""
-      const annotations = JSON.parse(this.el.dataset.annotations || "[]")
       if (!raw) return
 
-      const annMap = {}
-      annotations.forEach(a => { annMap[a.id] = a.explanation })
-
       // Parse and tokenize (pure logic)
-      const segments = parseMarkers(raw, annMap)
+      const segments = parseMarkers(raw)
       const tokens = tokenize(segments)
 
       // Measure (DOM-dependent)

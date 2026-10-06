@@ -28,7 +28,7 @@ defmodule DailyOutputWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import DailyOutputWeb.ConnCase
-      import DailyOutput.DataCase, only: [expect_ai: 1, expect_ai: 2]
+      import DailyOutput.DataCase, only: [expect_ai: 1, expect_ai: 2, push_device: 1]
     end
   end
 

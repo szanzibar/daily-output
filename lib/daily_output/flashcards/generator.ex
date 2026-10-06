@@ -29,7 +29,7 @@ defmodule DailyOutput.Flashcards.Generator do
   def generate(corrected_text, mistakes, opts) do
     target = Keyword.fetch!(opts, :target_language)
     native = Keyword.fetch!(opts, :native_language)
-    level = Keyword.get(opts, :language_level, "B2")
+    level = Keyword.fetch!(opts, :language_level)
     profile = LanguageProfile.resolve(target)
     native_name = LanguageProfile.resolve(native).language_name
 
@@ -80,10 +80,8 @@ defmodule DailyOutput.Flashcards.Generator do
     #{format_mistakes(mistakes)}
     """
 
-    with {:ok, client} <- AI.client(),
-         {:ok, %{"cards" => cards}} <-
+    with {:ok, %{"cards" => cards}} <-
            AI.chat(
-             client,
              [
                system: system,
                messages: [%{role: "user", content: user_content}],
@@ -106,7 +104,7 @@ defmodule DailyOutput.Flashcards.Generator do
   def improve(card, opts) do
     target = Keyword.fetch!(opts, :target_language)
     native = Keyword.fetch!(opts, :native_language)
-    level = Keyword.get(opts, :language_level, "B2")
+    level = Keyword.fetch!(opts, :language_level)
     profile = LanguageProfile.resolve(target)
     native_name = LanguageProfile.resolve(native).language_name
 
@@ -139,9 +137,8 @@ defmodule DailyOutput.Flashcards.Generator do
     #{native_name}: #{card.native_text}
     """
 
-    with {:ok, client} <- AI.client(),
-         {:ok, %{"cards" => cards}} <-
-           AI.chat(client,
+    with {:ok, %{"cards" => cards}} <-
+           AI.chat(
              system: system,
              messages: [%{role: "user", content: user_content}],
              schema: flashcards_schema(),
@@ -154,8 +151,6 @@ defmodule DailyOutput.Flashcards.Generator do
       end
     end
   end
-
-  defp format_mistakes([]), do: "(none)"
 
   defp format_mistakes(mistakes) do
     Enum.map_join(mistakes, "\n", fn m ->

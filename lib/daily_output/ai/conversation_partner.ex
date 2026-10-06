@@ -11,7 +11,7 @@ defmodule DailyOutput.AI.ConversationPartner do
   def respond(messages, opts) do
     target = Keyword.fetch!(opts, :target_language)
     native = LanguageProfile.resolve(Keyword.fetch!(opts, :native_language)).language_name
-    level = Keyword.get(opts, :language_level, "B2")
+    level = Keyword.fetch!(opts, :language_level)
     context = Keyword.get(opts, :about_you, "")
     profile = LanguageProfile.resolve(target)
 
@@ -45,10 +45,8 @@ defmodule DailyOutput.AI.ConversationPartner do
     #{Enum.map_join(rules, "\n", &"- #{&1}")}
     """
 
-    with {:ok, client} <- AI.client(),
-         {:ok, response} <-
+    with {:ok, text} <-
            AI.chat(
-             client,
              [
                purpose: "conversation",
                system: system,
@@ -56,7 +54,7 @@ defmodule DailyOutput.AI.ConversationPartner do
                max_tokens: 512
              ] ++ Keyword.take(opts, [:model, :effort])
            ) do
-      {:ok, String.trim(AI.text_content(response))}
+      {:ok, String.trim(text)}
     end
   end
 end

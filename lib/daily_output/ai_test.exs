@@ -13,35 +13,6 @@ defmodule DailyOutput.AITest do
     "additionalProperties" => false
   }
 
-  describe "text_content/1" do
-    test "returns text when a thinking block precedes it" do
-      response = %{
-        "content" => [
-          %{"type" => "thinking", "thinking" => "", "signature" => "abc"},
-          %{"type" => "text", "text" => "Hoi! Wie gohts?"}
-        ]
-      }
-
-      assert AI.text_content(response) == "Hoi! Wie gohts?"
-    end
-
-    test "concatenates multiple text blocks" do
-      response = %{
-        "content" => [
-          %{"type" => "text", "text" => "foo"},
-          %{"type" => "text", "text" => "bar"}
-        ]
-      }
-
-      assert AI.text_content(response) == "foobar"
-    end
-
-    test "returns empty string when there is no text block" do
-      response = %{"content" => [%{"type" => "thinking", "thinking" => "hmm"}]}
-      assert AI.text_content(response) == ""
-    end
-  end
-
   describe "spec_for/2" do
     test "direct routes to OpenAI's own API" do
       assert AI.spec_for("direct", "gpt-6.1-sol") == "openai:gpt-6.1-sol"
@@ -72,6 +43,22 @@ defmodule DailyOutput.AITest do
     end
   end
 
+  describe "chat/1" do
+    test "returns the reply text and records the call's usage under its purpose" do
+      expect_ai("Hoi zäme!")
+
+      assert AI.chat(
+               purpose: "starter",
+               messages: [%{role: "user", content: "Hoi"}],
+               max_tokens: 10
+             ) ==
+               {:ok, "Hoi zäme!"}
+
+      assert [%{purpose: "starter", model: "gpt-6.1-sol", input_tokens: 100, output_tokens: 20}] =
+               Repo.all(DailyOutput.Stats.ApiUsage)
+    end
+  end
+
   describe "reasoning effort" do
     test "each model gets its own effort, and the bench can override it" do
       for {model, effort, expected} <- [
@@ -83,7 +70,13 @@ defmodule DailyOutput.AITest do
         messages = [%{role: "user", content: "Hoi"}]
 
         assert {:ok, _} =
-                 AI.chat(nil, model: model, effort: effort, messages: messages, max_tokens: 10)
+                 AI.chat(
+                   model: model,
+                   effort: effort,
+                   messages: messages,
+                   max_tokens: 10,
+                   purpose: "test"
+                 )
 
         assert_received {:ai_request, %{"reasoning" => %{"effort" => ^expected}}}
       end
@@ -101,7 +94,8 @@ defmodule DailyOutput.AITest do
         conn |> Plug.Conn.put_status(400) |> Req.Test.json(%{"error" => %{"code" => 400}})
       end)
 
-      AI.chat(nil,
+      AI.chat(
+        purpose: "test",
         model: "openrouter:openai/gpt-6-luna",
         schema: @schema,
         messages: [%{role: "user", content: "Hoi"}],
@@ -122,7 +116,7 @@ defmodule DailyOutput.AITest do
 
       for {effort, thinking, output_config} <- [
             {nil, %{"type" => "between_tools"}, nil},
-            {:low, %{"type" => "adaptive"}, %{"effort" => "low"}}
+            {:low, %{"type" => "adaptive", "display" => "summarized"}, %{"effort" => "low"}}
           ] do
         # Only the request matters here, so the reply is Anthropic's 400.
         Req.Test.expect(DailyOutput.AI, fn conn ->
@@ -137,7 +131,8 @@ defmodule DailyOutput.AITest do
           })
         end)
 
-        AI.chat(nil,
+        AI.chat(
+          purpose: "test",
           model: "anthropic:claude-sonnet-5-5",
           effort: effort,
           schema: @schema,
@@ -163,43 +158,6 @@ defmodule DailyOutput.AITest do
       usage: usage,
       object: object
     }
-  end
-
-  describe "normalize_response/2" do
-    test "maps text and usage, keeping reasoning tokens and total cost" do
-      response =
-        req_response(ReqLLM.Context.assistant("Hoi zäme!"), %{
-          input_tokens: 10,
-          output_tokens: 4,
-          reasoning_tokens: 3,
-          cached_tokens: 2,
-          cache_creation_tokens: 1,
-          total_cost: 0.0042
-        })
-
-      shaped = AI.normalize_response(response, "fallback")
-
-      assert AI.text_content(shaped) == "Hoi zäme!"
-      assert shaped["model"] == "gpt-6.1-sol"
-
-      assert shaped["usage"] == %{
-               "input_tokens" => 10,
-               "output_tokens" => 4,
-               "reasoning_tokens" => 3,
-               "cache_read_input_tokens" => 2,
-               "cache_creation_input_tokens" => 1,
-               "total_cost" => 0.0042
-             }
-    end
-
-    test "missing usage fields default to 0 and the cost to nil" do
-      response = %{req_response(ReqLLM.Context.assistant("x"), %{}) | model: nil}
-      shaped = AI.normalize_response(response, "gpt-6.1-sol")
-
-      assert shaped["model"] == "gpt-6.1-sol"
-      assert shaped["usage"]["reasoning_tokens"] == 0
-      assert shaped["usage"]["total_cost"] == nil
-    end
   end
 
   describe "structured/1" do

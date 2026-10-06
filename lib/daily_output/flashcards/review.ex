@@ -3,8 +3,7 @@ defmodule DailyOutput.Flashcards.Review do
   import Ecto.Changeset
 
   @moduledoc """
-  One review event. The log of these rows is the source of truth for the daily quota
-  (distinct cards studied per logical day) and the flashcard streak history.
+  One review event: a card and whether you got it. `Flashcards.review/3` logs one per answer.
   """
 
   schema "flashcard_reviews" do

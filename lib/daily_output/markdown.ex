@@ -1,7 +1,7 @@
 defmodule DailyOutput.Markdown do
   @moduledoc """
-  Renders the small slice of Markdown that AI-generated focus tips and feedback
-  use into safe HTML: `**bold**`, `*italic*`/`_italic_`, `` `code` `` and `>` blockquotes.
+  Renders the small slice of Markdown the AI focus banner uses into safe HTML:
+  `**bold**`, `*italic*`/`_italic_`, `` `code` `` and `>` blockquotes.
 
   This is intentionally tiny — we control the input (our own prompts), so we only
   support the handful of constructs we actually emit rather than pulling in a full

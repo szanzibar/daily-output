@@ -1,6 +1,6 @@
 defmodule DailyOutput.AI do
   @moduledoc """
-  AI context wrapping ReqLLM. Every call goes through `chat/2`, which picks the model, sets
+  AI context wrapping ReqLLM. Every call goes through `chat/1`, which picks the model, sets
   its reasoning effort, and records usage for cost tracking.
 
   Settings offers two models, GPT-6.1 Sol (default) and GPT-6 Luna, each reached directly or
@@ -21,13 +21,6 @@ defmodule DailyOutput.AI do
     openrouter: "OPENROUTER_API_KEY"
   }
 
-  # AI is "ready" if any provider key is configured; chat/2 resolves the key per call.
-  def client do
-    if Enum.any?(Map.keys(@key_vars), &api_key_set?/1),
-      do: {:ok, :ready},
-      else: {:error, :api_key_not_set}
-  end
-
   @doc "Whether the API key for `provider` (:anthropic | :openai | :openrouter) is configured."
   def api_key_set?(provider), do: match?({:ok, _}, get_api_key(provider))
 
@@ -43,31 +36,20 @@ defmodule DailyOutput.AI do
   end
 
   @doc """
-  Concatenates the text from a response's content blocks, skipping non-text blocks.
-  Returns "" when there is no text block.
-  """
-  def text_content(%{"content" => blocks}) when is_list(blocks) do
-    blocks
-    |> Enum.filter(&(&1["type"] == "text"))
-    |> Enum.map_join("", & &1["text"])
-  end
-
-  @doc """
   Sends one request. `:purpose` tags it for cost tracking, `:model` (a "provider:id" spec)
   overrides the Settings choice, and `:effort` overrides the model's reasoning effort.
 
   With `:schema` (a JSON schema) it returns `{:ok, map}`, or `{:error, :unparsed}` when the
-  reply has no decodable object. Without it, it returns the response for `text_content/1`.
+  reply has no decodable object. Without it, it returns `{:ok, text}`.
   """
-  def chat(_client, opts) do
-    {purpose, opts} = Keyword.pop(opts, :purpose)
+  def chat(opts) do
+    {purpose, opts} = Keyword.pop!(opts, :purpose)
     {provider, model_id} = resolve_model(opts)
 
     with {:ok, api_key} <- get_api_key(provider),
          {:ok, response} <- req_llm_chat(provider, api_key, model_id, opts) do
-      shaped = normalize_response(response, model_id)
-      record_usage(purpose, shaped)
-      if opts[:schema], do: structured(response), else: {:ok, shaped}
+      record_usage(purpose, response)
+      if opts[:schema], do: structured(response), else: {:ok, ReqLLM.Response.text(response)}
     end
   end
 
@@ -96,20 +78,11 @@ defmodule DailyOutput.AI do
   # Tests answer through `Req.Test` stubs, so they never reach the network.
   @http_options if(Mix.env() == :test, do: [plug: {Req.Test, __MODULE__}], else: [])
 
-  # A per-call `:model` spec (the bench) beats the Settings choice. The config default only
-  # applies when Settings can't be read.
+  # A per-call `:model` spec (the bench) beats the Settings choice.
   defp resolve_model(opts) do
-    spec = opts[:model] || settings_spec() || Application.fetch_env!(:daily_output, :ai_model)
+    spec = opts[:model] || then(Settings.get_config(), &spec_for(&1.ai_provider, &1.ai_model))
     [provider, model_id] = String.split(spec, ":", parts: 2)
     {Map.fetch!(@providers, provider), model_id}
-  end
-
-  # nil when there's no DB (some unit tests), so resolution falls back to config.
-  defp settings_spec do
-    config = Settings.get_config()
-    spec_for(config.ai_provider, config.ai_model)
-  rescue
-    _ -> nil
   end
 
   @doc "The reasoning effort `model_id` runs at, from either route."
@@ -122,28 +95,26 @@ defmodule DailyOutput.AI do
   def spec_for("openrouter", "gpt-6-luna"), do: "openrouter:openai/gpt-6-luna"
 
   defp req_llm_chat(provider, api_key, model_id, opts) do
-    # A struct, not a string, so ReqLLM doesn't warn about ids newer than its catalog. It
-    # only knows gpt-5* use the Responses API; newer ids would hit Chat Completions and 400.
-    extra = if provider == :openai, do: %{wire: %{protocol: "openai_responses"}}, else: %{}
-    {:ok, model} = ReqLLM.model(%{provider: provider, id: model_id, extra: extra})
+    # A struct, not a catalog string, so OpenAI Sol keeps the strict tool instead of
+    # json_schema, and OpenRouter Sol resolves even though the catalog doesn't list it.
+    {:ok, model} = ReqLLM.model(%{provider: provider, id: model_id})
     context = build_context(opts[:system], opts[:messages] || [])
     effort = opts[:effort] || effort(model_id)
 
-    # Sonnet 5.5 thinks unless told "between_tools" and rejects "disabled". ReqLLM would send
-    # it a budget_tokens thinking config, which it also rejects.
+    # Sonnet 5.5 thinks unless told "between_tools", and ReqLLM sends nothing for :none.
     effort_opts =
-      cond do
-        provider != :anthropic -> [reasoning_effort: effort]
-        effort == :none -> [thinking: %{type: "between_tools"}]
-        true -> [thinking: %{type: "adaptive"}, output_config: %{effort: to_string(effort)}]
-      end
+      if provider == :anthropic and effort == :none,
+        do: [thinking: %{type: "between_tools"}],
+        else: [reasoning_effort: effort]
 
     req_opts =
       [
         api_key: api_key,
         max_tokens: Keyword.fetch!(opts, :max_tokens),
         receive_timeout: @receive_timeout,
-        req_http_options: @http_options
+        req_http_options: @http_options,
+        # Otherwise every OpenAI call logs that ReqLLM renamed :max_tokens.
+        on_unsupported: :ignore
       ] ++ effort_opts
 
     case opts[:schema] do
@@ -176,36 +147,9 @@ defmodule DailyOutput.AI do
     ReqLLM.Context.new(system_msgs ++ turn_msgs)
   end
 
-  # Reshape a %ReqLLM.Response{} into the plain map that text_content/1 and
-  # Stats.record_usage/2 read.
-  @doc false
-  def normalize_response(%ReqLLM.Response{} = response, fallback_model) do
-    text = ReqLLM.Response.text(response)
-    usage = response.usage || %{}
-
-    %{
-      "content" =>
-        if(is_binary(text) and text != "", do: [%{"type" => "text", "text" => text}], else: []),
-      "model" => response.model || fallback_model,
-      "usage" => %{
-        "input_tokens" => usage_field(usage, :input_tokens),
-        "output_tokens" => usage_field(usage, :output_tokens),
-        # Always 0 on Anthropic: ReqLLM 1.17 reads the wrong field. Known and accepted.
-        "reasoning_tokens" => usage_field(usage, :reasoning_tokens),
-        # Part of input_tokens on OpenAI, counted apart on Anthropic.
-        "cache_read_input_tokens" => usage_field(usage, :cached_tokens),
-        "cache_creation_input_tokens" => usage_field(usage, :cache_creation_tokens),
-        # nil when ReqLLM's catalog has no price for the model.
-        "total_cost" => usage[:total_cost] || usage["total_cost"]
-      }
-    }
-  end
-
-  defp usage_field(usage, key), do: usage[key] || usage[to_string(key)] || 0
-
   # Cost tracking must never break the chat flow — swallow and log any failure.
   defp record_usage(purpose, response) do
-    Stats.record_usage(purpose, response)
+    Stats.record_usage(purpose, response.model, response.usage)
   rescue
     error ->
       Logger.warning("Failed to record API usage: #{inspect(error)}")

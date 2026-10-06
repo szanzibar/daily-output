@@ -16,7 +16,7 @@ defmodule DailyOutput.AI.SessionStarter do
   """
   def start(kind, opts) do
     native = LanguageProfile.resolve(Keyword.fetch!(opts, :native_language)).language_name
-    level = Keyword.get(opts, :language_level, "B2")
+    level = Keyword.fetch!(opts, :language_level)
     profile = LanguageProfile.resolve(Keyword.fetch!(opts, :target_language))
     %{"title" => focus_title, "body" => focus_body} = Keyword.fetch!(opts, :focus)
 
@@ -55,10 +55,8 @@ defmodule DailyOutput.AI.SessionStarter do
     Reply with only the #{if kind == "journal", do: "prompt", else: "message"} itself: no preamble, quotes, or translation.
     """
 
-    with {:ok, client} <- AI.client(),
-         {:ok, response} <-
+    with {:ok, text} <-
            AI.chat(
-             client,
              [
                system: system,
                messages: [%{role: "user", content: "Start today's #{kind}."}],
@@ -66,7 +64,7 @@ defmodule DailyOutput.AI.SessionStarter do
                max_tokens: 2048
              ] ++ Keyword.take(opts, [:model, :effort])
            ) do
-      normalize(AI.text_content(response))
+      normalize(text)
     end
   end
 

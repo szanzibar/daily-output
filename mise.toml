@@ -1,2 +1,4 @@
 [tools]
-node = "22"
+erlang = "29.1.1"
+elixir = "1.20.4-otp-29"
+node = "24"

@@ -76,19 +76,10 @@ describe("parseMarkers", () => {
     assert.deepEqual(parseMarkers(""), [])
   })
 
-  // legacy [[N:before||after]] entries still render, explanation from annMap
-  describe("legacy format", () => {
-    it("parses [[N:orig||corr]] and looks explanation up by id", () => {
-      const segs = parseMarkers("Ich [[1:habe||bin]] hier", { 1: "fix this" })
-      assert.equal(segs[1].original, "habe")
-      assert.equal(segs[1].corrected, "bin")
-      assert.equal(segs[1].explanation, "fix this")
-    })
-
-    it("legacy insertion / deletion still parse", () => {
-      assert.equal(parseMarkers("[[2:||x]]")[0].corrected, "x")
-      assert.equal(parseMarkers("[[3:y||]]")[0].original, "y")
-    })
+  it("keeps an original that starts with digits and a colon", () => {
+    const segs = parseMarkers("um [[3:00||15:00||other||24h]] Uhr")
+    assert.equal(segs[1].original, "3:00")
+    assert.equal(segs[1].corrected, "15:00")
   })
 })
 

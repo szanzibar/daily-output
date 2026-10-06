@@ -19,7 +19,6 @@ defmodule DailyOutput.AI.LanguageProfile do
   @profiles %{
     "ja" => %{
       prompt_name: "Japanese written in rōmaji (romanized Japanese)",
-      locale_context: nil,
       settings_context: "Rōmaji",
       conventions: [
         "Always write Japanese in rōmaji (Latin-alphabet transliteration). Never output kanji, hiragana, or katakana — the learner studies with romanized text only",
@@ -29,7 +28,6 @@ defmodule DailyOutput.AI.LanguageProfile do
     },
     "de" => %{
       prompt_name: "Swiss Standard German (Schweizer Hochdeutsch)",
-      locale_context: "in Switzerland",
       settings_context: "Schweizer Hochdeutsch",
       conventions: [
         "Always write in Standard German (Schweizer Hochdeutsch). Never reply in Swiss German dialect (Mundart / Schwiizerdütsch), even in casual conversation",
@@ -48,7 +46,6 @@ defmodule DailyOutput.AI.LanguageProfile do
       code: code,
       language_name: language_name,
       prompt_name: language_name,
-      locale_context: nil,
       settings_context: nil,
       conventions: []
     }

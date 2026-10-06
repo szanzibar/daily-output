@@ -13,7 +13,7 @@ defmodule DailyOutputWeb.HistoryLiveTest do
         focus: %{"title" => "Perfekt mit sein"},
         summary: "You went hiking.",
         body: "Ich bin gewandert.",
-        feedback: %{"annotated_text" => "Ich bin gewandert.", "annotations" => []},
+        feedback: %{"annotated_text" => "Ich bin gewandert."},
         completed_at: DateTime.utc_now()
       })
 

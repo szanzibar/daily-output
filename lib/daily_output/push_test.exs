@@ -26,12 +26,6 @@ defmodule DailyOutput.PushTest do
     assert Push.list_subscriptions() == []
   end
 
-  test "send_to_all is a no-op (returns 0) when VAPID keys are not configured" do
-    {:ok, _} = Push.subscribe(@sub)
-    refute Push.configured?()
-    assert Push.send_to_all(%{title: "Hi", body: "there"}) == 0
-  end
-
   test "any?/count reflect whether any device is subscribed" do
     refute Push.any?()
     assert Push.count() == 0
@@ -52,10 +46,17 @@ defmodule DailyOutput.PushTest do
     refute Push.subscribed?("https://push.example/unknown")
   end
 
-  test "send_to_endpoint is a no-op (returns 0) when VAPID keys are not configured" do
-    {:ok, _} = Push.subscribe(@sub)
-    refute Push.configured?()
-    assert Push.send_to_endpoint(@sub.endpoint, %{title: "Hi", body: "there"}) == 0
-    assert Push.send_to_endpoint(nil, %{title: "Hi"}) == 0
+  test "send_to_endpoint delivers to that device only" do
+    device = push_device(201)
+
+    assert Push.send_to_endpoint(device.endpoint, %{title: "Hi"}) == 1
+    assert Push.send_to_endpoint("https://push.example/unknown", %{title: "Hi"}) == 0
+  end
+
+  test "a device the push service reports gone is pruned" do
+    push_device(410)
+
+    assert Push.send_to_all(%{title: "Hi"}) == 0
+    assert Push.list_subscriptions() == []
   end
 end

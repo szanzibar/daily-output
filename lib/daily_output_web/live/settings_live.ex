@@ -14,7 +14,6 @@ defmodule DailyOutputWeb.SettingsLive do
        page_title: gettext("Settings"),
        config: config,
        form: to_form(changeset),
-       push_configured: Push.configured?(),
        vapid_public_key: Push.vapid_public_key(),
        # Per-device push state. :unknown until the browser reports its
        # subscription via the "device_status" event on hook mount.
@@ -341,11 +340,15 @@ defmodule DailyOutputWeb.SettingsLive do
 
       <%!-- Daily reminder --%>
       <div
-        :if={@push_configured}
         id="reminders-panel"
         phx-hook="Reminders"
         data-vapid-key={@vapid_public_key}
         data-timezone={@config.timezone || ""}
+        data-error-unsupported={gettext("This browser doesn't support notifications.")}
+        data-error-blocked={
+          gettext("Notifications are blocked. Allow them in your browser settings.")
+        }
+        data-error-failed={gettext("Could not enable reminders.")}
         class="border-4 border-ink p-5 space-y-4"
       >
         <h2 class="text-lg font-black uppercase flex items-center gap-2">
@@ -404,7 +407,7 @@ defmodule DailyOutputWeb.SettingsLive do
 
         <p data-role="error" class="hidden text-sm font-mono text-bold-red"></p>
 
-        <form phx-change="save_reminder_time" class="space-y-1">
+        <form phx-change="save_reminder_time" phx-auto-recover="ignore" class="space-y-1">
           <label class="block text-xs font-mono uppercase tracking-widest">
             {gettext("Reminder time")}
           </label>
@@ -416,7 +419,7 @@ defmodule DailyOutputWeb.SettingsLive do
           />
         </form>
 
-        <form phx-change="set_timezone" class="space-y-1">
+        <form phx-change="set_timezone" phx-auto-recover="ignore" class="space-y-1">
           <label class="block text-xs font-mono uppercase tracking-widest">
             {gettext("Timezone")}
           </label>
@@ -441,17 +444,6 @@ defmodule DailyOutputWeb.SettingsLive do
             </button>
           </div>
         </form>
-      </div>
-
-      <div :if={!@push_configured} class="border-4 border-ink p-5">
-        <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-          <span class="inline-block w-3 h-3 block-cyan"></span> {gettext("Daily Reminder")}
-        </h2>
-        <p class="text-sm text-base-content/60">
-          {gettext(
-            "Reminders are temporarily unavailable — push keys could not be loaded. Check the server logs and restart."
-          )}
-        </p>
       </div>
 
       <.link

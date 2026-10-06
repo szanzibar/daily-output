@@ -465,11 +465,6 @@ msgstr[1] "Erinnerungen auf %{count} Geräten aktiv."
 
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
-msgid "Reminders are temporarily unavailable — push keys could not be loaded. Check the server logs and restart."
-msgstr "Erinnerungen sind vorübergehend nicht verfügbar — Push-Schlüssel konnten nicht geladen werden. Prüfe die Server-Logs und starte neu."
-
-#: lib/daily_output_web/live/settings_live.ex
-#, elixir-autogen, elixir-format
 msgid "Reminders off for this device."
 msgstr "Erinnerungen für dieses Gerät aus."
 
@@ -1008,3 +1003,13 @@ msgstr "Dein Tag"
 #, elixir-autogen, elixir-format
 msgid "Your streak freezes are full."
 msgstr "Deine Serien-Joker sind voll."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "Notifications are blocked. Allow them in your browser settings."
+msgstr "Benachrichtigungen sind blockiert. Erlaube sie in den Einstellungen deines Browsers."
+
+#: lib/daily_output_web/live/settings_live.ex
+#, elixir-autogen, elixir-format
+msgid "This browser doesn't support notifications."
+msgstr "Dieser Browser unterstützt keine Benachrichtigungen."

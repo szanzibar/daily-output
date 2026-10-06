@@ -1,1 +1,2 @@
-# Colocated tests in lib/ — uses the same ExUnit setup as test/
+ExUnit.start()
+Ecto.Adapters.SQL.Sandbox.mode(DailyOutput.Repo, :manual)

@@ -1,9 +1,6 @@
 defmodule DailyOutput.Clock do
   @moduledoc """
-  Local-time helpers for the app's habit math.
-
-  Everything used to run on UTC, which makes "did I practice today?" and "remind me at
-  8pm" wrong for anyone not on UTC. This centralizes two ideas:
+  Local-time helpers for the app's habit math. All day math goes through here:
 
     * the user's configured timezone (falls back to `:default_timezone` / UTC), and
     * a **4am day boundary** — the logical day runs 4am→4am, so a late-night session

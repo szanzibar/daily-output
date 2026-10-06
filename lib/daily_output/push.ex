@@ -4,7 +4,6 @@ defmodule DailyOutput.Push do
 
   Stores one row per device and sends notifications via `WebPushElixir`. Subscriptions
   that the push service reports as gone (HTTP 404/410) are pruned automatically.
-  Delivery is a no-op unless VAPID keys are configured.
   """
 
   import Ecto.Query
@@ -13,11 +12,8 @@ defmodule DailyOutput.Push do
   alias DailyOutput.Repo
   alias DailyOutput.Push.Subscription
 
-  @doc "The public VAPID key browsers need as `applicationServerKey` (\"\" if unset)."
-  def vapid_public_key, do: Application.get_env(:web_push_elixir, :vapid_public_key) || ""
-
-  @doc "True when VAPID keys are configured, i.e. push can actually be sent."
-  def configured?, do: vapid_public_key() != ""
+  @doc "The public VAPID key browsers need as `applicationServerKey`. `Vapid` sets it at boot."
+  def vapid_public_key, do: Application.get_env(:web_push_elixir, :vapid_public_key)
 
   @doc "Stores (or refreshes) a device subscription, keyed by its endpoint."
   def subscribe(attrs) do
@@ -52,32 +48,23 @@ defmodule DailyOutput.Push do
   Sends `payload` (a map; encoded to JSON for the service worker) to every subscription.
   Prunes expired subscriptions. Returns the number of successful sends.
   """
-  def send_to_all(payload) when is_map(payload) do
-    if configured?() do
-      message = Jason.encode!(payload)
-      list_subscriptions() |> Enum.count(&(send_one(&1, message) == :ok))
-    else
-      Logger.info("Push not configured (no VAPID keys); skipping send.")
-      0
-    end
+  def send_to_all(payload) do
+    message = Jason.encode!(payload)
+    Enum.count(list_subscriptions(), &(send_one(&1, message) == :ok))
   end
 
   @doc """
   Sends `payload` to the single device identified by `endpoint`. Used for
   per-device test notifications. Returns 1 on success, 0 otherwise.
   """
-  def send_to_endpoint(endpoint, payload) when is_binary(endpoint) and is_map(payload) do
-    with true <- configured?(),
-         sub when not is_nil(sub) <-
-           Repo.one(from(s in Subscription, where: s.endpoint == ^endpoint)),
+  def send_to_endpoint(endpoint, payload) do
+    with %Subscription{} = sub <- Repo.get_by(Subscription, endpoint: endpoint),
          :ok <- send_one(sub, Jason.encode!(payload)) do
       1
     else
       _ -> 0
     end
   end
-
-  def send_to_endpoint(_endpoint, _payload), do: 0
 
   defp send_one(subscription, message) do
     body =

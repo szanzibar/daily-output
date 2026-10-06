@@ -18,6 +18,16 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     assert_push_event(view, "toast", %{kind: "info"})
   end
 
+  test "English needs no translation files: the msgids are the English UI", %{conn: conn} do
+    {:ok, config} = Settings.ensure_config()
+    Settings.update_config(config, %{ui_language: "en"})
+
+    {:ok, view, _html} = live(conn, ~p"/settings")
+
+    assert has_element?(view, "h1", "Settings")
+    assert has_element?(view, "#reminders-panel h2", "Daily Reminder")
+  end
+
   test "the About you field keeps a local draft", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/settings")
 
@@ -33,6 +43,8 @@ defmodule DailyOutputWeb.SettingsLiveTest do
     render_change(view, "save_form", %{"config" => %{"ai_model" => "gpt-9"}})
 
     assert Settings.get_config().ai_model == "gpt-6.1-sol"
+    # The UI defaults to German (auto at B2), errors included.
+    assert has_element?(view, "#settings-form", "ist ungültig")
   end
 
   test "AI section saves model/provider and its key status follows the choice", %{conn: conn} do
@@ -96,29 +108,25 @@ defmodule DailyOutputWeb.SettingsLiveTest do
   end
 
   test "device_status drives this device's on/off display", %{conn: conn} do
-    # The reminders panel only renders when push is configured.
-    {public_key, _} = :crypto.generate_key(:ecdh, :prime256v1)
-
-    Application.put_env(
-      :web_push_elixir,
-      :vapid_public_key,
-      Base.url_encode64(public_key, padding: false)
-    )
-
-    on_exit(fn -> Application.delete_env(:web_push_elixir, :vapid_public_key) end)
-
     {:ok, _} = Push.subscribe(%{endpoint: "https://push.example/known", p256dh: "p", auth: "a"})
     {:ok, view, _html} = live(conn, ~p"/settings")
 
-    # Assert on the (untranslated) data-action attributes, not button text —
-    # the page renders in the config's UI language, which defaults to German.
-    html = render_hook(view, "device_status", %{"endpoint" => "https://push.example/known"})
-    assert html =~ ~s(data-action="disable")
-    refute html =~ ~s(data-action="enable")
+    render_hook(view, "device_status", %{"endpoint" => "https://push.example/known"})
+    assert has_element?(view, "#reminders-panel [data-action=disable]")
+    refute has_element?(view, "#reminders-panel [data-action=enable]")
 
-    html = render_hook(view, "device_status", %{"endpoint" => nil})
-    assert html =~ ~s(data-action="enable")
-    refute html =~ ~s(data-action="disable")
+    render_hook(view, "device_status", %{"endpoint" => nil})
+    assert has_element?(view, "#reminders-panel [data-action=enable]")
+    refute has_element?(view, "#reminders-panel [data-action=disable]")
+  end
+
+  test "test_notification reaches this device", %{conn: conn} do
+    device = push_device(201)
+    {:ok, view, _html} = live(conn, ~p"/settings")
+
+    render_hook(view, "test_notification", %{"endpoint" => device.endpoint})
+
+    assert_push_event(view, "toast", %{kind: "info"})
   end
 
   test "test_notification pushes an error toast when this device isn't subscribed", %{conn: conn} do

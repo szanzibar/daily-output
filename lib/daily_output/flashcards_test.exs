@@ -27,7 +27,7 @@ defmodule DailyOutput.FlashcardsTest do
 
       assert {:ok, 0} = Flashcards.ingest(activity)
       assert {:ok, 0} = Flashcards.ingest(%{feedback: nil, messages: []})
-      assert Flashcards.count_cards() == 0
+      assert Flashcards.list_cards() == []
     end
 
     test "only the sentences with a mistake go to the AI" do

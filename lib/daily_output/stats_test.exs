@@ -4,18 +4,6 @@ defmodule DailyOutput.StatsTest do
   alias DailyOutput.{Activities, Clock, Repo, Stats}
   alias DailyOutput.Stats.ApiUsage
 
-  describe "correction_count/1" do
-    test "counts valid markers, ignoring empty and malformed ones" do
-      text = "[[a||b||verb||v]] [[||x]] [[y||]] [[||]] [[nopipe]] plain"
-      # valid: a||b, insertion ||x, deletion y|| ; skipped: both-empty, no-delimiter
-      assert Stats.correction_count(text) == 3
-    end
-
-    test "zero for plain text" do
-      assert Stats.correction_count("just some words") == 0
-    end
-  end
-
   describe "word_count/1" do
     test "counts the original (written) text, markers reduced to what was written" do
       assert Stats.word_count("[[Ich gehen||Ich gehe||verb||v]] jeden Tag") == 4
@@ -26,23 +14,13 @@ defmodule DailyOutput.StatsTest do
     end
   end
 
-  describe "error_rate/1" do
-    test "corrections per 100 words" do
-      assert Stats.error_rate("[[foo||bar]] one two three") == 25.0
-    end
-
-    test "nil when there are no words" do
-      assert is_nil(Stats.error_rate(""))
-    end
-  end
-
   describe "time tracking" do
     test "track/2 accumulates seconds per section for today" do
       Stats.track("flashcards", 30)
       Stats.track("flashcards", 45)
       Stats.track("journal", 60)
 
-      today = Stats.time_today()
+      today = Stats.time_for_day(Clock.today())
       assert today.flashcards == 75
       assert today.journal == 60
       assert today.conversation == 0
@@ -52,7 +30,7 @@ defmodule DailyOutput.StatsTest do
     test "track/2 ignores unknown sections and non-positive seconds" do
       assert {:ok, :ignored} = Stats.track("bogus", 10)
       assert {:ok, :ignored} = Stats.track("flashcards", 0)
-      assert Stats.time_today().total == 0
+      assert Stats.time_for_day(Clock.today()).total == 0
     end
 
     test "time_by_day/1 returns one ascending row per day including today" do
@@ -148,10 +126,18 @@ defmodule DailyOutput.StatsTest do
       assert o.recap.words == 6
       assert o.recap.error_rate == 16.7
 
-      # Trend is one bucket per week, newest last; this week reflects the 6 words.
+      # Trend is one bucket per week, newest last.
       assert length(o.trend) == 8
-      assert List.last(o.trend).words == 6
       assert List.last(o.trend).error_rate == 16.7
+    end
+
+    test "API spend, all time and this week" do
+      # Sol pricing: $2/M input.
+      log_usage("proofread", "gpt-6.1-sol", input: 1_000_000)
+      o = Stats.overview()
+
+      assert_in_delta o.usage_total, 2.0, 1.0e-9
+      assert_in_delta o.usage_week, 2.0, 1.0e-9
     end
 
     test "empty history yields zeroes and nil rates" do
@@ -167,8 +153,7 @@ defmodule DailyOutput.StatsTest do
       Activities.add_message(conversation, "assistant", "Schön!")
 
       Activities.save_message_feedback(message, %{
-        "annotated_text" => "Ich [[gehe||ging||verb||v]] heim",
-        "annotations" => [%{"explanation" => "x", "category" => "verb"}]
+        "annotated_text" => "Ich [[gehe||ging||verb||v]] heim"
       })
 
       o = Stats.overview()

@@ -15,13 +15,13 @@ defmodule DailyOutput.VapidTest do
     end)
   end
 
-  test "generates and persists a keypair on first run, then push is configured" do
+  test "generates and persists a keypair on first run" do
     assert Repo.aggregate(Keypair, :count) == 0
 
     assert :ok = Vapid.ensure_keys()
 
     assert Repo.aggregate(Keypair, :count) == 1
-    assert Push.configured?()
+    assert Push.vapid_public_key()
   end
 
   test "reuses the stored keypair instead of generating a new one" do

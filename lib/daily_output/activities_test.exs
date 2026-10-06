@@ -1,7 +1,7 @@
 defmodule DailyOutput.ActivitiesTest do
   use DailyOutput.DataCase
 
-  alias DailyOutput.{Activities, Clock}
+  alias DailyOutput.{Activities, Clock, Flashcards}
 
   test "create/1 stamps today's logical date" do
     activity = Activities.create(%{kind: "journal"})
@@ -26,20 +26,6 @@ defmodule DailyOutput.ActivitiesTest do
     assert Enum.map(Activities.today(), & &1.id) == [now.id]
     assert Enum.map(Activities.recent(3), & &1.id) == [now.id, past.id]
     assert old.id in Enum.map(Activities.recent(10), & &1.id)
-  end
-
-  test "correction_categories/1 reads the journal feedback and each message's" do
-    Activities.create(%{
-      kind: "journal",
-      feedback: %{"annotations" => [%{"category" => "case"}, %{"category" => "verb"}]}
-    })
-
-    conversation = Activities.create(%{kind: "conversation"})
-    message = Activities.add_message(conversation, "user", "Ich gehen")
-    Activities.save_message_feedback(message, %{"annotations" => [%{"category" => "verb"}]})
-    Activities.add_message(conversation, "assistant", "Schön!")
-
-    assert Enum.sort(Activities.correction_categories(Activities.today())) == ~w(case verb verb)
   end
 
   test "update/2 keeps the journal draft" do
@@ -81,13 +67,25 @@ defmodule DailyOutput.ActivitiesTest do
     assert id == activity.id
   end
 
+  test "complete/3 turns the corrections into flashcards" do
+    activity = Activities.create(%{kind: "journal"})
+
+    expect_ai(%{
+      "cards" => [%{"target_text" => "Ich ging heim.", "native_text" => "I went home."}]
+    })
+
+    Activities.complete(activity, %{"annotated_text" => "Ich [[gehe||ging||verb||v]] heim."}, nil)
+
+    assert [%{target_text: "Ich ging heim."}] = Flashcards.list_cards()
+  end
+
   describe "mistake_analysis/1" do
     test "a category flagged once early, then never again, is resolved" do
       messages = [
         %{
           role: "user",
           body: "eins zwei drei",
-          feedback: %{"annotations" => [%{"category" => "gender"}]}
+          feedback: %{"annotated_text" => "[[eins||ein||gender||x]] zwei drei"}
         },
         %{role: "assistant", body: "ok", feedback: nil},
         %{role: "user", body: "vier funf sechs", feedback: nil},
@@ -104,12 +102,12 @@ defmodule DailyOutput.ActivitiesTest do
         %{
           role: "user",
           body: "eins zwei drei",
-          feedback: %{"annotations" => [%{"category" => "case"}]}
+          feedback: %{"annotated_text" => "[[eins||einen||case||x]] zwei drei"}
         },
         %{
           role: "user",
           body: "vier funf sechs",
-          feedback: %{"annotations" => [%{"category" => "case"}]}
+          feedback: %{"annotated_text" => "vier [[funf||fünf||case||x]] sechs"}
         },
         %{role: "user", body: "sieben acht neun", feedback: nil}
       ]
@@ -124,16 +122,18 @@ defmodule DailyOutput.ActivitiesTest do
         %{
           role: "user",
           body: "eins zwei drei",
-          feedback: %{"annotations" => [%{"category" => "verb"}]}
+          feedback: %{"annotated_text" => "eins [[zwei||zweit||verb||x]] drei"}
         },
-        %{role: "user", body: "vier funf sechs", feedback: %{"annotations" => []}}
+        %{
+          role: "user",
+          body: "vier funf sechs",
+          feedback: %{"annotated_text" => "vier funf sechs"}
+        }
       ]
 
       analysis = Activities.mistake_analysis(messages)
       assert analysis["early_rate"] == 33.3
       assert analysis["late_rate"] == 0.0
-      assert analysis["total_corrections"] == 1
-      assert analysis["by_category"] == %{"verb" => 1}
     end
 
     test "a category only in the final message is neither resolved nor repeating" do
@@ -142,7 +142,7 @@ defmodule DailyOutput.ActivitiesTest do
         %{
           role: "user",
           body: "vier funf sechs",
-          feedback: %{"annotations" => [%{"category" => "case"}]}
+          feedback: %{"annotated_text" => "vier [[funf||fünf||case||x]] sechs"}
         }
       ]
 
@@ -154,7 +154,6 @@ defmodule DailyOutput.ActivitiesTest do
     test "a feedback-free conversation yields zeros" do
       analysis = Activities.mistake_analysis([%{role: "user", body: "hallo welt", feedback: nil}])
 
-      assert analysis["total_corrections"] == 0
       assert is_nil(analysis["early_rate"])
       assert analysis["late_rate"] == 0.0
     end

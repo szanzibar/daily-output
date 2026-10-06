@@ -10,9 +10,9 @@
 
 Logger.configure(level: :warning)
 
-alias DailyOutput.{Activities, AI, Planner, Repo, Stats}
+alias DailyOutput.{Activities, AI, Markers, Planner, Repo, Stats}
 alias DailyOutput.AI.{ConversationPartner, FocusWriter, Proofreader, SessionStarter}
-alias DailyOutput.Flashcards.{Generator, Markers}
+alias DailyOutput.Flashcards.Generator
 import Ecto.Query
 
 {parsed, args, _} = OptionParser.parse(System.argv(), strict: [effort: :string])

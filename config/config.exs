@@ -11,34 +11,26 @@ config :daily_output,
   ecto_repos: [DailyOutput.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-# Fallback model when Settings can't be read; Settings picks the model otherwise. Override per
-# environment with AI_MODEL (runtime.exs).
-config :daily_output, :ai_model, "openai:gpt-6.1-sol"
-
 # Configure the endpoint
 config :daily_output, DailyOutputWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
-  render_errors: [
-    formats: [html: DailyOutputWeb.ErrorHTML, json: DailyOutputWeb.ErrorJSON],
-    layout: false
-  ],
+  render_errors: [formats: [html: DailyOutputWeb.ErrorHTML], layout: false],
   pubsub_server: DailyOutput.PubSub,
   live_view: [signing_salt: "cnBQHVaE"]
 
 # Configure esbuild (the version is required)
 config :esbuild,
-  version: "0.25.4",
+  version: "0.28.2",
   daily_output: [
-    args:
-      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+    args: ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
 # Configure tailwind (the version is required)
 config :tailwind,
-  version: "4.1.12",
+  version: "4.3.3",
   daily_output: [
     args: ~w(
       --input=assets/css/app.css

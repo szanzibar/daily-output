@@ -10,9 +10,11 @@ defmodule DailyOutput.Activities do
   import Ecto.Query
   require Logger
 
-  alias DailyOutput.{Clock, Flashcards, Repo, Stats}
-  alias DailyOutput.Flashcards.Markers
+  alias DailyOutput.{Clock, Flashcards, Markers, Repo, Stats}
   alias DailyOutput.Activities.{Activity, Message}
+
+  # Tests ingest inline, so the cards land inside the test's sandbox before it ends.
+  @ingest_inline Mix.env() == :test
 
   @doc "Creates an activity on today's logical date."
   def create(attrs) do
@@ -51,18 +53,9 @@ defmodule DailyOutput.Activities do
     )
   end
 
-  @doc "One category per correction in `activities`, from the journal feedback and each message's."
-  def correction_categories(activities) do
-    for activity <- activities,
-        feedback <- [activity.feedback | Enum.map(activity.messages, & &1.feedback)],
-        is_map(feedback),
-        annotation <- feedback["annotations"] || [],
-        do: annotation["category"]
-  end
-
   @doc """
-  Every correction in `activities`, as `Flashcards.Markers.parse/1` maps, in the order the
-  activities come.
+  Every correction in `activities`, from the journal feedback and each message's, as
+  `Markers.parse/1` maps, in the order the activities come.
   """
   def corrections(activities) do
     for activity <- activities,
@@ -102,13 +95,14 @@ defmodule DailyOutput.Activities do
 
     completed = get!(activity.id)
 
-    Task.start(fn ->
+    ingest = fn ->
       # A failed batch loses this activity's cards. Known and accepted.
       with {:error, reason} <- Flashcards.ingest(completed) do
         Logger.warning("Flashcards for activity #{completed.id} failed: #{inspect(reason)}")
       end
-    end)
+    end
 
+    if @ingest_inline, do: ingest.(), else: Task.start(ingest)
     completed
   end
 
@@ -121,22 +115,13 @@ defmodule DailyOutput.Activities do
     * `early_rate` / `late_rate`: corrections per 100 words in the first vs. second half
   """
   def mistake_analysis(messages) do
-    user_messages = Enum.filter(messages, &(&1.role == "user"))
-    n = length(user_messages)
-
     per_message =
-      Enum.map(user_messages, fn msg ->
-        feedback = msg.feedback || %{}
-        annotations = feedback["annotations"] || []
-        annotated = feedback["annotated_text"]
-        text = if annotated in [nil, ""], do: msg.body, else: annotated
+      for %{role: "user"} = msg <- messages do
+        text = (msg.feedback && msg.feedback["annotated_text"]) || msg.body
+        %{categories: Enum.map(Markers.parse(text), & &1.category), words: Stats.word_count(text)}
+      end
 
-        %{
-          categories: annotations |> Enum.map(& &1["category"]) |> Enum.reject(&is_nil/1),
-          corrections: length(annotations),
-          words: Stats.word_count(text)
-        }
-      end)
+    n = length(per_message)
 
     # A category repeated within one message still counts once for "across messages".
     category_messages =
@@ -158,9 +143,6 @@ defmodule DailyOutput.Activities do
     {early, late} = Enum.split(per_message, div(n, 2))
 
     %{
-      "user_message_count" => n,
-      "total_corrections" => per_message |> Enum.map(& &1.corrections) |> Enum.sum(),
-      "by_category" => per_message |> Enum.flat_map(& &1.categories) |> Enum.frequencies(),
       "resolved_categories" => Enum.sort(resolved),
       "repeated_categories" => Enum.sort(repeated),
       "early_rate" => half_rate(early),
@@ -170,7 +152,7 @@ defmodule DailyOutput.Activities do
 
   defp half_rate(per_message) do
     words = per_message |> Enum.map(& &1.words) |> Enum.sum()
-    corrections = per_message |> Enum.map(& &1.corrections) |> Enum.sum()
+    corrections = per_message |> Enum.map(&length(&1.categories)) |> Enum.sum()
     if words == 0, do: nil, else: Float.round(corrections * 100 / words, 1)
   end
 end

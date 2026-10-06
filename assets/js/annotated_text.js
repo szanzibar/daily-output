@@ -6,14 +6,12 @@
 /**
  * Parse correction markers from raw annotated text.
  *
- * Current format is [[before||after||type||explanation]] — each marker carries its own
- * explanation inline, so corrections need no id. Legacy entries use [[N:before||after]] with a
- * numeric id and look the explanation up in annMap. Corrections get a sequential `index` so the
- * renderer can pair each note with its correction by order.
+ * The format is [[before||after||type||explanation]], each marker carrying its own explanation.
+ * Corrections get a sequential `index` so the renderer can pair each note with its correction.
  *
  * Returns an array of {type:"text", text} and {type:"correction", index, original, corrected, explanation}.
  */
-export function parseMarkers(raw, annMap = {}) {
+export function parseMarkers(raw) {
   const segments = [];
   const regex = /\[\[([\s\S]*?)\]\]/g;
   let lastIdx = 0;
@@ -25,14 +23,7 @@ export function parseMarkers(raw, annMap = {}) {
       segments.push({ type: 'text', text: raw.slice(lastIdx, match.index) });
     }
 
-    let inner = match[1];
-
-    // Legacy markers carry a numeric "N:" id prefix; the explanation lives in annMap.
-    const legacy = inner.match(/^(\d+):/);
-    const legacyId = legacy ? parseInt(legacy[1], 10) : null;
-    if (legacy) inner = inner.slice(legacy[0].length);
-
-    const parts = inner.split('||');
+    const parts = match[1].split('||');
 
     if (parts.length < 2) {
       // No || delimiter — malformed, show as plain text
@@ -51,9 +42,7 @@ export function parseMarkers(raw, annMap = {}) {
       continue;
     }
 
-    // New format carries the explanation as the last field; legacy looks it up by id.
-    const explanation =
-      parts.length >= 4 ? parts.slice(3).join('||') : legacyId !== null ? annMap[legacyId] || '' : '';
+    const explanation = parts.slice(3).join('||');
 
     segments.push({ type: 'correction', index, original, corrected, explanation });
     index++;
@@ -156,7 +145,6 @@ export function escapeHtml(str) {
 
 /**
  * Build the full HTML for annotated text lines.
- * charW = pixel width of one monospace character, maxChars = chars per line.
  */
 export function buildHtml(lines) {
   let html = '';

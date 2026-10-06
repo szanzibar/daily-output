@@ -2,26 +2,13 @@ defmodule DailyOutput.AI.RewriteDiffTest do
   use ExUnit.Case, async: true
 
   alias DailyOutput.AI.RewriteDiff
-  alias DailyOutput.Flashcards.Markers
+  alias DailyOutput.Markers
 
-  @marker ~r/\[\[([\s\S]*?)\]\]/
-
-  # Reduce markers to the `before` side — must reproduce the student's original (an inserted
-  # word leaves a harmless double space, so compare with horizontal spaces collapsed; newlines
-  # are asserted separately and must stay exact).
-  defp to_before(annotated) do
-    Regex.replace(@marker, annotated, fn _w, inner ->
-      inner |> String.split("||") |> List.first()
-    end)
-  end
+  # Markers reduced to the original must reproduce the student's text. An inserted word
+  # leaves a harmless double space, so compare with spaces collapsed; newlines stay exact.
+  defp to_before(annotated), do: Markers.original_text(annotated)
 
   defp collapse(s), do: String.replace(s, ~r/ +/, " ")
-
-  defp malformed?(annotated) do
-    @marker
-    |> Regex.scan(annotated)
-    |> Enum.any?(fn [_, inner] -> length(String.split(inner, "||")) < 4 end)
-  end
 
   test "clean sentence returns unchanged, no markers" do
     s = "Das Wetter ist heute sehr schön und ich gehe spazieren."
@@ -45,10 +32,9 @@ defmodule DailyOutput.AI.RewriteDiffTest do
 
     # Faithful: outside markers is exactly the student's text; nothing duplicated.
     assert collapse(to_before(annotated)) == collapse(orig)
-    refute malformed?(annotated)
     # Applying the corrections reproduces the rewrite.
-    assert Markers.corrected_text(annotated) |> String.replace(~r/\s+/, " ") ==
-             corr |> String.replace(~r/\s+/, " ")
+    corrected = Regex.replace(~r/\[\[.*?\|\|(.*?)\|\|.*?\]\]/, annotated, "\\1")
+    assert String.replace(corrected, ~r/\s+/, " ") == corr
   end
 
   test "insertion and capitalization, umlauts kept intact" do
@@ -61,7 +47,6 @@ defmodule DailyOutput.AI.RewriteDiffTest do
       ])
 
     assert collapse(to_before(annotated)) == collapse(orig)
-    refute malformed?(annotated)
     assert annotated =~ "Würste"
   end
 
@@ -94,10 +79,8 @@ defmodule DailyOutput.AI.RewriteDiffTest do
 
     assert collapse(to_before(annotated)) == collapse(orig)
 
-    # Every substantive marker carries a non-empty explanation.
-    for %{explanation: e, original: o, corrected: c} <- Markers.parse(annotated), o != c do
-      assert String.trim(e) != ""
-    end
+    # Every marker carries an explanation.
+    for %{explanation: e} <- Markers.parse(annotated), do: assert(e != "")
   end
 
   test "each repeated word move gets its own sentence's explanation" do

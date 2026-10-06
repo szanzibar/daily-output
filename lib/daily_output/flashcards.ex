@@ -2,10 +2,8 @@ defmodule DailyOutput.Flashcards do
   @moduledoc """
   Spaced-repetition flashcards built from the learner's corrected mistakes.
 
-  This context is the **entire public interface** to the flashcard subsystem — the rest
-  of the app only ever calls functions here. The scheduling math (`Scheduler`), the AI
-  card generation (`Generator`), the diff (`Diff`) and the marker parsing (`Markers`)
-  are private internals.
+  The rest of the app calls in here. The scheduling math (`Scheduler`), the AI card
+  generation (`Generator`), and the answer diff (`Diff`) are internals.
 
   Everything is keyed off the current `target_language`/`native_language` from settings,
   so the feature is language-agnostic.
@@ -13,14 +11,13 @@ defmodule DailyOutput.Flashcards do
 
   import Ecto.Query
 
-  alias DailyOutput.{Repo, Settings}
+  alias DailyOutput.{Markers, Repo, Settings}
 
   alias DailyOutput.Flashcards.{
     Card,
     Cloze,
     CompletedDay,
     Generator,
-    Markers,
     Review,
     Scheduler
   }
@@ -186,9 +183,9 @@ defmodule DailyOutput.Flashcards do
     config = Settings.get_config()
 
     Generator.improve(card,
-      target_language: config.target_language || "de",
-      native_language: config.native_language || "en",
-      language_level: config.language_level || "B2"
+      target_language: config.target_language,
+      native_language: config.native_language,
+      language_level: config.language_level
     )
   end
 
@@ -232,10 +229,5 @@ defmodule DailyOutput.Flashcards do
     card
     |> Card.changeset(%{deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)})
     |> Repo.update()
-  end
-
-  @doc "Total non-deleted card count (for the management page header)."
-  def count_cards do
-    Repo.one(from(c in Card, where: is_nil(c.deleted_at), select: count(c.id))) || 0
   end
 end

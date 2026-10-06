@@ -7,7 +7,7 @@ defmodule DailyOutputWeb.ConversationLiveTest do
 
   @focus %{"category" => "verb", "title" => "Perfekt mit sein", "body" => "Bewegung: sein."}
   # No corrections, so finishing never asks the AI for flashcards.
-  @clean %{"annotated_text" => "Gut.", "annotations" => []}
+  @clean %{"annotated_text" => "Gut."}
 
   defp conversation(messages \\ []) do
     activity =

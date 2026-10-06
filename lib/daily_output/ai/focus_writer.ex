@@ -15,7 +15,7 @@ defmodule DailyOutput.AI.FocusWriter do
   def write(category, mistakes, opts) do
     target = Keyword.fetch!(opts, :target_language)
     native = LanguageProfile.resolve(Keyword.fetch!(opts, :native_language)).language_name
-    level = Keyword.get(opts, :language_level, "B2")
+    level = Keyword.fetch!(opts, :language_level)
     profile = LanguageProfile.resolve(target)
     feedback_lang = LanguageProfile.feedback_language(level, target, opts[:native_language])
 
@@ -47,10 +47,8 @@ defmodule DailyOutput.AI.FocusWriter do
     #{conventions}
     """
 
-    with {:ok, client} <- AI.client(),
-         {:ok, focus} <-
+    with {:ok, focus} <-
            AI.chat(
-             client,
              [
                system: system,
                messages: [%{role: "user", content: "Write today's focus."}],

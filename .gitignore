@@ -43,7 +43,5 @@ npm-debug.log
 # Environment variables
 .env
 
-.expert/
-
 # Local db sync helper
 /sync-db.sh

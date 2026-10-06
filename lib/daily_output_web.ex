@@ -1,11 +1,10 @@
 defmodule DailyOutputWeb do
   @moduledoc """
-  The entrypoint for defining your web interface, such
-  as controllers, components, channels, and so on.
+  The entrypoint for defining your web interface: the router, live views, and components.
 
   This can be used in your application as:
 
-      use DailyOutputWeb, :controller
+      use DailyOutputWeb, :live_view
       use DailyOutputWeb, :html
 
   The definitions below will be executed for every controller,
@@ -17,7 +16,7 @@ defmodule DailyOutputWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt manifest.json sw.js)
+  def static_paths, do: ~w(assets images favicon.ico robots.txt manifest.json sw.js)
 
   def router do
     quote do
@@ -30,35 +29,9 @@ defmodule DailyOutputWeb do
     end
   end
 
-  def channel do
-    quote do
-      use Phoenix.Channel
-    end
-  end
-
-  def controller do
-    quote do
-      use Phoenix.Controller, formats: [:html, :json]
-
-      use Gettext, backend: DailyOutputWeb.Gettext
-
-      import Plug.Conn
-
-      unquote(verified_routes())
-    end
-  end
-
   def live_view do
     quote do
       use Phoenix.LiveView
-
-      unquote(html_helpers())
-    end
-  end
-
-  def live_component do
-    quote do
-      use Phoenix.LiveComponent
 
       unquote(html_helpers())
     end

@@ -24,7 +24,7 @@ defmodule DailyOutputWeb.ProgressLive do
        purpose_colors: purpose_colors(overview.usage_by_purpose),
        has_data:
          overview.total_words > 0 or overview.total_time > 0 or
-           overview.usage_total.cost > 0
+           overview.usage_total > 0
      )}
   end
 
@@ -92,7 +92,7 @@ defmodule DailyOutputWeb.ProgressLive do
           />
           <.stat
             label={gettext("AI spent")}
-            value={cost(@overview.usage_total.cost)}
+            value={cost(@overview.usage_total)}
             class="block-orange"
           />
         </div>
@@ -147,8 +147,8 @@ defmodule DailyOutputWeb.ProgressLive do
           </p>
 
           <div class="grid grid-cols-2 gap-3 mb-5">
-            <.recap label={gettext("This week")} value={cost(@overview.usage_week.cost)} />
-            <.recap label={gettext("All time")} value={cost(@overview.usage_total.cost)} />
+            <.recap label={gettext("This week")} value={cost(@overview.usage_week)} />
+            <.recap label={gettext("All time")} value={cost(@overview.usage_total)} />
           </div>
 
           <div class="flex items-end gap-1 sm:gap-2 h-40">
@@ -191,8 +191,7 @@ defmodule DailyOutputWeb.ProgressLive do
                 <span class={[
                   "inline-block w-3 h-3 border border-ink shrink-0",
                   purpose_color(@purpose_colors, row.purpose)
-                ]}>
-                </span>
+                ]}></span>
                 <span class="text-xs font-mono font-bold uppercase tracking-wide truncate">
                   {purpose_label(row.purpose)}
                 </span>

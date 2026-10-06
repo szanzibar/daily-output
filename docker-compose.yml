@@ -1,6 +1,6 @@
 services:
   daily_output:
-    build: .
+    image: ghcr.io/szanzibar/daily-output:latest
     ports:
       - '${PORT:-4000}:4000'
     env_file:

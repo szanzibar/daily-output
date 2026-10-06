@@ -9,6 +9,8 @@ defmodule DailyOutputWeb.ActivityComponents do
 
   import DailyOutputWeb.CoreComponents, only: [icon: 1, rich_text: 1]
 
+  alias DailyOutput.Markers
+
   @doc "An activity's page. A finished one shows its results, so History links here too."
   def activity_path(%{kind: "conversation", id: id}), do: ~p"/conversation/#{id}"
   def activity_path(%{kind: "journal", id: id}), do: ~p"/journal/#{id}"
@@ -89,7 +91,6 @@ defmodule DailyOutputWeb.ActivityComponents do
       phx-update="ignore"
       class="annotated-text"
       data-annotated-text={@feedback["annotated_text"]}
-      data-annotations={Jason.encode!(@feedback["annotations"] || [])}
     >
     </div>
     """
@@ -123,7 +124,7 @@ defmodule DailyOutputWeb.ActivityComponents do
               <div class="chat-role text-right">{gettext("You")}</div>
               <div class="chat-bubble-user-feedback">
                 <.annotated_text id={"correction-#{msg.id}"} feedback={msg.feedback} />
-                <div :if={msg.feedback["annotations"] in [nil, []]} class="chat-perfect">
+                <div :if={Markers.parse(msg.feedback["annotated_text"]) == []} class="chat-perfect">
                   ✓ {gettext("Looks good")}
                 </div>
               </div>

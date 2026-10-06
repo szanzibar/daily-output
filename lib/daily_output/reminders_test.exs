@@ -1,7 +1,8 @@
 defmodule DailyOutput.RemindersTest do
-  use ExUnit.Case, async: true
+  # Not async: push_device/1 sets the global VAPID keys.
+  use DailyOutput.DataCase
 
-  alias DailyOutput.Reminders
+  alias DailyOutput.{Clock, Reminders, Settings}
   alias DailyOutput.Settings.Config
 
   @today ~D[2026-06-17]
@@ -30,5 +31,32 @@ defmodule DailyOutput.RemindersTest do
 
   test "due again on a new day even if yesterday's was sent" do
     assert Reminders.due?(config(last_reminder_on: ~D[2026-06-16]), @evening, @today, false)
+  end
+
+  describe "maybe_remind/0" do
+    setup do
+      {:ok, config} = Settings.ensure_config()
+      Settings.update_config(config, %{reminder_time: ~T[00:00:00]})
+      :ok
+    end
+
+    test "skips when no device is subscribed" do
+      assert Reminders.maybe_remind() == :skip
+    end
+
+    test "sends once a day and remembers the day" do
+      push_device(201)
+
+      assert Reminders.maybe_remind() == :sent
+      assert Settings.get_config().last_reminder_on == Clock.today()
+      assert Reminders.maybe_remind() == :skip
+    end
+  end
+
+  test "the reminder speaks the UI language, auto included" do
+    config = %Config{ui_language: "auto", language_level: "B2", target_language: "de"}
+
+    assert Reminders.notification(config, 3).body ==
+             "Deine 3-Tage-Serie wartet. Die Übung für heute ist bereit."
   end
 end

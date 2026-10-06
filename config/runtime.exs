@@ -12,13 +12,6 @@ if config_env() != :test do
   config :daily_output, :openai_api_key, Dotenvy.env!("OPENAI_API_KEY", :string, "")
   config :daily_output, :openrouter_api_key, Dotenvy.env!("OPENROUTER_API_KEY", :string, "")
 
-  # "provider:model" spec (e.g. "openai:gpt-6-luna") overriding the default in
-  # config.exs (openai:gpt-6.1-sol); blank = keep that default.
-  case Dotenvy.env!("AI_MODEL", :string, "") do
-    "" -> :ok
-    spec -> config :daily_output, :ai_model, spec
-  end
-
   # Web Push keys are generated and stored in the DB on first boot — see
   # `DailyOutput.Vapid`. Nothing to configure here.
 
@@ -73,8 +66,6 @@ if config_env() == :prod do
       environment variable PHX_HOST is missing.
       Set it to the public hostname served by your reverse proxy, for example: app.example.com
       """
-
-  config :daily_output, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
   # Identify this server to push services (RFC 8292 VAPID "sub"). In prod we use
   # the public host; dev/test keep the static default in config.exs.

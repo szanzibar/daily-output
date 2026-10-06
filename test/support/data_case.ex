@@ -101,6 +101,31 @@ defmodule DailyOutput.DataCase do
   end
 
   @doc """
+  Subscribes a device push can encrypt for, with VAPID keys to sign, whose push service
+  answers every send with `status`.
+  """
+  def push_device(status) do
+    :ok = DailyOutput.Vapid.ensure_keys()
+
+    on_exit(fn ->
+      Application.delete_env(:web_push_elixir, :vapid_public_key)
+      Application.delete_env(:web_push_elixir, :vapid_private_key)
+    end)
+
+    Req.Test.stub(DailyOutput.Push, &Plug.Conn.send_resp(&1, status, ""))
+    {public_key, _} = :crypto.generate_key(:ecdh, :prime256v1)
+
+    {:ok, device} =
+      DailyOutput.Push.subscribe(%{
+        endpoint: "https://push.example/device",
+        p256dh: Base.url_encode64(public_key, padding: false),
+        auth: Base.url_encode64(:crypto.strong_rand_bytes(16), padding: false)
+      })
+
+    device
+  end
+
+  @doc """
   A helper that transforms changeset errors into a map of messages.
 
       assert {:error, changeset} = Accounts.create_user(%{password: "short"})

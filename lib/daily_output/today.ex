@@ -71,7 +71,8 @@ defmodule DailyOutput.Today do
           Date.diff(today, date) <= @focus_rest_days,
           do: category
 
-    category = Focus.choose(Activities.correction_categories(recent), resting, today)
+    categories = Enum.map(Activities.corrections(recent), & &1.category)
+    category = Focus.choose(categories, resting, today)
 
     Activities.create(%{
       kind: Planner.activity_kind(kinds, today),

@@ -24,7 +24,5 @@ load_or_create_secret_key_base() {
 
 load_or_create_secret_key_base
 
-# Run migrations before starting
-./daily_output eval DailyOutput.Release.migrate
-
+# The app runs migrations on start (DailyOutput.Application).
 PHX_SERVER=true exec ./daily_output start

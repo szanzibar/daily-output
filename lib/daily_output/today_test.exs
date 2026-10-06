@@ -41,7 +41,10 @@ defmodule DailyOutput.TodayTest do
         kind: "conversation",
         date: Date.add(Clock.today(), -1),
         focus: %{"category" => "case"},
-        feedback: %{"annotations" => Enum.map(~w(case case verb), &%{"category" => &1})},
+        feedback: %{
+          "annotated_text" =>
+            "[[der||den||case||a]] [[dem||den||case||b]] [[gehe||ging||verb||c]] Hund"
+        },
         completed_at: DateTime.utc_now()
       })
 
@@ -251,8 +254,10 @@ defmodule DailyOutput.TodayTest do
 
       assert {:ok, corrected} = Today.correct_message(message)
 
-      assert [%{"category" => "word-order"}, %{"category" => "word-order"}] =
-               corrected.feedback["annotations"]
+      assert corrected.feedback == %{
+               "annotated_text" =>
+                 "Gestern [[ich||||word-order||V2]] habe [[||ich||word-order||V2]] gekocht."
+             }
 
       assert Activities.get!(activity.id).messages |> hd() |> Map.fetch!(:feedback)
 
@@ -326,7 +331,6 @@ defmodule DailyOutput.TodayTest do
 
       assert done.feedback == %{
                "annotated_text" => "Ich bin gestern gelaufen.",
-               "annotations" => [],
                "focus_result" => %{"used" => true, "correct" => true, "comment" => "Richtig!"}
              }
 
@@ -346,8 +350,7 @@ defmodule DailyOutput.TodayTest do
 
       # Capitalization only, so no flashcards (and no AI call) come after.
       Activities.save_message_feedback(message, %{
-        "annotated_text" => "Das [[haus||Haus||spelling||Nomen gross]] ist gross.",
-        "annotations" => [%{"category" => "spelling", "explanation" => "Nomen gross"}]
+        "annotated_text" => "Das [[haus||Haus||spelling||Nomen gross]] ist gross."
       })
 
       expect_ai(%{
@@ -358,7 +361,7 @@ defmodule DailyOutput.TodayTest do
       assert {:ok, done} = Today.finish(activity)
       assert done.summary == "You described a house."
       assert done.feedback["focus_result"]["used"] == false
-      assert done.feedback["improvement"]["user_message_count"] == 1
+      assert done.feedback["improvement"]["late_rate"] == 25.0
 
       assert_received {:ai_request,
                        %{"input" => [_system, %{"content" => [%{"text" => transcript}]}]}}
@@ -384,8 +387,8 @@ defmodule DailyOutput.TodayTest do
       })
 
       assert {:ok, done} = Today.finish(activity)
-      assert Repo.get!(Message, message.id).feedback["annotations"] != []
-      assert done.feedback["improvement"]["total_corrections"] == 1
+      assert Repo.get!(Message, message.id).feedback["annotated_text"] =~ "[[haus||Haus"
+      assert done.feedback["improvement"]["late_rate"] == 25.0
 
       assert_received {:ai_request, _correction}
 

@@ -3,7 +3,7 @@ defmodule DailyOutput.Flashcards.Diff do
   Word-level diff for the study reveal screen.
 
   Returns a single, in-order list of operations that aligns what the user typed with the
-  correct answer (from the longest common subsequence of the two word lists):
+  correct answer (from `List.myers_difference/2` on the two word lists):
 
     * `%{op: :eq, text}`   — a word both got right
     * `%{op: :del, text}`  — a word the user typed that is wrong/extra (struck out)
@@ -26,8 +26,24 @@ defmodule DailyOutput.Flashcards.Diff do
   def unified(expected, actual) when is_binary(expected) and is_binary(actual) do
     exp = tokenize(expected)
     act = tokenize(actual)
-    {act_idx, exp_idx} = lcs_matches(downcase(act), downcase(exp))
-    build_ops(act, exp, Enum.zip(act_idx, exp_idx))
+
+    downcase(act)
+    |> List.myers_difference(downcase(exp))
+    |> Enum.flat_map_reduce({act, exp}, fn
+      {:eq, words}, {act, exp} ->
+        {a, act} = Enum.split(act, length(words))
+        {e, exp} = Enum.split(exp, length(words))
+        {Enum.zip_with(a, e, &match_op/2), {act, exp}}
+
+      {:del, words}, {act, exp} ->
+        {a, act} = Enum.split(act, length(words))
+        {Enum.map(a, &%{op: :del, text: &1}), {act, exp}}
+
+      {:ins, words}, {act, exp} ->
+        {e, exp} = Enum.split(exp, length(words))
+        {Enum.map(e, &%{op: :ins, text: &1}), {act, exp}}
+    end)
+    |> elem(0)
   end
 
   @doc "Splits text into words on whitespace (the unit the diff and cloze masks work in)."
@@ -41,89 +57,18 @@ defmodule DailyOutput.Flashcards.Diff do
   words still gotten wrong — the basis for narrowing the fill-in-the-blank mask.
   """
   def correct_expected_indices(expected, actual) when is_binary(expected) and is_binary(actual) do
-    {_act_idx, exp_idx} = lcs_matches(downcase(tokenize(actual)), downcase(tokenize(expected)))
-    MapSet.new(exp_idx)
-  end
-
-  # Walk the matched (actual, expected) index pairs in order. Between two matches, emit
-  # the user's leftover words as deletions, then the correct leftover words as insertions,
-  # then the matched word itself. Trailing leftovers are flushed at the end.
-  defp build_ops(act, exp, pairs) do
-    {ops, i, j} =
-      Enum.reduce(pairs, {[], 0, 0}, fn {ai, bj}, {ops, i, j} ->
-        ops =
-          ops
-          |> dels(act, i, ai)
-          |> inss(exp, j, bj)
-          |> add_match(Enum.at(act, ai), Enum.at(exp, bj))
-
-        {ops, ai + 1, bj + 1}
-      end)
-
-    ops
-    |> dels(act, i, length(act))
-    |> inss(exp, j, length(exp))
-    |> Enum.reverse()
+    # Every op but :del stands for one expected word, in order.
+    unified(expected, actual)
+    |> Enum.reject(&(&1.op == :del))
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {%{op: op}, i} -> if op == :ins, do: [], else: [i] end)
+    |> MapSet.new()
   end
 
   # A case-insensitive match: an exact word is `:eq`; a case-only difference is a soft
   # `:case` warning carrying the correctly-capitalized word.
-  defp add_match(ops, word, word), do: add(ops, :eq, word)
-  defp add_match(ops, _actual, expected), do: add(ops, :case, expected)
+  defp match_op(word, word), do: %{op: :eq, text: word}
+  defp match_op(_actual, expected), do: %{op: :case, text: expected}
 
   defp downcase(tokens), do: Enum.map(tokens, &String.downcase/1)
-
-  defp dels(ops, act, from, to) do
-    Enum.reduce(from..(to - 1)//1, ops, fn k, acc -> add(acc, :del, Enum.at(act, k)) end)
-  end
-
-  defp inss(ops, exp, from, to) do
-    Enum.reduce(from..(to - 1)//1, ops, fn k, acc -> add(acc, :ins, Enum.at(exp, k)) end)
-  end
-
-  defp add(ops, op, text), do: [%{op: op, text: text} | ops]
-
-  # Returns {matched_indices_in_a, matched_indices_in_b}, paired by position.
-  defp lcs_matches(a_list, b_list) do
-    a = List.to_tuple(a_list)
-    b = List.to_tuple(b_list)
-    n = tuple_size(a)
-    m = tuple_size(b)
-
-    dp = build_dp(a, b, n, m)
-    backtrack(a, b, n, m, dp, 0, 0, [], [])
-  end
-
-  # dp[{i, j}] = LCS length of a[i..] and b[j..]; filled bottom-up so each cell's
-  # dependencies ({i+1, j+1}, {i+1, j}, {i, j+1}) are already present.
-  defp build_dp(a, b, n, m) do
-    for i <- n..0//-1, j <- m..0//-1, reduce: %{} do
-      acc ->
-        val =
-          cond do
-            i == n or j == m -> 0
-            elem(a, i) == elem(b, j) -> 1 + Map.get(acc, {i + 1, j + 1}, 0)
-            true -> max(Map.get(acc, {i + 1, j}, 0), Map.get(acc, {i, j + 1}, 0))
-          end
-
-        Map.put(acc, {i, j}, val)
-    end
-  end
-
-  defp backtrack(_a, _b, n, m, _dp, i, j, acc_a, acc_b) when i == n or j == m do
-    {Enum.reverse(acc_a), Enum.reverse(acc_b)}
-  end
-
-  defp backtrack(a, b, n, m, dp, i, j, acc_a, acc_b) do
-    cond do
-      elem(a, i) == elem(b, j) ->
-        backtrack(a, b, n, m, dp, i + 1, j + 1, [i | acc_a], [j | acc_b])
-
-      Map.get(dp, {i + 1, j}, 0) >= Map.get(dp, {i, j + 1}, 0) ->
-        backtrack(a, b, n, m, dp, i + 1, j, acc_a, acc_b)
-
-      true ->
-        backtrack(a, b, n, m, dp, i, j + 1, acc_a, acc_b)
-    end
-  end
 end
