@@ -17,6 +17,7 @@ defmodule DailyOutput.Flashcards.Diff do
 
   Words are aligned **case-insensitively**, so a missed capital is a `:case` warning rather
   than a struck-out error — matching the fact that capitalization never counts a card wrong.
+  Quotes are stripped first (see `tokenize/1`).
 
   Pure and language-agnostic; the exact pass/fail decision is the caller's — this only
   powers the highlight.
@@ -46,8 +47,14 @@ defmodule DailyOutput.Flashcards.Diff do
     |> elem(0)
   end
 
-  @doc "Splits text into words on whitespace (the unit the diff and cloze masks work in)."
-  def tokenize(text), do: String.split(text, ~r/\s+/, trim: true)
+  # Every Unicode quotation mark, plus the accents people type as an apostrophe.
+  @quotes ~r/[\p{Quotation_Mark}ʼ´`]/u
+
+  @doc """
+  Splits text into words on whitespace, without quotes (the unit every answer comparison,
+  diff, and cloze mask works in). Quotes never count, because which style you type is noise.
+  """
+  def tokenize(text), do: String.split(String.replace(text, @quotes, ""), ~r/\s+/, trim: true)
 
   @doc """
   The set of `expected` word indices the user got right in `actual`, matched

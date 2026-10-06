@@ -22,12 +22,14 @@ defmodule DailyOutputWeb.TodayLive do
 
       :done ->
         streak = Today.streak()
+        {still_due, _queue} = Today.extra_practice()
 
         {:ok,
          assign(socket,
            page_title: gettext("Today"),
            streak: streak,
            freezes_full?: streak.freezes_available >= Streak.max_freezes(),
+           still_due: still_due,
            today: Clock.today()
          )}
     end
@@ -72,31 +74,43 @@ defmodule DailyOutputWeb.TodayLive do
         </div>
       </div>
 
-      <button
-        :if={@streak.today_status == :passed}
-        id="bonus"
-        type="button"
-        phx-click="bonus"
-        class="brutal-btn w-full p-5 block-yellow text-left"
-      >
-        <span class="block text-lg">{gettext("Bonus round")} &rarr;</span>
-        <span class="block text-xs font-mono normal-case tracking-normal opacity-70 mt-1">
-          {if @freezes_full?,
-            do: gettext("Do the other activity too. Your streak freezes are already full."),
-            else: gettext("Do the other activity too and bank a streak freeze.")}
-        </span>
-      </button>
-
-      <div
-        :if={@streak.today_status == :bonus}
-        id="bonus-done"
-        class="border-4 border-ink p-5 block-green"
-      >
-        <p class="text-lg font-black uppercase">{gettext("Bonus done")}</p>
-        <p :if={!@freezes_full?} class="text-sm font-mono">{gettext("+1 streak freeze")}</p>
-        <p :if={@freezes_full?} id="freezes-full" class="text-sm font-mono">
-          {gettext("Your streak freezes are full.")}
-        </p>
+      <%!-- Side by side while both labels fit on one line, stacked otherwise. One alone takes
+           the row. --%>
+      <div id="offers" class="flex flex-wrap gap-4">
+        <div
+          :if={@streak.today_status == :bonus}
+          id="bonus-done"
+          class="grow basis-42 border-4 border-ink p-4 sm:p-5 block-green"
+        >
+          <p class="text-sm sm:text-lg font-black uppercase">{gettext("Bonus done")}</p>
+          <p :if={!@freezes_full?} class="text-xs font-mono mt-1">{gettext("+1 streak freeze")}</p>
+          <p :if={@freezes_full?} id="freezes-full" class="text-xs font-mono mt-1">
+            {gettext("Your streak freezes are full.")}
+          </p>
+        </div>
+        <button
+          :if={@streak.today_status == :passed}
+          id="bonus"
+          type="button"
+          phx-click="bonus"
+          class="brutal-btn grow basis-42 p-4 sm:p-5 block-yellow text-left"
+        >
+          <span class="block text-sm sm:text-lg">{gettext("Bonus round")}</span>
+          <span class="block text-xs font-mono normal-case tracking-normal opacity-70 mt-1">
+            {if @freezes_full?, do: gettext("Freezes full"), else: gettext("+1 streak freeze")}
+          </span>
+        </button>
+        <.link
+          :if={@still_due > 0}
+          id="practice-more"
+          navigate={~p"/flashcards/more"}
+          class="brutal-btn grow basis-42 p-4 sm:p-5 block-pink text-left no-underline"
+        >
+          <span class="block text-sm sm:text-lg">{gettext("More cards")}</span>
+          <span class="block text-xs font-mono normal-case tracking-normal opacity-70 mt-1">
+            {ngettext("%{count} card due", "%{count} cards due", @still_due)}
+          </span>
+        </.link>
       </div>
 
       <div

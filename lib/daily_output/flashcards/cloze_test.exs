@@ -59,6 +59,12 @@ defmodule DailyOutput.Flashcards.ClozeTest do
       assert v.new_blank_indices == nil
     end
 
+    test "a different quote style still passes as exact" do
+      v = Cloze.evaluate("Er sagte: „Wie geht’s?“", nil, ~s(Er sagte: "Wie geht's?"))
+      assert v.result == :pass
+      assert v.exact?
+    end
+
     test "a single wrong word fails and narrows the mask to just that word" do
       v = Cloze.evaluate(@text, nil, "Ich gehe nach Hause.")
       assert v.result == :fail

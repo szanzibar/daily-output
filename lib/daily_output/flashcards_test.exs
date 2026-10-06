@@ -44,11 +44,37 @@ defmodule DailyOutput.FlashcardsTest do
       assert {:ok, 1} = Flashcards.ingest(activity)
 
       assert_received {:ai_request,
-                       %{"input" => [_system, %{"content" => [%{"text" => content}]}]}}
+                       %{
+                         "input" => [
+                           %{"content" => [%{"text" => system}]},
+                           %{"content" => [%{"text" => content}]}
+                         ]
+                       }}
 
       assert content =~ "Ich bin gelaufen."
       refute content =~ "Das war schön."
+      assert system =~ "English translation that mirrors target_text's structure"
     end
+  end
+
+  test "suggest_pair/1 asks for a translation that mirrors the target's structure" do
+    card =
+      new_card("Solche Überraschungen geniesse ich sehr.", "I really enjoy surprises like that.")
+
+    expect_ai(%{
+      "cards" => [
+        %{
+          "target_text" => "Solche Überraschungen geniesse ich sehr.",
+          "native_text" => "Such surprises I enjoy a lot."
+        }
+      ]
+    })
+
+    assert {:ok, %{"native_text" => "Such surprises I enjoy a lot."}} =
+             Flashcards.suggest_pair(card)
+
+    assert_received {:ai_request, %{"input" => [%{"content" => [%{"text" => system}]} | _]}}
+    assert system =~ "mirrors its structure"
   end
 
   describe "review/2" do
@@ -65,34 +91,38 @@ defmodule DailyOutput.FlashcardsTest do
     end
   end
 
-  describe "due_today/1" do
-    test "returns new cards up to the target" do
-      for _ <- 1..3, do: new_card()
-      assert length(Flashcards.due_today(10)) == 3
-      assert length(Flashcards.due_today(2)) == 2
+  describe "study_pool/1" do
+    test "due reviews and new cards, oldest first, minus deleted and excepted ones" do
+      now = DateTime.utc_now() |> DateTime.truncate(:second)
+      schedule = &(new_card() |> Card.schedule_changeset(&1) |> Repo.update!())
+
+      due = schedule.(%{state: "review", due_at: DateTime.add(now, -60)})
+      overdue = schedule.(%{state: "learning", due_at: DateTime.add(now, -3600)})
+      _not_yet = schedule.(%{state: "review", due_at: DateTime.add(now, 3600)})
+      new = new_card()
+      newer = new_card()
+      answered = new_card()
+      {:ok, _} = Flashcards.delete_card(new_card())
+
+      {due_cards, new_cards} = Flashcards.study_pool([answered.id])
+
+      assert Enum.map(due_cards, & &1.id) == [overdue.id, due.id]
+      assert Enum.map(new_cards, & &1.id) == [new.id, newer.id]
     end
+  end
 
-    test "excludes deleted cards" do
-      card = new_card()
-      {:ok, _} = Flashcards.delete_card(card)
-      assert Flashcards.due_today(10) == []
-    end
+  test "reviewed_on/1 lists the cards reviewed that logical day" do
+    card = new_card()
+    {:ok, _} = Flashcards.review(card, :fail)
+    {start, _} = Clock.day_range(Clock.today())
 
-    test "surfaces new cards even behind a full review backlog" do
-      # More due review cards than the target: the old logic filled the whole batch with
-      # them and starved new cards forever. Now new cards keep a reserved share.
-      past = DateTime.add(DateTime.utc_now(), -86_400, :second) |> DateTime.truncate(:second)
+    Repo.insert!(%Review{
+      card_id: new_card().id,
+      result: true,
+      inserted_at: DateTime.add(start, -60)
+    })
 
-      for _ <- 1..20 do
-        new_card() |> Card.schedule_changeset(%{state: "review", due_at: past}) |> Repo.update!()
-      end
-
-      for _ <- 1..5, do: new_card()
-
-      batch = Flashcards.due_today(10)
-      assert length(batch) == 10
-      assert Enum.count(batch, &(&1.state == "new")) >= 1
-    end
+    assert Flashcards.reviewed_on(Clock.today()) == [card.id]
   end
 
   test "complete_day/1 records a day once" do

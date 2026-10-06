@@ -1,8 +1,8 @@
 defmodule DailyOutputWeb.FlashcardLive.Study do
   @moduledoc """
-  Today's card session. Each card in `Today.card_queue/0` comes up once: a miss shows the
-  fix and goes back to the scheduler, which brings it back soon. When the queue runs out,
-  the session is done and you go back to `/`.
+  Today's card session from `Today.card_session/0`, or extra practice from
+  `Today.extra_practice/0` at `/flashcards/more`. Each card comes up once: a miss shows the
+  fix, and you type it correctly before moving on. When the queue runs out, you go back to `/`.
   """
   use DailyOutputWeb, :live_view
 
@@ -16,17 +16,27 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
   # away the answer's length; the ClozeNav hook grows it as you type.
   @blank_min_size 6
 
+  # Extra practice counts down what's still due; `total` is that count, and `done` what you've
+  # answered since you opened the page.
   @impl true
   def mount(_params, _session, socket) do
-    queue = Today.card_queue()
+    {done, total, queue} =
+      if socket.assigns.live_action == :more do
+        {still_due, queue} = Today.extra_practice()
+        {0, still_due, queue}
+      else
+        {answered, queue} = Today.card_session()
+        {answered, answered + length(queue), queue}
+      end
+
     config = Settings.get_config()
 
     socket =
       assign(socket,
         page_title: gettext("Cards"),
         target_language_name: LanguageProfile.resolve(config.target_language).language_name,
-        total: length(queue),
-        done: 0
+        total: total,
+        done: done
       )
 
     {:ok, next_card(socket, queue)}
@@ -43,35 +53,35 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     )
   end
 
-  defp next_card(socket, []) do
-    Today.finish_cards()
-    push_navigate(socket, to: ~p"/")
-  end
+  # `/` decides whether the day's cards are done.
+  defp next_card(socket, []), do: push_navigate(socket, to: ~p"/")
 
   defp advance(socket), do: next_card(socket, socket.assigns.queue)
 
   @impl true
-  def handle_event("submit", params, socket) do
-    card = socket.assigns.current
+  def handle_event("submit", params, %{assigns: %{phase: :prompt, current: card}} = socket) do
     verdict = Flashcards.evaluate(card, answer_from_params(card, params))
     {:ok, reviewed} = Flashcards.review(card, verdict.result, verdict.new_blank_indices)
 
-    # Keep the reviewed copy, so fixing the card acts on its fresh mask.
-    socket = assign(socket, current: reviewed, done: socket.assigns.done + 1)
+    # Keep the reviewed copy, so fixing the card acts on its fresh mask, and the asked one,
+    # so the retype asks the same blanks.
+    socket = assign(socket, current: reviewed, asked: card, done: socket.assigns.done + 1)
 
     if verdict.result == :pass do
-      Process.send_after(self(), :advance, @correct_pause_ms)
-
-      {:noreply,
-       socket
-       |> push_event("confetti", %{})
-       |> assign(phase: :correct, case_diffs: verdict.case_diffs)}
+      {:noreply, socket |> push_event("confetti", %{}) |> correct(verdict)}
     else
       {:noreply, assign(socket, phase: :revealed, diff: verdict.diff)}
     end
   end
 
-  def handle_event("continue", _params, socket), do: {:noreply, advance(socket)}
+  # The retype after a miss is practice, so it records no review.
+  def handle_event("submit", params, %{assigns: %{phase: :revealed, asked: card}} = socket) do
+    verdict = Flashcards.evaluate(card, answer_from_params(card, params))
+
+    if verdict.result == :pass,
+      do: {:noreply, correct(socket, verdict)},
+      else: {:noreply, assign(socket, diff: verdict.diff)}
+  end
 
   def handle_event("fix", _params, socket) do
     {:noreply, assign(socket, fix_form: to_form(Flashcards.change_card(socket.assigns.current)))}
@@ -95,12 +105,14 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     end
   end
 
+  # An unanswered card leaves the session; an answered one already counts.
   def handle_event("delete_card", _params, socket) do
     {:ok, _} = Flashcards.delete_card(socket.assigns.current)
+    removed = if socket.assigns.phase == :prompt, do: 1, else: 0
 
     {:noreply,
      socket
-     |> assign(done: socket.assigns.done + 1)
+     |> assign(total: socket.assigns.total - removed)
      |> put_flash(:info, gettext("Card deleted."))
      |> advance()}
   end
@@ -112,6 +124,11 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
 
   @impl true
   def handle_info(:advance, socket), do: {:noreply, advance(socket)}
+
+  defp correct(socket, verdict) do
+    Process.send_after(self(), :advance, @correct_pause_ms)
+    assign(socket, phase: :correct, case_diffs: verdict.case_diffs)
+  end
 
   # A full-answer card sends the typed string; a cloze card an index => text map of blanks.
   defp answer_from_params(%{blank_indices: idx}, params) when not is_list(idx),
@@ -132,7 +149,11 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
       <div class="flex items-baseline justify-between gap-2">
         <h1 class="text-2xl sm:text-3xl font-black tracking-tighter uppercase">{gettext("Cards")}</h1>
         <span id="card-count" class="text-xs font-mono font-bold text-base-content/60">
-          {min(@done + if(@phase == :prompt, do: 1, else: 0), @total)} / {@total}
+          <%= if @live_action == :more do %>
+            {gettext("%{count} left", count: @total - @done)}
+          <% else %>
+            {min(@done + if(@phase == :prompt, do: 1, else: 0), @total)} / {@total}
+          <% end %>
         </span>
       </div>
 
@@ -143,16 +164,17 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
           <.native_prompt card={@current} />
           <%!-- A card you missed before comes back as fill-in-the-blank on just the parts you
                got wrong; a new one you type in full. --%>
-          <.cloze_form :if={cloze?(@current)} card={@current} />
+          <.cloze_form :if={cloze?(@current)} id={"cloze-#{@current.id}"} card={@current} />
           <.full_answer_form
             :if={!cloze?(@current)}
+            id={"answer-#{@current.id}"}
             card={@current}
             target_language_name={@target_language_name}
           />
         <% @phase == :correct -> %>
           <.card_correct card={@current} case_diffs={@case_diffs} />
         <% @phase == :revealed -> %>
-          <div class="space-y-4" phx-window-keydown="continue" phx-key="Enter">
+          <div class="space-y-4">
             <.native_prompt card={@current} />
             <div id="card-fix-diff" class="border-4 border-ink p-4 sm:p-5">
               <p class="text-xs font-mono uppercase tracking-widest mb-2 text-base-content/60">
@@ -164,14 +186,16 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
                 <span :for={seg <- @diff}><span class={seg_class(seg)}>{seg.text}</span>{" "}</span>
               </p>
             </div>
-            <button
-              type="button"
-              phx-click="continue"
-              class="brutal-btn w-full px-6 py-3 block-blue text-lg"
-            >
-              {gettext("Continue")} &rarr;
-              <span class="text-xs font-mono opacity-70">({gettext("Enter")})</span>
-            </button>
+            <p class="text-xs font-mono uppercase tracking-widest text-base-content/60">
+              {gettext("Now type it correctly")}
+            </p>
+            <.cloze_form :if={cloze?(@asked)} id={"retype-#{@asked.id}"} card={@asked} />
+            <.full_answer_form
+              :if={!cloze?(@asked)}
+              id={"retype-#{@asked.id}"}
+              card={@asked}
+              target_language_name={@target_language_name}
+            />
           </div>
       <% end %>
     </div>
@@ -206,6 +230,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     """
   end
 
+  attr :id, :string, required: true
   attr :card, :map, required: true
   attr :target_language_name, :string, required: true
 
@@ -214,11 +239,11 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     <form phx-submit="submit" class="space-y-3">
       <%!-- `sentences` capitalizes the first letter on mobile, a commonly missed capital. --%>
       <textarea
-        id={"answer-#{@card.id}"}
+        id={@id}
         name="answer"
         rows="3"
         phx-hook="AutoExpand"
-        data-persist-key={"flashcard-#{@card.id}"}
+        data-persist-key={@id}
         phx-mounted={JS.focus()}
         autocomplete="off"
         autocapitalize="sentences"
@@ -234,6 +259,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     """
   end
 
+  attr :id, :string, required: true
   attr :card, :map, required: true
 
   defp cloze_form(assigns) do
@@ -246,7 +272,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
     ~H"""
     <%!-- The ClozeNav hook focuses the first blank, jumps to the next on Enter, submits from
          the last, persists keystrokes, and grows each blank as you type. --%>
-    <form id={"cloze-#{@card.id}"} phx-submit="submit" phx-hook="ClozeNav" class="space-y-3">
+    <form id={@id} phx-submit="submit" phx-hook="ClozeNav" class="space-y-3">
       <div class="border-4 border-ink p-4 sm:p-6 font-mono font-bold text-lg sm:text-xl leading-loose">
         <%= for seg <- @segments do %>
           <%= case seg do %>
@@ -257,7 +283,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
                 name={"blank[#{key}]"}
                 rows="1"
                 data-min-size={@min_size}
-                data-persist-key={"flashcard-#{@card.id}-blank-#{key}"}
+                data-persist-key={"#{@id}-blank-#{key}"}
                 aria-label={gettext("Fill in the blank")}
                 class="cloze-blank inline-block max-w-full resize-none overflow-hidden align-bottom break-words border-b-4 border-ink bg-base-200 px-0 py-0.5 mx-0.5 font-mono font-bold leading-snug focus:block-yellow focus:outline-none"
                 autocomplete="off"
@@ -281,7 +307,7 @@ defmodule DailyOutputWeb.FlashcardLive.Study do
 
   defp card_correct(assigns) do
     ~H"""
-    <div class="space-y-4">
+    <div id="card-correct" class="space-y-4">
       <div class="border-4 border-ink block-green p-4 sm:p-5 flex items-center gap-3">
         <span class="text-2xl shrink-0">✓</span>
         <p class="text-xl sm:text-2xl font-black leading-tight">{@card.native_text}</p>

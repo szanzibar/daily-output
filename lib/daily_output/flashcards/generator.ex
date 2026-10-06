@@ -4,8 +4,9 @@ defmodule DailyOutput.Flashcards.Generator do
 
   For each sentence the student struggled with, the model produces the **natural,
   idiomatic** way a native speaker would say what the student was trying to say — not a
-  literal patch of their phrasing — and a matching translation. Naturalness is the goal;
-  the corrected text and mistakes list are context, and it's fine if the natural phrasing
+  literal patch of their phrasing — and a translation that follows its structure, so the
+  prompt shows how the target sentence is built. The target's naturalness comes first; the
+  corrected text and mistakes list are context, and it's fine if the natural phrasing
   sidesteps the exact construction that was wrong. Output is calibrated to the learner's
   CEFR level and biased toward one canonical phrasing (the answer is typed back exactly).
 
@@ -63,8 +64,12 @@ defmodule DailyOutput.Flashcards.Generator do
     - Naturalness comes FIRST. It is fine — expected, even — if the natural phrasing avoids the exact
       construction the student got wrong (e.g. a case or preposition). Learning to say it the native
       way is the whole point; the mistakes list is only context for what they were attempting.
-    - "native_text" = a natural #{native_name} translation that matches target_text as closely as
-      reads naturally. It need NOT match what the student originally wrote in #{native_name}.
+    - "native_text" = a #{native_name} translation that mirrors target_text's structure, so the
+      student sees how the #{profile.language_name} is built. Keep its word order: if target_text
+      starts with the object, an adverb, or a clause, so does the translation. Keep its
+      constructions and its subject, and translate phrase by phrase instead of paraphrasing.
+      Slightly awkward #{native_name} is fine; word salad is not. It need NOT match what the
+      student originally wrote in #{native_name}.
     - Calibrate to CEFR level #{level}: natural but within reach — avoid rare idioms, slang, or
       vocabulary a #{level} learner wouldn't know.
     - Prefer ONE clear, canonical phrasing. The student must type target_text back EXACTLY, so avoid
@@ -124,9 +129,10 @@ defmodule DailyOutput.Flashcards.Generator do
     - "target_text" = a natural, correct #{profile.language_name} sentence (level #{level}, one
       clear canonical phrasing).
     - "native_text" = a #{native_name} translation that points clearly and unambiguously to that
-      exact #{profile.language_name} sentence. It is fine to make the #{native_name} a little more
-      explicit or literal so the learner can derive the target, as long as it stays grammatical
-      and natural enough to read.
+      exact #{profile.language_name} sentence and mirrors its structure. Keep its word order: if
+      it starts with the object, an adverb, or a clause, so does the translation. Keep its
+      constructions and its subject, and translate phrase by phrase instead of paraphrasing.
+      Slightly awkward or literal #{native_name} is fine; word salad is not.
 
     Return exactly one card.
     """
@@ -188,7 +194,8 @@ defmodule DailyOutput.Flashcards.Generator do
               },
               "native_text" => %{
                 "type" => "string",
-                "description" => "A natural native-language translation of the sentence"
+                "description" =>
+                  "A native-language translation that mirrors the target sentence's word order and structure"
               }
             },
             "required" => ["target_text", "native_text"],

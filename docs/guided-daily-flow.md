@@ -18,8 +18,9 @@ open app ─► today's activity, picked by the app (conversation or journal)
             ▼
           card practice: 20 flips, or until nothing is due (skipped if no cards yet)
             ▼
-          done screen: streak, celebration, and one button for the bonus
-            └─► bonus: the *other* activity → results → done (+1 streak freeze)
+          done screen: streak, celebration, and two equal offers
+            ├─► bonus: the *other* activity → results → done (+1 streak freeze)
+            └─► practice more: cards still due, 20 at a time
 ```
 
 Reopening the app always resumes the exact step you're on. Same day: the same
@@ -32,9 +33,9 @@ conversation picks up where you stopped. Next day: a fresh conversation.
 | Activity pick | Conversation-first: journal about 1 day in 3, never two journal days in a row. Seeded by date, so a refresh never changes the pick. No swap button. |
 | Day passes | Activity complete **and** card session complete (or nothing due). |
 | Bonus | Both activities in one day banks **1 freeze** (cap 3). Freezes bridge missed days, derived from history like today. No points system. |
-| After done | Done screen with a single bonus offer. |
+| After done | Done screen with two equal offers side by side: the bonus, and practice on cards still due, 20 at a time, with no effect on the streak. Whichever applies alone takes the row. |
 | Focus | Picked automatically from mistake frequency, rotated for freshness. Graded at the end, **never blocks** the day. The focus pool page and manual tip-saving are gone. |
-| Flashcards | Fully automatic and part of the daily requirement. A "fix this card" action during practice is the escape hatch; the manage page stays but is rarely needed. |
+| Flashcards | Fully automatic and part of the daily requirement. A "fix this card" action during practice is the escape hatch; the manage page stays but is rarely needed. Progress comes from today's answers, so a refresh resumes. A miss comes back tomorrow, and you retype the fix before moving on. |
 | Pages kept | Today (`/`), History (read-only), Progress, Settings, Flashcard manage, About. |
 | Models | GPT-6.1 Sol at effort low (default) and GPT-6 Luna at effort medium only, showing score + price. |
 | Data | Nuke: one fresh migration, no backwards compatibility. |
@@ -204,6 +205,7 @@ rule sits behind a small interface, so steps can be reordered or swapped to expe
    word floor.
 3. The OpenAI key is an env var like the others, not entered in the UI.
 4. Reasoning effort is per model: Sol low, Luna medium.
-5. The bonus activity reuses today's focus.
+5. The bonus gets its own focus, because today's point already had its turn. It comes back
+   another day.
 6. Prod reset: you delete `/app/data/daily_output.db` at deploy. Locally I back up the dev
    DB (timestamped copy, matching the existing ones) before `mix ecto.reset`.

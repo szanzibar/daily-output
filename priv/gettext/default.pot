@@ -59,7 +59,6 @@ msgid "Cancel"
 msgstr ""
 
 #: lib/daily_output_web/components/activity_components.ex
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Continue"
 msgstr ""
@@ -524,11 +523,6 @@ msgstr ""
 msgid "Delete this card?"
 msgstr ""
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Enter"
-msgstr ""
-
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Flashcards"
@@ -557,6 +551,7 @@ msgstr ""
 msgid "Today"
 msgstr ""
 
+#: lib/daily_output_web/components/translatable_text.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Translate"
@@ -826,11 +821,6 @@ msgstr ""
 
 #: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
-msgid "Do the other activity too and bank a streak freeze."
-msgstr ""
-
-#: lib/daily_output_web/live/today_live.ex
-#, elixir-autogen, elixir-format
 msgid "Done for today"
 msgstr ""
 
@@ -888,6 +878,7 @@ msgid "Send"
 msgstr ""
 
 #: lib/daily_output_web/components/activity_components.ex
+#: lib/daily_output_web/components/translatable_text.ex
 #, elixir-autogen, elixir-format
 msgid "Try again"
 msgstr ""
@@ -927,11 +918,6 @@ msgstr ""
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
 msgid "Corrections on everything you write."
-msgstr ""
-
-#: lib/daily_output_web/live/today_live.ex
-#, elixir-autogen, elixir-format
-msgid "Do the other activity too. Your streak freezes are already full."
 msgstr ""
 
 #: lib/daily_output_web/live/about_live.ex
@@ -1012,4 +998,46 @@ msgstr ""
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "This browser doesn't support notifications."
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} left"
+msgstr ""
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Now type it correctly"
+msgstr ""
+
+#: lib/daily_output_web/components/translatable_text.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't translate this."
+msgstr ""
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "More cards"
+msgstr ""
+
+#: lib/daily_output_web/components/translatable_text.ex
+#, elixir-autogen, elixir-format
+msgid "Translating"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Translations"
+msgstr ""
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} card due"
+msgid_plural "%{count} cards due"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Freezes full"
 msgstr ""

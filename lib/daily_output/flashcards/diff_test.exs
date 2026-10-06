@@ -58,4 +58,40 @@ defmodule DailyOutput.Flashcards.DiffTest do
     assert "Hallo" in dels(ops)
     assert "Hallo," in inss(ops)
   end
+
+  describe "tokenize/1" do
+    test "strips every quote style" do
+      for text <- [
+            ~s("Hallo", sagte er.),
+            "'Hallo', sagte er.",
+            "“Hallo”, sagte er.",
+            "‘Hallo’, sagte er.",
+            "„Hallo“, sagte er.",
+            "‚Hallo‘, sagte er.",
+            "«Hallo», sagte er.",
+            "»Hallo«, sagte er.",
+            "‹Hallo›, sagte er.",
+            "« Hallo, » sagte er.",
+            "「Hallo」, sagte er.",
+            "『Hallo』, sagte er.",
+            "＂Hallo＂, sagte er."
+          ] do
+        assert Diff.tokenize(text) == ["Hallo,", "sagte", "er."], text
+      end
+    end
+
+    test "strips every apostrophe variant" do
+      for text <- ["Wie geht's?", "Wie geht’s?", "Wie gehtʼs?", "Wie geht´s?", "Wie geht`s?"] do
+        assert Diff.tokenize(text) == ["Wie", "gehts?"], text
+      end
+    end
+  end
+
+  test "quotes never count or show, but punctuation does" do
+    ops = Diff.unified("Er sagte: „Hallo.“", ~s(Er sagte: "Hallo"))
+
+    assert eqs(ops) == ["Er", "sagte:"]
+    assert dels(ops) == ["Hallo"]
+    assert inss(ops) == ["Hallo."]
+  end
 end

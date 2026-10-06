@@ -42,15 +42,16 @@ defmodule DailyOutput.Today do
     if activity = Enum.find(activities, &is_nil(&1.completed_at)), do: {:activity, activity}
   end
 
-  # Cards count as done when nothing is due, because a new user has no cards yet. The row
-  # still gets written, so the history stays derivable. Cards from an activity finished
-  # seconds ago may still be generating; they join the next session. Known and accepted.
+  # Cards are done after `@cards` answers, or when nothing unanswered is due, because a new
+  # user has no cards yet. The row latches it, since what was due can't be derived later.
+  # Cards from an activity finished seconds ago may still be generating; they join the next
+  # session. Known and accepted.
   defp step(:cards, _activities, today) do
     cond do
       today in Flashcards.completed_days() ->
         nil
 
-      Flashcards.due_today(@cards) != [] ->
+      match?({_answered, [_ | _]}, card_session()) ->
         :cards
 
       true ->
@@ -64,41 +65,41 @@ defmodule DailyOutput.Today do
 
     # Newest first within each day too, so a day's first activity is the last in its chunk.
     kinds = recent |> Enum.chunk_by(& &1.date) |> Enum.map(&List.last(&1).kind)
+    create(Planner.activity_kind(kinds, today), recent, today)
+  end
 
-    resting =
-      for %{date: date, focus: %{"category" => category}} <- recent,
-          category,
-          Date.diff(today, date) <= @focus_rest_days,
-          do: category
+  @doc """
+  Starts the bonus: the other kind of activity, with its own focus, because today's already
+  had its turn. Only once the day has passed with one activity; returns `nil` otherwise.
+  """
+  def start_bonus do
+    with %{today_status: :passed} <- streak(),
+         [main] <- Activities.today() do
+      kind = if main.kind == "journal", do: "conversation", else: "journal"
+      create(kind, Activities.recent(@lookback_days), Clock.today())
+    else
+      _ -> nil
+    end
+  end
 
+  # The focus comes from recent mistakes outside the resting categories, and the angle fits it.
+  defp create(kind, recent, today) do
     categories = Enum.map(Activities.corrections(recent), & &1.category)
-    category = Focus.choose(categories, resting, today)
+    category = Focus.choose(categories, resting(recent, today), today)
 
     Activities.create(%{
-      kind: Planner.activity_kind(kinds, today),
+      kind: kind,
       angle: Planner.angle(Enum.map(recent, & &1.angle), category, today),
       focus: %{"category" => category}
     })
   end
 
-  @doc """
-  Starts the bonus: the other kind of activity, with today's focus and a fresh angle. Only
-  once the day has passed with one activity; returns `nil` otherwise.
-  """
-  def start_bonus do
-    with %{today_status: :passed} <- streak(),
-         [main] <- Activities.today() do
-      today = Clock.today()
-      recent_angles = Enum.map(Activities.recent(@lookback_days), & &1.angle)
-
-      Activities.create(%{
-        kind: if(main.kind == "journal", do: "conversation", else: "journal"),
-        angle: Planner.angle(recent_angles, main.focus["category"], today),
-        focus: main.focus
-      })
-    else
-      _ -> nil
-    end
+  # Today's focus rests too, so the bonus never repeats it.
+  defp resting(recent, today) do
+    for %{date: date, focus: %{"category" => category}} <- recent,
+        category,
+        Date.diff(today, date) <= @focus_rest_days,
+        do: category
   end
 
   @doc "The streak, from completed activities and card days. Today passed unless `:pending`."
@@ -127,17 +128,22 @@ defmodule DailyOutput.Today do
     end
   end
 
-  # The bonus copies the main activity's banner, so it skips this.
+  # Written already when only the prompt failed last time.
   defp write_focus(%Activity{focus: %{"title" => _}} = activity), do: {:ok, activity}
 
   defp write_focus(%Activity{focus: %{"category" => category}} = activity) do
+    recent = Activities.recent(@lookback_days)
+
     mistakes =
-      Activities.recent(@lookback_days)
+      recent
       |> Activities.corrections()
       |> Enum.filter(&(&1.category == category))
       |> Enum.take(@focus_mistakes)
 
-    with {:ok, focus} <- FocusWriter.write(category, mistakes, profile()) do
+    # Without a category the AI picks one, so it skips the resting ones too.
+    opts = profile() ++ [resting: resting(recent, activity.date)]
+
+    with {:ok, focus} <- FocusWriter.write(category, mistakes, opts) do
       {:ok, Activities.update(activity, %{focus: focus})}
     end
   end
@@ -234,11 +240,28 @@ defmodule DailyOutput.Today do
     ]
   end
 
-  @doc "Today's card session: up to #{@cards} due cards."
-  def card_queue, do: Flashcards.due_today(@cards)
+  @doc """
+  Today's card session as `{answered, queue}`: how many cards you've answered today, and the
+  due cards you haven't, up to #{@cards} in all. Both come from today's reviews, so a refresh
+  resumes with the same cards in the same order.
+  """
+  def card_session do
+    today = Clock.today()
+    answered = Flashcards.reviewed_on(today)
+    {due, new} = Flashcards.study_pool(answered)
+    # When both pools exceed their share, a refresh can swap a card. Known and accepted.
+    {length(answered), Planner.cards(due, new, @cards - length(answered), today)}
+  end
 
-  @doc "Marks today's card session done."
-  def finish_cards, do: Flashcards.complete_day(Clock.today())
+  @doc """
+  Practice once the day is done, as `{still_due, queue}`: how many due cards you haven't
+  answered today, and up to #{@cards} of them. It never touches the streak.
+  """
+  def extra_practice do
+    today = Clock.today()
+    {due, new} = Flashcards.study_pool(Flashcards.reviewed_on(today))
+    {length(due) + length(new), Planner.cards(due, new, @cards, today)}
+  end
 
   @doc """
   Seconds until a journal's Finish button appears, from the active time logged on the page

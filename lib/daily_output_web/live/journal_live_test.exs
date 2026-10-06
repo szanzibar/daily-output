@@ -20,7 +20,7 @@ defmodule DailyOutputWeb.JournalLiveTest do
     Stats.track("journal", 299)
     {:ok, view, _html} = live(conn, ~p"/journal/#{journal("Hallo").id}")
     assert has_element?(view, "#focus-banner")
-    assert has_element?(view, "#prompt")
+    assert has_element?(view, "#prompt #translate-prompt-button")
     assert has_element?(view, "#finish-countdown-time", "0:01")
     refute has_element?(view, "#finish")
 

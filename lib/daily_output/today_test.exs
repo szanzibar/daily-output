@@ -1,9 +1,9 @@
 defmodule DailyOutput.TodayTest do
   use DailyOutput.DataCase
 
-  alias DailyOutput.{Activities, Clock, Planner, Today}
+  alias DailyOutput.{Activities, Clock, Flashcards, Planner, Today}
   alias DailyOutput.Activities.{Activity, Message}
-  alias DailyOutput.Flashcards.{Card, CompletedDay}
+  alias DailyOutput.Flashcards.{Card, CompletedDay, Review}
 
   @card %Card{target_text: "Ich ging nach Hause.", native_text: "I went home.", language: "de"}
 
@@ -67,17 +67,44 @@ defmodule DailyOutput.TodayTest do
       assert Repo.get_by(CompletedDay, day: Clock.today())
     end
 
-    test "finishing the cards is done" do
-      Repo.insert!(@card)
+    test "the cards are done once every due card is answered, a miss included" do
+      card = Repo.insert!(@card)
       {:activity, activity} = Today.next_step()
       Activities.complete(activity, %{}, nil)
-      Today.finish_cards()
+      {:ok, _} = Flashcards.review(card, :fail)
 
       assert Today.next_step() == :done
+      assert Repo.get_by(CompletedDay, day: Clock.today())
       assert Today.streak().today_status == :passed
+      assert Today.extra_practice() == {0, []}
     end
 
-    test "the bonus is the other kind with the same focus, then done again" do
+    test "the cards are done after 20 answers, and the rest is extra practice" do
+      cards = for i <- 1..21, do: Repo.insert!(%{@card | target_text: "Satz #{i}."})
+      {:activity, activity} = Today.next_step()
+      Activities.complete(activity, %{}, nil)
+      for card <- Enum.take(cards, 20), do: Repo.insert!(%Review{card_id: card.id, result: true})
+
+      assert Today.next_step() == :done
+      assert {1, [%{id: id}]} = Today.extra_practice()
+      assert id == List.last(cards).id
+    end
+
+    test "the bonus is the other kind with a new focus, then done again" do
+      yesterday = Date.add(Clock.today(), -1)
+
+      Activities.create(%{
+        kind: "journal",
+        date: yesterday,
+        feedback: %{
+          "annotated_text" =>
+            "[[der||den||case||a]] [[gehe||ging||verb||b]] [[in||auf||preposition||c]]"
+        },
+        completed_at: DateTime.utc_now()
+      })
+
+      Repo.insert!(%CompletedDay{day: yesterday})
+
       {:activity, main} = Today.next_step()
       Activities.complete(main, %{}, nil)
       assert Today.next_step() == :done
@@ -85,14 +112,47 @@ defmodule DailyOutput.TodayTest do
       bonus = Today.start_bonus()
 
       assert bonus.kind != main.kind
-      assert bonus.focus == main.focus
+      assert bonus.focus["category"] not in [nil, main.focus["category"]]
       assert bonus.angle != main.angle
       assert {:activity, %{id: id}} = Today.next_step()
       assert id == bonus.id
 
+      expect_ai(%{"category" => "case", "title" => "Akkusativ", "body" => "Den Hund."})
+      expect_ai("Schreib über deinen Tag.")
+      assert {:ok, %{focus: %{"title" => "Akkusativ"}}} = Today.prepare(bonus)
+
       Activities.complete(bonus, %{}, nil)
       assert Today.next_step() == :done
       assert %{today_status: :bonus, freezes_available: 1} = Today.streak()
+    end
+
+    test "with every category resting, the bonus's AI pick skips them" do
+      Activities.create(%{
+        kind: "conversation",
+        date: Date.add(Clock.today(), -1),
+        focus: %{"category" => "case"},
+        feedback: %{"annotated_text" => "[[der||den||case||a]] [[gehe||ging||verb||b]]"},
+        completed_at: DateTime.utc_now()
+      })
+
+      {:activity, %{focus: %{"category" => "verb"}} = main} = Today.next_step()
+      Activities.complete(main, %{}, nil)
+      Today.next_step()
+      bonus = Today.start_bonus()
+      assert bonus.focus == %{"category" => nil}
+
+      expect_ai(%{"category" => "gender", "title" => "Der, die, das", "body" => "Der Tisch."})
+      expect_ai("Schreib über deinen Tag.")
+      assert {:ok, %{focus: %{"category" => "gender"}}} = Today.prepare(bonus)
+
+      assert_received {:ai_request,
+                       %{
+                         "input" => [
+                           %{"role" => "system", "content" => [%{"text" => focus_prompt}]} | _
+                         ]
+                       }}
+
+      assert focus_prompt =~ "Skip these categories, which just had their turn: verb, case."
     end
 
     test "the bonus needs a passed day, and there's only one" do
@@ -103,6 +163,26 @@ defmodule DailyOutput.TodayTest do
       Today.next_step()
       assert Today.start_bonus()
       assert Today.start_bonus() == nil
+    end
+  end
+
+  describe "card_session/0" do
+    test "today's answers are the progress, and the queue skips them" do
+      for target <- ~w(Eins. Zwei. Drei.), do: Repo.insert!(%{@card | target_text: target})
+      {0, [first | rest]} = Today.card_session()
+      {:ok, _} = Flashcards.review(first, :fail)
+
+      assert {1, queue} = Today.card_session()
+      assert Enum.map(queue, & &1.id) == Enum.map(rest, & &1.id)
+    end
+
+    test "yesterday's answers don't count" do
+      card = Repo.insert!(@card)
+      {start, _} = Clock.day_range(Clock.today())
+      Repo.insert!(%Review{card_id: card.id, result: true, inserted_at: DateTime.add(start, -60)})
+
+      assert {0, [%{id: id}]} = Today.card_session()
+      assert id == card.id
     end
   end
 
@@ -195,7 +275,8 @@ defmodule DailyOutput.TodayTest do
                          ]
                        }}
 
-      assert focus_prompt =~ "no mistakes on record"
+      assert focus_prompt =~ "no fresh mistakes"
+      refute focus_prompt =~ "Skip these categories"
 
       assert_received {:ai_request,
                        %{

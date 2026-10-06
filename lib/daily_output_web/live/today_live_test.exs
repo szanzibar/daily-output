@@ -36,6 +36,8 @@ defmodule DailyOutputWeb.TodayLiveTest do
     assert has_element?(view, "#streak")
     assert has_element?(view, "#celebrate[data-key='#{Clock.today()}-passed']")
     refute has_element?(view, "#bonus-done")
+    assert has_element?(view, "#offers #bonus")
+    refute has_element?(view, "#practice-more")
 
     view |> element("#bonus") |> render_click()
     assert_redirect(view, ~p"/")
@@ -47,6 +49,44 @@ defmodule DailyOutputWeb.TodayLiveTest do
     assert path == "/#{bonus.kind}/#{bonus.id}"
   end
 
+  test "cards still due after the day link to extra practice, which leaves the streak alone",
+       %{conn: conn} do
+    {:activity, main} = Today.next_step()
+    Activities.complete(main, %{}, nil)
+    assert Today.next_step() == :done
+    streak = Today.streak()
+
+    cards =
+      for target <- ["Ich ging.", "Ich lief."],
+          do: Repo.insert!(%Card{target_text: target, native_text: "I went.", language: "de"})
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    assert has_element?(view, "#offers #bonus")
+    assert has_element?(view, "#offers #practice-more", "2")
+
+    {:ok, practice, _html} =
+      view
+      |> element("#practice-more")
+      |> render_click()
+      |> follow_redirect(conn, ~p"/flashcards/more")
+
+    assert has_element?(practice, "#card-count", "2")
+    card = Enum.find(cards, &has_element?(practice, "#answer-#{&1.id}"))
+    practice |> form("form", %{answer: card.target_text}) |> render_submit()
+    assert has_element?(practice, "#card-count", "1")
+
+    {:ok, refreshed, _html} = live(conn, ~p"/flashcards/more")
+    assert has_element?(refreshed, "#card-count", "1")
+    [last] = cards -- [card]
+    refreshed |> form("form", %{answer: last.target_text}) |> render_submit()
+    send(refreshed.pid, :advance)
+    assert_redirect(refreshed, ~p"/")
+
+    assert Today.streak() == streak
+    {:ok, view, _html} = live(conn, ~p"/")
+    refute has_element?(view, "#practice-more")
+  end
+
   test "after the bonus, the done screen shows the freeze instead", %{conn: conn} do
     {:activity, main} = Today.next_step()
     Activities.complete(main, %{}, nil)
@@ -56,6 +96,21 @@ defmodule DailyOutputWeb.TodayLiveTest do
     {:ok, view, _html} = live(conn, ~p"/")
     assert has_element?(view, "#bonus-done")
     assert has_element?(view, "#celebrate[data-key='#{Clock.today()}-bonus']")
+    refute has_element?(view, "#bonus")
+    refute has_element?(view, "#practice-more")
+  end
+
+  test "after the bonus, cards still due are the only offer", %{conn: conn} do
+    {:activity, main} = Today.next_step()
+    Activities.complete(main, %{}, nil)
+    Today.next_step()
+    Activities.complete(Today.start_bonus(), %{}, nil)
+    Repo.insert!(%Card{target_text: "Ich ging.", native_text: "I went.", language: "de"})
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    # Same row as the card offer, so they sit side by side.
+    assert has_element?(view, "#offers #bonus-done")
+    assert has_element?(view, "#offers #practice-more", "1")
     refute has_element?(view, "#bonus")
   end
 

@@ -59,7 +59,6 @@ msgid "Cancel"
 msgstr "Abbrechen"
 
 #: lib/daily_output_web/components/activity_components.ex
-#: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Continue"
 msgstr "Weiter"
@@ -524,11 +523,6 @@ msgstr "Prüfen"
 msgid "Delete this card?"
 msgstr "Diese Karte löschen?"
 
-#: lib/daily_output_web/live/flashcard_live/study.ex
-#, elixir-autogen, elixir-format
-msgid "Enter"
-msgstr "Enter"
-
 #: lib/daily_output_web/live/progress_live.ex
 #, elixir-autogen, elixir-format
 msgid "Flashcards"
@@ -557,6 +551,7 @@ msgstr "Vorgabe (Muttersprache)"
 msgid "Today"
 msgstr "Heute"
 
+#: lib/daily_output_web/components/translatable_text.ex
 #: lib/daily_output_web/live/flashcard_live/study.ex
 #, elixir-autogen, elixir-format
 msgid "Translate"
@@ -826,11 +821,6 @@ msgstr "Das Gespräch konnte nicht abgeschlossen werden."
 
 #: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
-msgid "Do the other activity too and bank a streak freeze."
-msgstr "Mach auch die andere Übung und sichere dir einen Serien-Joker."
-
-#: lib/daily_output_web/live/today_live.ex
-#, elixir-autogen, elixir-format
 msgid "Done for today"
 msgstr "Fertig für heute"
 
@@ -888,6 +878,7 @@ msgid "Send"
 msgstr "Senden"
 
 #: lib/daily_output_web/components/activity_components.ex
+#: lib/daily_output_web/components/translatable_text.ex
 #, elixir-autogen, elixir-format
 msgid "Try again"
 msgstr "Nochmal versuchen"
@@ -928,11 +919,6 @@ msgstr "Ein kurzes Gespräch oder ein Tagebucheintrag. Welches, entscheidet die 
 #, elixir-autogen, elixir-format
 msgid "Corrections on everything you write."
 msgstr "Korrekturen zu allem, was du schreibst."
-
-#: lib/daily_output_web/live/today_live.ex
-#, elixir-autogen, elixir-format
-msgid "Do the other activity too. Your streak freezes are already full."
-msgstr "Mach auch die andere Übung. Deine Serien-Joker sind schon voll."
 
 #: lib/daily_output_web/live/about_live.ex
 #, elixir-autogen, elixir-format
@@ -1013,3 +999,45 @@ msgstr "Benachrichtigungen sind blockiert. Erlaube sie in den Einstellungen dein
 #, elixir-autogen, elixir-format
 msgid "This browser doesn't support notifications."
 msgstr "Dieser Browser unterstützt keine Benachrichtigungen."
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} left"
+msgstr "noch %{count}"
+
+#: lib/daily_output_web/live/flashcard_live/study.ex
+#, elixir-autogen, elixir-format
+msgid "Now type it correctly"
+msgstr "Jetzt richtig eintippen"
+
+#: lib/daily_output_web/components/translatable_text.ex
+#, elixir-autogen, elixir-format
+msgid "Couldn't translate this."
+msgstr "Konnte das nicht übersetzen."
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "More cards"
+msgstr "Mehr Karten"
+
+#: lib/daily_output_web/components/translatable_text.ex
+#, elixir-autogen, elixir-format
+msgid "Translating"
+msgstr "Wird übersetzt"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Translations"
+msgstr "Übersetzungen"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "%{count} card due"
+msgid_plural "%{count} cards due"
+msgstr[0] "%{count} Karte fällig"
+msgstr[1] "%{count} Karten fällig"
+
+#: lib/daily_output_web/live/today_live.ex
+#, elixir-autogen, elixir-format
+msgid "Freezes full"
+msgstr "Joker voll"

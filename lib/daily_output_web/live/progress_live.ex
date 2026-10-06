@@ -56,6 +56,7 @@ defmodule DailyOutputWeb.ProgressLive do
   defp purpose_label("flashcards"), do: gettext("Flashcards")
   defp purpose_label("starter"), do: gettext("Openers and prompts")
   defp purpose_label("focus"), do: gettext("Daily focus")
+  defp purpose_label("translate"), do: gettext("Translations")
   defp purpose_label(other), do: other |> String.replace("_", " ") |> String.capitalize()
 
   @impl true

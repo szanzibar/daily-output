@@ -10,6 +10,7 @@ defmodule DailyOutputWeb.ActivityComponents do
   import DailyOutputWeb.CoreComponents, only: [icon: 1, rich_text: 1]
 
   alias DailyOutput.Markers
+  alias DailyOutputWeb.TranslatableText
 
   @doc "An activity's page. A finished one shows its results, so History links here too."
   def activity_path(%{kind: "conversation", id: id}), do: ~p"/conversation/#{id}"
@@ -110,14 +111,22 @@ defmodule DailyOutputWeb.ActivityComponents do
     <div id="chat" class="space-y-3">
       <div id="opener" class="chat-bubble-row chat-ai">
         <div class="chat-role">{gettext("Partner")}</div>
-        <div class="chat-bubble chat-bubble-ai">{@opener}</div>
+        <div class="chat-bubble chat-bubble-ai">
+          <.live_component module={TranslatableText} id="translate-opener" text={@opener} />
+        </div>
       </div>
       <%= for msg <- @messages do %>
         <%= cond do %>
           <% msg.role == "assistant" -> %>
             <div id={"message-#{msg.id}"} class="chat-bubble-row chat-ai">
               <div class="chat-role">{gettext("Partner")}</div>
-              <div class="chat-bubble chat-bubble-ai">{msg.body}</div>
+              <div class="chat-bubble chat-bubble-ai">
+                <.live_component
+                  module={TranslatableText}
+                  id={"translate-#{msg.id}"}
+                  text={msg.body}
+                />
+              </div>
             </div>
           <% msg.feedback -> %>
             <div id={"message-#{msg.id}"} class="chat-bubble-row chat-feedback-row">

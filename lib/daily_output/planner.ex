@@ -1,7 +1,7 @@
 defmodule DailyOutput.Planner do
   @moduledoc """
-  Picks today's activity kind and creative angle. Pure: callers pass in the history, and the
-  date seeds every pick, so a refresh never changes it.
+  Picks today's activity kind, creative angle, and cards. Pure: callers pass in the history,
+  and the date seeds every pick, so a refresh never changes it.
   """
 
   # Days in which one is a journal, roughly.
@@ -53,6 +53,23 @@ defmodule DailyOutput.Planner do
 
     {id, _, _} = Enum.at(pool, :erlang.phash2({:angle, date}, length(pool)))
     id
+  end
+
+  @doc """
+  Up to `target` cards to study, in order: due reviews (oldest due first) plus up to half new
+  cards (oldest first), so new cards keep flowing behind a review backlog. Whichever pool runs
+  short, the other fills in.
+
+  Each card's place is seeded by the date and its id, so the order holds all day and answering
+  a card never moves the rest.
+  """
+  def cards(_due, _new, target, _date) when target <= 0, do: []
+
+  def cards(due, new, target, date) do
+    new_count = min(length(new), max(1, div(target, 2)))
+    due = Enum.take(due, target - new_count)
+    new = Enum.take(new, target - length(due))
+    Enum.sort_by(due ++ new, &:erlang.phash2({:card, date, &1.id}))
   end
 
   @doc "What the opener or prompt should do for angle `id`."

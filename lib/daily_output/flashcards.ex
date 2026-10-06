@@ -11,7 +11,7 @@ defmodule DailyOutput.Flashcards do
 
   import Ecto.Query
 
-  alias DailyOutput.{Markers, Repo, Settings}
+  alias DailyOutput.{Clock, Markers, Repo, Settings}
 
   alias DailyOutput.Flashcards.{
     Card,
@@ -89,52 +89,44 @@ defmodule DailyOutput.Flashcards do
 
   # ── Study session ────────────────────────────────────
 
-  @doc """
-  The distinct cards to study today for the current target language: due reviews and new
-  cards, mixed so new material always flows — even behind a big review backlog.
+  @doc "The ids of the cards reviewed on logical day `date`."
+  def reviewed_on(date) do
+    {start, finish} = Clock.day_range(date)
 
-  New cards are guaranteed up to ~half the daily batch; whichever pool (due reviews / new)
-  is short, the other fills the slack, capped at `target`. The result is shuffled so new
-  cards don't all trail the reviews. Goal is *encountering* `target` distinct cards a day,
-  not clearing the whole review backlog first.
+    Repo.all(
+      from(r in Review,
+        where: r.inserted_at >= ^start and r.inserted_at < ^finish,
+        select: r.card_id,
+        distinct: true
+      )
+    )
+  end
+
+  @doc """
+  The cards up for study in the current target language, minus the `except` ids, as
+  `{due, new}`: due reviews, oldest due first, and new cards, oldest first.
   """
-  def due_today(target) do
+  def study_pool(except) do
     language = Settings.get_config().target_language
     now = DateTime.utc_now()
 
+    studyable =
+      from(c in Card,
+        where: is_nil(c.deleted_at) and c.language == ^language and c.id not in ^except
+      )
+
     due =
       Repo.all(
-        from(c in Card,
+        from(c in studyable,
           where:
-            is_nil(c.deleted_at) and c.language == ^language and
-              c.state in ["review", "learning", "relearning"] and
-              not is_nil(c.due_at) and c.due_at <= ^now,
-          order_by: [asc: c.due_at],
-          limit: ^target
+            c.state in ["review", "learning", "relearning"] and not is_nil(c.due_at) and
+              c.due_at <= ^now,
+          order_by: [asc: c.due_at]
         )
       )
 
-    new =
-      Repo.all(
-        from(c in Card,
-          where: is_nil(c.deleted_at) and c.language == ^language and c.state == "new",
-          order_by: [asc: c.inserted_at],
-          limit: ^target
-        )
-      )
-
-    {due, new} = split_batch(due, new, target)
-    Enum.shuffle(due ++ new)
-  end
-
-  # Reserve up to half the batch for new cards so new material always appears, even when
-  # due reviews alone could fill `target`. If one pool is short, the other takes the slack.
-  defp split_batch(due, new, target) do
-    new_reserve = max(1, div(target, 2))
-    n_new = min(length(new), new_reserve)
-    n_due = min(length(due), target - n_new)
-    n_new = min(length(new), target - n_due)
-    {Enum.take(due, n_due), Enum.take(new, n_new)}
+    new = Repo.all(from(c in studyable, where: c.state == "new", order_by: [asc: c.inserted_at]))
+    {due, new}
   end
 
   @doc """

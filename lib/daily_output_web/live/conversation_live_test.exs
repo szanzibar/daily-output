@@ -158,6 +158,71 @@ defmodule DailyOutputWeb.ConversationLiveTest do
     assert has_element?(view, "#chat-form")
   end
 
+  test "partner texts translate on demand, and only the first tap asks the AI", %{conn: conn} do
+    activity = conversation([{"user", "Gut."}, {"assistant", "Und du?"}])
+    [mine, partner] = Activities.get!(activity.id).messages
+    test = self()
+
+    expect_ai(1, fn _body ->
+      send(test, {:translating, self()})
+      receive do: (:go -> "Hi! How are you?")
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/conversation/#{activity.id}")
+    assert has_element?(view, "#message-#{partner.id} #translate-#{partner.id}-button")
+    refute has_element?(view, "#message-#{mine.id} button")
+
+    view |> element("#translate-opener-button") |> render_click()
+    assert_receive {:translating, task}
+    assert has_element?(view, "#translate-opener-loading")
+
+    send(task, :go)
+    render_async(view)
+    assert has_element?(view, "#translate-opener-text", "Hi! How are you?")
+
+    view |> element("#translate-opener-button") |> render_click()
+    refute has_element?(view, "#translate-opener-text")
+
+    view |> element("#translate-opener-button") |> render_click()
+    assert has_element?(view, "#translate-opener-text", "Hi! How are you?")
+    assert_received {:ai_request, _}
+    refute_received {:ai_request, _}
+
+    # The page re-renders as your next message is corrected and answered.
+    expect_ai(2, fn body ->
+      if body["tools"], do: %{"corrected" => "Gut.", "corrections" => []}, else: "Schön!"
+    end)
+
+    view |> form("#chat-form", message: "Gut.") |> render_submit()
+    render_async(view)
+    assert has_element?(view, "#translate-opener-text", "Hi! How are you?")
+  end
+
+  test "a failed translation offers a retry", %{conn: conn} do
+    activity = conversation([{"user", "Gut."}, {"assistant", "Und du?"}])
+    [_mine, partner] = Activities.get!(activity.id).messages
+
+    Req.Test.expect(DailyOutput.AI, fn conn ->
+      conn
+      |> Plug.Conn.put_status(400)
+      |> Req.Test.json(%{
+        "error" => %{"message" => "Invalid request.", "type" => "invalid_request_error"}
+      })
+    end)
+
+    {:ok, view, _html} = live(conn, ~p"/conversation/#{activity.id}")
+    view |> element("#translate-#{partner.id}-button") |> render_click()
+    render_async(view)
+    assert has_element?(view, "#translate-#{partner.id}-error")
+
+    expect_ai("And you?")
+    view |> element("#translate-#{partner.id}-error button") |> render_click()
+    render_async(view)
+
+    refute has_element?(view, "#translate-#{partner.id}-error")
+    assert has_element?(view, "#translate-#{partner.id}-text", "And you?")
+  end
+
   test "an earlier day's conversation reads as results only", %{conn: conn} do
     activity =
       Activities.create(%{

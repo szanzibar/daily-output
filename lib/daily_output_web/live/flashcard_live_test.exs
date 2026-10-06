@@ -3,8 +3,8 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias DailyOutput.{Clock, Flashcards, Repo}
-  alias DailyOutput.Flashcards.{Card, CompletedDay, Review}
+  alias DailyOutput.{Flashcards, Repo}
+  alias DailyOutput.Flashcards.{Card, Review}
 
   defp new_card(target, native) do
     {:ok, card} =
@@ -16,16 +16,15 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
   end
 
   describe "card session" do
-    test "with nothing due, the session is done and goes back to /", %{conn: conn} do
+    test "with nothing due, the session goes back to /", %{conn: conn} do
       assert {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/flashcards")
-      assert Repo.get_by(CompletedDay, day: Clock.today())
     end
 
     test "a correct answer celebrates, records a review, and the last one ends the session",
          %{conn: conn} do
       card = new_card("Ich ging nach Hause.", "I went home.")
       {:ok, view, _html} = live(conn, ~p"/flashcards")
-      assert has_element?(view, "#answer-#{card.id}[data-persist-key='flashcard-#{card.id}']")
+      assert has_element?(view, "#answer-#{card.id}[data-persist-key='answer-#{card.id}']")
 
       view |> form("form", %{answer: "Ich ging nach Hause."}) |> render_submit()
 
@@ -34,10 +33,24 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
 
       send(view.pid, :advance)
       assert_redirect(view, ~p"/")
-      assert Repo.get_by(CompletedDay, day: Clock.today())
     end
 
-    test "a miss shows the fix and isn't asked again this session", %{conn: conn} do
+    test "a refresh keeps the counter and the order", %{conn: conn} do
+      cards = for n <- ~w(eins zwei drei), do: new_card("Ich zähle #{n}.", "I count #{n}.")
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      first = Enum.find(cards, &has_element?(view, "#answer-#{&1.id}"))
+      view |> form("form", %{answer: first.target_text}) |> render_submit()
+      send(view.pid, :advance)
+      second = Enum.find(cards, &has_element?(view, "#answer-#{&1.id}"))
+
+      {:ok, refreshed, _html} = live(conn, ~p"/flashcards")
+      assert has_element?(refreshed, "#card-count", "2 / 3")
+      assert has_element?(refreshed, "#answer-#{second.id}")
+    end
+
+    test "a miss shows the fix, and a correct retype moves on without another review",
+         %{conn: conn} do
       cards = [
         new_card("Ich ging nach Hause.", "I went home."),
         new_card("Ich ging zur Schule.", "I went to school.")
@@ -46,7 +59,6 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
       {:ok, view, _html} = live(conn, ~p"/flashcards")
       assert has_element?(view, "#card-count", "1 / 2")
 
-      # The queue is shuffled, so miss whichever card comes first.
       card = Enum.find(cards, &has_element?(view, "#answer-#{&1.id}"))
       answer = String.replace(card.target_text, "ging", "gehe")
       view |> form("form", %{answer: answer}) |> render_submit()
@@ -58,8 +70,33 @@ defmodule DailyOutputWeb.FlashcardLiveTest do
       # The miss narrows the card to a blank on the wrong word, for next time.
       assert Repo.get(Card, card.id).blank_indices == [1]
 
-      view |> element("button[phx-click=continue]") |> render_click()
+      # The retype asks the whole sentence again, and only a correct one moves on.
+      assert has_element?(view, "#retype-#{card.id}")
+      view |> form("form", %{answer: answer}) |> render_submit()
+      assert has_element?(view, "#card-fix-diff .correction-deleted", "gehe")
+
+      view |> form("form", %{answer: card.target_text}) |> render_submit()
+      assert has_element?(view, "#card-correct")
+      assert Repo.aggregate(Review, :count) == 1
+
+      send(view.pid, :advance)
       assert has_element?(view, "#card-count", "2 / 2")
+    end
+
+    test "a cloze miss is retyped in the same blanks", %{conn: conn} do
+      card = new_card("Ich ging nach Hause.", "I went home.")
+      card |> Ecto.Changeset.change(blank_indices: [1]) |> Repo.update!()
+      {:ok, view, _html} = live(conn, ~p"/flashcards")
+
+      view |> form("#cloze-#{card.id}", %{"blank" => %{"1" => "gehe"}}) |> render_submit()
+      assert has_element?(view, "#retype-#{card.id} textarea.cloze-blank[name='blank[1]']")
+
+      view |> form("#retype-#{card.id}", %{"blank" => %{"1" => "gehe"}}) |> render_submit()
+      refute has_element?(view, "#card-correct")
+
+      view |> form("#retype-#{card.id}", %{"blank" => %{"1" => "ging"}}) |> render_submit()
+      assert has_element?(view, "#card-correct")
+      assert Repo.aggregate(Review, :count) == 1
     end
 
     test "a card you missed before comes back as fill-in-the-blank", %{conn: conn} do

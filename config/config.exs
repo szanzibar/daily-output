@@ -19,6 +19,10 @@ config :daily_output, DailyOutputWeb.Endpoint,
   pubsub_server: DailyOutput.PubSub,
   live_view: [signing_salt: "cnBQHVaE"]
 
+# ReqLLM picks one of 8 pools at random, one connection each by default, so a correction,
+# reply, and translation running together could queue behind each other and time out.
+config :req_llm, stream_pool_size: 4
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.28.2",

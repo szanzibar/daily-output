@@ -9,6 +9,7 @@ defmodule DailyOutputWeb.JournalLive do
   use DailyOutputWeb, :live_view
 
   alias DailyOutput.{Activities, Clock, Stats, Today}
+  alias DailyOutputWeb.TranslatableText
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -90,9 +91,9 @@ defmodule DailyOutputWeb.JournalLive do
       <.activity_header title={gettext("Journal")} activity={@activity} today={@today?} />
       <.focus_banner focus={@activity.focus} />
 
-      <p :if={@activity.prompt} id="prompt" class="border-l-4 border-ink pl-4 text-lg font-bold">
-        {@activity.prompt}
-      </p>
+      <div :if={@activity.prompt} id="prompt" class="border-l-4 border-ink pl-4 text-lg font-bold">
+        <.live_component module={TranslatableText} id="translate-prompt" text={@activity.prompt} />
+      </div>
 
       <%= cond do %>
         <% @activity.completed_at -> %>

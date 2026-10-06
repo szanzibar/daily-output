@@ -1,16 +1,17 @@
 defmodule DailyOutput.AI.FocusWriter do
   @moduledoc """
   Writes today's focus banner: the rule and one example, built from your real mistakes in the
-  focus category. With no category or no mistakes yet (cold start), it picks a grammar point
-  that suits your level.
+  focus category. With no category, on a cold start or when every category is resting, it
+  picks a grammar point that suits your level, outside the resting categories.
   """
 
   alias DailyOutput.AI
   alias DailyOutput.AI.{LanguageProfile, Proofreader}
 
   @doc """
-  `mistakes` are `%{original, corrected, explanation}` maps, newest first. Returns
-  `{:ok, %{"category", "title", "body"}}` or `{:error, reason}`.
+  `mistakes` are `%{original, corrected, explanation}` maps, newest first. `:resting` lists the
+  categories that just had their turn. Returns `{:ok, %{"category", "title", "body"}}` or
+  `{:error, reason}`.
   """
   def write(category, mistakes, opts) do
     target = Keyword.fetch!(opts, :target_language)
@@ -19,9 +20,15 @@ defmodule DailyOutput.AI.FocusWriter do
     profile = LanguageProfile.resolve(target)
     feedback_lang = LanguageProfile.feedback_language(level, target, opts[:native_language])
 
+    resting = Keyword.get(opts, :resting, [])
+
     task =
       if mistakes == [] do
-        "They have no mistakes on record yet. Pick one grammar point a CEFR #{level} learner of #{profile.prompt_name} often gets wrong and can practise in everyday talk."
+        "They have no fresh mistakes to build on. Pick one grammar point a CEFR #{level} learner of #{profile.prompt_name} often gets wrong and can practise in everyday talk." <>
+          if resting == [],
+            do: "",
+            else:
+              " Skip these categories, which just had their turn: #{Enum.join(resting, ", ")}."
       else
         """
         Their recent mistakes in the category "#{category}":

@@ -27,7 +27,7 @@ defmodule DailyOutput.Flashcards.SchedulerTest do
       assert result.interval_days == 0
       assert result.ease == 2.5
       assert result.lapses == 0
-      assert result.due_at == DateTime.add(@now, 60, :second)
+      assert result.due_at == @now
     end
   end
 
@@ -63,7 +63,7 @@ defmodule DailyOutput.Flashcards.SchedulerTest do
       assert result.interval_days == 0
       assert result.lapses == 1
       assert result.ease == 2.3
-      assert result.due_at == DateTime.add(@now, 600, :second)
+      assert result.due_at == @now
     end
 
     test "floors the ease at 1.3" do

@@ -8,7 +8,8 @@ defmodule DailyOutput.Flashcards.Scheduler do
 
   States: `new` (never studied), `review` (graduated, scheduled in days),
   `learning` (a new card that was just missed) and `relearning` (a graduated card
-  that lapsed). Missed cards get a short minutes-away `due_at`, so they come back soon.
+  that lapsed). A missed card is due again right away, but a day's session skips cards
+  already answered that day, so it comes back tomorrow.
 
   Intervals follow SM-2: first graduation = 1 day, then 6 days, then `interval * ease`.
   `ease` starts at 2.5, is unchanged on a pass (SM-2 quality ≈ 4), and drops by
@@ -20,8 +21,6 @@ defmodule DailyOutput.Flashcards.Scheduler do
   @lapse_penalty 0.20
   @graduating_interval 1
   @second_interval 6
-  @again_minutes 1
-  @relearn_minutes 10
 
   @doc """
   Computes the new SR fields for `card` given the `:pass`/`:fail` result.
@@ -58,7 +57,7 @@ defmodule DailyOutput.Flashcards.Scheduler do
         interval_days: 0,
         ease: max(@min_ease, ease(card) - @lapse_penalty),
         lapses: lapses(card) + 1,
-        due_at: add_minutes(now, @relearn_minutes),
+        due_at: now,
         last_reviewed_at: now
       }
     else
@@ -70,7 +69,7 @@ defmodule DailyOutput.Flashcards.Scheduler do
         interval_days: 0,
         ease: ease(card),
         lapses: lapses(card),
-        due_at: add_minutes(now, @again_minutes),
+        due_at: now,
         last_reviewed_at: now
       }
     end
@@ -101,5 +100,4 @@ defmodule DailyOutput.Flashcards.Scheduler do
   defp lapses(card), do: Map.get(card, :lapses) || 0
 
   defp add_days(now, days), do: DateTime.add(now, days * 86_400, :second)
-  defp add_minutes(now, minutes), do: DateTime.add(now, minutes * 60, :second)
 end

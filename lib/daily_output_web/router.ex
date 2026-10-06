@@ -25,6 +25,7 @@ defmodule DailyOutputWeb.Router do
       live "/conversation/:id", ConversationLive
       live "/journal/:id", JournalLive
       live "/flashcards", FlashcardLive.Study
+      live "/flashcards/more", FlashcardLive.Study, :more
       live "/flashcards/manage", FlashcardLive.Manage
       live "/history", HistoryLive
       live "/progress", ProgressLive
