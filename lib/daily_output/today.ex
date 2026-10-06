@@ -5,11 +5,17 @@ defmodule DailyOutput.Today do
 
   The first call of the day creates the main activity, with its kind, focus category, and
   angle picked from your history. Once the day passes, `start_bonus/0` adds the other kind,
-  and `next_step/0` returns it until it's done. Nothing here calls the AI, so it's instant.
+  and `next_step/0` returns it until it's done. `next_step/0` never calls the AI, so it's
+  instant.
+
+  `prepare/1`, `correct_message/1`, `reply/1`, and `finish/1` call the AI, so pages run them
+  async. Each returns `{:ok, _}` or `{:error, reason}`, and they read the activity fresh, so a
+  stale struct is fine.
   """
 
-  alias DailyOutput.{Activities, Clock, Flashcards, Focus, Planner, Streak}
-  alias DailyOutput.Activities.Activity
+  alias DailyOutput.{Activities, Clock, Flashcards, Focus, Planner, Settings, Streak}
+  alias DailyOutput.Activities.{Activity, Message}
+  alias DailyOutput.AI.{ConversationPartner, FocusWriter, Proofreader, SessionStarter}
 
   @flow [:activity, :cards]
 
@@ -20,6 +26,8 @@ defmodule DailyOutput.Today do
   # How far back the pickers look, and how long a focus category rests after use.
   @lookback_days 14
   @focus_rest_days 2
+  # How many recent mistakes the focus banner is written from.
+  @focus_mistakes 8
 
   @doc "`{:activity, activity}`, `:cards`, or `:done`."
   def next_step do
@@ -103,6 +111,114 @@ defmodule DailyOutput.Today do
       end)
 
     Streak.compute(days, Clock.today())
+  end
+
+  @doc """
+  Writes what an activity opens with: the focus banner, then the prompt (a journal's prompt
+  or the partner's first message). Each is saved as soon as it's written, so a retry only
+  redoes what failed.
+  """
+  def prepare(%Activity{} = activity) do
+    activity = Activities.get!(activity.id)
+
+    with {:ok, activity} <- write_focus(activity) do
+      write_prompt(activity)
+    end
+  end
+
+  # The bonus copies the main activity's banner, so it skips this.
+  defp write_focus(%Activity{focus: %{"title" => _}} = activity), do: {:ok, activity}
+
+  defp write_focus(%Activity{focus: %{"category" => category}} = activity) do
+    mistakes =
+      Activities.recent(@lookback_days)
+      |> Activities.corrections()
+      |> Enum.filter(&(&1.category == category))
+      |> Enum.take(@focus_mistakes)
+
+    with {:ok, focus} <- FocusWriter.write(category, mistakes, profile()) do
+      {:ok, Activities.update(activity, %{focus: focus})}
+    end
+  end
+
+  defp write_prompt(%Activity{prompt: nil} = activity) do
+    opts =
+      profile() ++
+        [
+          summary: Enum.find_value(Activities.completed(), & &1.summary),
+          angle: Planner.angle_instruction(activity.angle),
+          focus: activity.focus
+        ]
+
+    with {:ok, prompt} <- SessionStarter.start(activity.kind, opts) do
+      {:ok, Activities.update(activity, %{prompt: prompt})}
+    end
+  end
+
+  defp write_prompt(activity), do: {:ok, activity}
+
+  @doc "Corrects one of your messages and saves the corrections on it."
+  def correct_message(%Message{} = message) do
+    before =
+      message.activity_id
+      |> Activities.get!()
+      |> history()
+      |> Enum.take_while(&(Map.get(&1, :id) != message.id))
+
+    with {:ok, feedback} <-
+           Proofreader.proofread_message(message.body, profile() ++ [context_messages: before]) do
+      {:ok, Activities.save_message_feedback(message, feedback)}
+    end
+  end
+
+  @doc """
+  The partner's reply to the conversation so far, saved as its message. The reply to your
+  #{@user_messages}th message wraps the conversation up.
+  """
+  def reply(%Activity{} = activity) do
+    activity = Activities.get!(activity.id)
+    opts = [wrap_up: conversation_over?(activity)] ++ profile()
+
+    with {:ok, text} <- ConversationPartner.respond(history(activity), opts) do
+      {:ok, Activities.add_message(activity, "assistant", text)}
+    end
+  end
+
+  @doc """
+  Reviews the activity and completes it. A journal gets proofread; a conversation, already
+  corrected message by message, gets its improvement panel. Both get the focus graded and a
+  summary for next time.
+  """
+  def finish(%Activity{} = activity) do
+    activity = Activities.get!(activity.id)
+
+    with {:ok, review} <- review(activity, profile() ++ [focus: activity.focus]) do
+      {summary, feedback} = Map.pop!(review, "summary")
+      {:ok, Activities.complete(activity, feedback, summary)}
+    end
+  end
+
+  defp review(%Activity{kind: "journal"} = activity, opts),
+    do: Proofreader.proofread(activity.body, opts)
+
+  defp review(%Activity{kind: "conversation"} = activity, opts) do
+    with {:ok, review} <- Proofreader.assess_conversation(history(activity), opts) do
+      {:ok, Map.put(review, "improvement", Activities.mistake_analysis(activity.messages))}
+    end
+  end
+
+  # The opener lives in `prompt`, so it's the conversation's first turn.
+  defp history(activity), do: [%{role: "assistant", body: activity.prompt} | activity.messages]
+
+  defp profile do
+    config = Settings.get_config()
+
+    [
+      target_language: config.target_language,
+      native_language: config.native_language,
+      language_level: config.language_level,
+      about_you: config.about_you
+    ]
   end
 
   @doc "Today's card session: up to #{@cards} due cards."

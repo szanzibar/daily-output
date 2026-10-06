@@ -54,6 +54,8 @@ defmodule DailyOutputWeb.ProgressLive do
   defp purpose_label("assessment"), do: gettext("Conversation review")
   defp purpose_label("conversation"), do: gettext("Conversation partner")
   defp purpose_label("flashcards"), do: gettext("Flashcards")
+  defp purpose_label("starter"), do: gettext("Openers and prompts")
+  defp purpose_label("focus"), do: gettext("Daily focus")
   defp purpose_label(other), do: other |> String.replace("_", " ") |> String.capitalize()
 
   @impl true
@@ -141,7 +143,7 @@ defmodule DailyOutputWeb.ProgressLive do
             <span class="inline-block w-3 h-3 block-orange"></span> {gettext("AI cost")}
           </h2>
           <p class="text-xs font-mono text-base-content/60 mb-4">
-            {gettext("Estimated Anthropic API spend per day, by feature. The last 7 days.")}
+            {gettext("Estimated AI spend per day, by feature. The last 7 days.")}
           </p>
 
           <div class="grid grid-cols-2 gap-3 mb-5">

@@ -32,31 +32,25 @@ defmodule DailyOutputWeb.SettingsLiveTest do
 
     render_change(view, "save_form", %{"config" => %{"ai_model" => "gpt-9"}})
 
-    assert Settings.get_config().ai_model == "sonnet-5.5"
+    assert Settings.get_config().ai_model == "gpt-6.1-sol"
   end
 
   test "AI section saves model/provider and its key status follows the choice", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/settings")
 
-    assert has_element?(view, "#ai-models", "83.4")
-    assert has_element?(view, "#ai-models", "66.2")
-    # Default direct + Sonnet → Anthropic's own API.
-    assert html =~ "ANTHROPIC_API_KEY"
-
-    html =
-      view
-      |> form("#settings-form", config: %{ai_provider: "direct", ai_model: "gpt-5.6-luna"})
-      |> render_change()
-
-    config = Settings.get_config()
-    assert config.ai_provider == "direct"
-    assert config.ai_model == "gpt-5.6-luna"
+    assert has_element?(view, "#ai-models", "77.6")
+    assert has_element?(view, "#ai-models", "65.0")
+    # Default direct + Sol → OpenAI's own API.
     assert html =~ "OPENAI_API_KEY"
 
     html =
       view
-      |> form("#settings-form", config: %{ai_provider: "openrouter", ai_model: "gpt-5.6-luna"})
+      |> form("#settings-form", config: %{ai_provider: "openrouter", ai_model: "gpt-6-luna"})
       |> render_change()
+
+    config = Settings.get_config()
+    assert config.ai_provider == "openrouter"
+    assert config.ai_model == "gpt-6-luna"
 
     # OpenRouter uses one key regardless of model.
     assert html =~ "OPENROUTER_API_KEY"

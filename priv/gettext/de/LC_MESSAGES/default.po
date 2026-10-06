@@ -252,11 +252,6 @@ msgstr "Dieses Projekt ist Open Source. Beiträge sind willkommen."
 msgid "Timed writing entries"
 msgstr "Schreibeinträge mit Timer"
 
-#: lib/daily_output_web/components/journal_components.ex
-#, elixir-autogen, elixir-format
-msgid "Tips"
-msgstr "Tipps"
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "UI Language"
@@ -873,12 +868,6 @@ msgstr "Zurück"
 msgid "Reviewing"
 msgstr "Rückblick"
 
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Estimated Anthropic API spend per day, by feature. The last 7 days."
-msgstr ""
-"Geschätzte Anthropic-API-Ausgaben pro Tag, nach Funktion. Die letzten 7 Tage."
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Appearance"
@@ -949,11 +938,6 @@ msgstr "Tägliche Erinnerungen"
 msgid "Flashcards from your mistakes"
 msgstr "Karteikarten aus deinen Fehlern"
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Phoenix LiveView and SQLite, with AI from Claude Sonnet 5.5 or GPT-5.6 Luna."
-msgstr "Phoenix LiveView und SQLite, mit KI von Claude Sonnet 5.5 oder GPT-5.6 Luna."
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Score %{score}"
@@ -978,3 +962,23 @@ msgstr "Worüber du gern sprichst, deine Ziele und alles, was die KI sonst wisse
 #, elixir-autogen, elixir-format
 msgid "e.g. I sing in a choir, I'm moving to Zurich, and I struggle with verb tenses."
 msgstr "z. B. Ich singe in einem Chor, ziehe nach Zürich und tue mich schwer mit den Zeitformen."
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Daily focus"
+msgstr "Tagesfokus"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Openers and prompts"
+msgstr "Gesprächseinstiege und Schreibimpulse"
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Estimated AI spend per day, by feature. The last 7 days."
+msgstr "Geschätzte KI-Ausgaben pro Tag, nach Funktion. Die letzten 7 Tage."
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Phoenix LiveView and SQLite, with AI from GPT-6.1 Sol or GPT-6 Luna."
+msgstr "Phoenix LiveView und SQLite, mit KI von GPT-6.1 Sol oder GPT-6 Luna."

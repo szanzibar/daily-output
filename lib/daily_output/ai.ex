@@ -1,14 +1,14 @@
 defmodule DailyOutput.AI do
   @moduledoc """
   AI context wrapping ReqLLM. Every call goes through `chat/2`, which picks the model, sets
-  thinking, and records usage for cost tracking.
+  its reasoning effort, and records usage for cost tracking.
 
-  There are two models, Claude Sonnet 5.5 (default) and GPT-5.6 Luna, each reached directly
-  or through OpenRouter (see `spec_for/2`). Thinking is off unless a call passes
-  `thinking: true`.
+  Settings offers two models, GPT-6.1 Sol (default) and GPT-6 Luna, each reached directly or
+  through OpenRouter (see `spec_for/2`). Anthropic stays wired up for the bench and the next
+  model switch. Effort belongs to the model; only the bench overrides it.
 
-  Structured calls pass a JSON `schema:` and use the provider's structured outputs, not a
-  forced tool, because Sonnet 5.5 rejects a forced `tool_choice`.
+  Structured calls pass a JSON `schema:`. OpenAI uses a strict forced tool; OpenRouter and
+  Anthropic use json_schema, because Sonnet 5.5 rejects a forced `tool_choice`.
   """
 
   require Logger
@@ -54,7 +54,7 @@ defmodule DailyOutput.AI do
 
   @doc """
   Sends one request. `:purpose` tags it for cost tracking, `:model` (a "provider:id" spec)
-  overrides the Settings choice, and `thinking: true` turns reasoning on.
+  overrides the Settings choice, and `:effort` overrides the model's reasoning effort.
 
   With `:schema` (a JSON schema) it returns `{:ok, map}`, or `{:error, :unparsed}` when the
   reply has no decodable object. Without it, it returns the response for `text_content/1`.
@@ -65,7 +65,7 @@ defmodule DailyOutput.AI do
 
     with {:ok, api_key} <- get_api_key(provider),
          {:ok, response} <- req_llm_chat(provider, api_key, model_id, opts) do
-      shaped = anthropic_shape(response, model_id)
+      shaped = normalize_response(response, model_id)
       record_usage(purpose, shaped)
       if opts[:schema], do: structured(response), else: {:ok, shaped}
     end
@@ -85,6 +85,17 @@ defmodule DailyOutput.AI do
 
   @providers %{"anthropic" => :anthropic, "openai" => :openai, "openrouter" => :openrouter}
 
+  # Sol rejects :none. Luna at :low reasons 0 tokens on structured calls; :medium matches Sol
+  # on corrections. Sonnet 5.5 measured best with thinking off.
+  @effort %{"gpt-6.1-sol" => :low, "gpt-6-luna" => :medium, "claude-sonnet-5-5" => :none}
+
+  # ReqLLM waits up to 300 s on Responses API calls; the slowest real call takes ~14 s. It
+  # retries a timeout up to 3 times, so a stall now costs a minute per try, not five.
+  @receive_timeout 60_000
+
+  # Tests answer through `Req.Test` stubs, so they never reach the network.
+  @http_options if(Mix.env() == :test, do: [plug: {Req.Test, __MODULE__}], else: [])
+
   # A per-call `:model` spec (the bench) beats the Settings choice. The config default only
   # applies when Settings can't be read.
   defp resolve_model(opts) do
@@ -101,47 +112,56 @@ defmodule DailyOutput.AI do
     _ -> nil
   end
 
+  @doc "The reasoning effort `model_id` runs at, from either route."
+  def effort(model_id), do: Map.fetch!(@effort, String.replace_prefix(model_id, "openai/", ""))
+
   @doc "Maps a Settings `{ai_provider, ai_model}` pair to a ReqLLM \"provider:model\" spec."
-  def spec_for("openrouter", "gpt-5.6-luna"), do: "openrouter:openai/gpt-5.6-luna"
-  def spec_for("openrouter", "sonnet-5.5"), do: "openrouter:anthropic/claude-sonnet-5.5"
-  def spec_for("direct", "gpt-5.6-luna"), do: "openai:gpt-5.6-luna"
-  def spec_for("direct", "sonnet-5.5"), do: "anthropic:claude-sonnet-5-5"
+  def spec_for("direct", "gpt-6.1-sol"), do: "openai:gpt-6.1-sol"
+  def spec_for("direct", "gpt-6-luna"), do: "openai:gpt-6-luna"
+  def spec_for("openrouter", "gpt-6.1-sol"), do: "openrouter:openai/gpt-6.1-sol"
+  def spec_for("openrouter", "gpt-6-luna"), do: "openrouter:openai/gpt-6-luna"
 
   defp req_llm_chat(provider, api_key, model_id, opts) do
-    # A struct, not a string, so ReqLLM doesn't warn about ids newer than its catalog.
-    {:ok, model} = ReqLLM.model(%{provider: provider, id: model_id})
+    # A struct, not a string, so ReqLLM doesn't warn about ids newer than its catalog. It
+    # only knows gpt-5* use the Responses API; newer ids would hit Chat Completions and 400.
+    extra = if provider == :openai, do: %{wire: %{protocol: "openai_responses"}}, else: %{}
+    {:ok, model} = ReqLLM.model(%{provider: provider, id: model_id, extra: extra})
     context = build_context(opts[:system], opts[:messages] || [])
+    effort = opts[:effort] || effort(model_id)
+
+    # Sonnet 5.5 thinks unless told "between_tools" and rejects "disabled". ReqLLM would send
+    # it a budget_tokens thinking config, which it also rejects.
+    effort_opts =
+      cond do
+        provider != :anthropic -> [reasoning_effort: effort]
+        effort == :none -> [thinking: %{type: "between_tools"}]
+        true -> [thinking: %{type: "adaptive"}, output_config: %{effort: to_string(effort)}]
+      end
 
     req_opts =
-      put_thinking(
-        [api_key: api_key, max_tokens: Keyword.fetch!(opts, :max_tokens)],
-        provider,
-        opts[:thinking] || false
-      )
+      [
+        api_key: api_key,
+        max_tokens: Keyword.fetch!(opts, :max_tokens),
+        receive_timeout: @receive_timeout,
+        req_http_options: @http_options
+      ] ++ effort_opts
 
     case opts[:schema] do
       nil ->
         ReqLLM.generate_text(model, context, req_opts)
 
       schema ->
-        ReqLLM.generate_object(model, context, schema, put_structured_mode(req_opts, provider))
+        # OpenRouter's forced tool isn't strict, so it gets json_schema. OpenAI keeps ReqLLM's
+        # strict tool, because json_schema made Luna reason twice as long on the same calls.
+        # ReqLLM already picks json_schema for Anthropic.
+        req_opts =
+          if provider == :openrouter,
+            do: [{:provider_options, openrouter_structured_output_mode: :json_schema} | req_opts],
+            else: req_opts
+
+        ReqLLM.generate_object(model, context, schema, req_opts)
     end
   end
-
-  # OpenRouter's default structured mode is a forced tool, which Sonnet 5.5 rejects.
-  defp put_structured_mode(opts, :openrouter),
-    do: Keyword.put(opts, :provider_options, openrouter_structured_output_mode: :json_schema)
-
-  defp put_structured_mode(opts, _provider), do: opts
-
-  # Sonnet 5.5 turns thinking off with "between_tools" and rejects "disabled". OpenAI-style
-  # APIs take reasoning_effort :none. "On" means the model's own default.
-  defp put_thinking(opts, :anthropic, false),
-    do: Keyword.put(opts, :thinking, %{type: "between_tools"})
-
-  defp put_thinking(opts, :anthropic, true), do: Keyword.put(opts, :thinking, %{type: "adaptive"})
-  defp put_thinking(opts, _provider, false), do: Keyword.put(opts, :reasoning_effort, :none)
-  defp put_thinking(opts, _provider, true), do: opts
 
   defp build_context(system, messages) do
     system_msgs =
@@ -156,10 +176,10 @@ defmodule DailyOutput.AI do
     ReqLLM.Context.new(system_msgs ++ turn_msgs)
   end
 
-  # Reshape a %ReqLLM.Response{} into the Anthropic-native map that text_content/1 and
+  # Reshape a %ReqLLM.Response{} into the plain map that text_content/1 and
   # Stats.record_usage/2 read.
   @doc false
-  def anthropic_shape(%ReqLLM.Response{} = response, fallback_model) do
+  def normalize_response(%ReqLLM.Response{} = response, fallback_model) do
     text = ReqLLM.Response.text(response)
     usage = response.usage || %{}
 
@@ -172,7 +192,7 @@ defmodule DailyOutput.AI do
         "output_tokens" => usage_field(usage, :output_tokens),
         # Always 0 on Anthropic: ReqLLM 1.17 reads the wrong field. Known and accepted.
         "reasoning_tokens" => usage_field(usage, :reasoning_tokens),
-        # ReqLLM normalizes Anthropic's cache_read/cache_creation to these names.
+        # Part of input_tokens on OpenAI, counted apart on Anthropic.
         "cache_read_input_tokens" => usage_field(usage, :cached_tokens),
         "cache_creation_input_tokens" => usage_field(usage, :cache_creation_tokens),
         # nil when ReqLLM's catalog has no price for the model.

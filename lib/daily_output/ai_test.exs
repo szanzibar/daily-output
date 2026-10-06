@@ -1,10 +1,17 @@
 defmodule DailyOutput.AITest do
-  # Not async: the key lookup test sets global app env.
-  use ExUnit.Case, async: false
+  # Not async: the key tests set global app env.
+  use DailyOutput.DataCase, async: false
 
   import ExUnit.CaptureLog
 
   alias DailyOutput.AI
+
+  @schema %{
+    "type" => "object",
+    "properties" => %{"x" => %{"type" => "string"}},
+    "required" => ["x"],
+    "additionalProperties" => false
+  }
 
   describe "text_content/1" do
     test "returns text when a thinking block precedes it" do
@@ -36,14 +43,14 @@ defmodule DailyOutput.AITest do
   end
 
   describe "spec_for/2" do
-    test "direct routes to each vendor's own API" do
-      assert AI.spec_for("direct", "sonnet-5.5") == "anthropic:claude-sonnet-5-5"
-      assert AI.spec_for("direct", "gpt-5.6-luna") == "openai:gpt-5.6-luna"
+    test "direct routes to OpenAI's own API" do
+      assert AI.spec_for("direct", "gpt-6.1-sol") == "openai:gpt-6.1-sol"
+      assert AI.spec_for("direct", "gpt-6-luna") == "openai:gpt-6-luna"
     end
 
     test "openrouter routes to OpenRouter's slugs" do
-      assert AI.spec_for("openrouter", "sonnet-5.5") == "openrouter:anthropic/claude-sonnet-5.5"
-      assert AI.spec_for("openrouter", "gpt-5.6-luna") == "openrouter:openai/gpt-5.6-luna"
+      assert AI.spec_for("openrouter", "gpt-6.1-sol") == "openrouter:openai/gpt-6.1-sol"
+      assert AI.spec_for("openrouter", "gpt-6-luna") == "openrouter:openai/gpt-6-luna"
     end
   end
 
@@ -55,13 +62,95 @@ defmodule DailyOutput.AITest do
     end
 
     test "a configured key counts as set; a blank one doesn't" do
-      on_exit(fn -> Application.delete_env(:daily_output, :openai_api_key) end)
+      on_exit(fn -> Application.delete_env(:daily_output, :openrouter_api_key) end)
 
-      Application.put_env(:daily_output, :openai_api_key, "sk-test")
-      assert AI.api_key_set?(:openai)
+      Application.put_env(:daily_output, :openrouter_api_key, "sk-test")
+      assert AI.api_key_set?(:openrouter)
 
-      Application.put_env(:daily_output, :openai_api_key, "")
-      refute AI.api_key_set?(:openai)
+      Application.put_env(:daily_output, :openrouter_api_key, "")
+      refute AI.api_key_set?(:openrouter)
+    end
+  end
+
+  describe "reasoning effort" do
+    test "each model gets its own effort, and the bench can override it" do
+      for {model, effort, expected} <- [
+            {"openai:gpt-6.1-sol", nil, "low"},
+            {"openai:gpt-6-luna", nil, "medium"},
+            {"openai:gpt-6-luna", :none, "none"}
+          ] do
+        expect_ai("Hoi")
+        messages = [%{role: "user", content: "Hoi"}]
+
+        assert {:ok, _} =
+                 AI.chat(nil, model: model, effort: effort, messages: messages, max_tokens: 10)
+
+        assert_received {:ai_request, %{"reasoning" => %{"effort" => ^expected}}}
+      end
+    end
+
+    test "OpenRouter gets the same effort, and json_schema for structured calls" do
+      Application.put_env(:daily_output, :openrouter_api_key, "test")
+      on_exit(fn -> Application.delete_env(:daily_output, :openrouter_api_key) end)
+      test = self()
+
+      # Only the request matters here, so the reply is an error.
+      Req.Test.expect(DailyOutput.AI, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(test, {:ai_request, Jason.decode!(body)})
+        conn |> Plug.Conn.put_status(400) |> Req.Test.json(%{"error" => %{"code" => 400}})
+      end)
+
+      AI.chat(nil,
+        model: "openrouter:openai/gpt-6-luna",
+        schema: @schema,
+        messages: [%{role: "user", content: "Hoi"}],
+        max_tokens: 10
+      )
+
+      assert_received {:ai_request,
+                       %{
+                         "reasoning_effort" => "medium",
+                         "response_format" => %{"type" => "json_schema"}
+                       }}
+    end
+
+    test "Anthropic turns effort into thinking, and structured calls use json_schema" do
+      Application.put_env(:daily_output, :anthropic_api_key, "test")
+      on_exit(fn -> Application.delete_env(:daily_output, :anthropic_api_key) end)
+      test = self()
+
+      for {effort, thinking, output_config} <- [
+            {nil, %{"type" => "between_tools"}, nil},
+            {:low, %{"type" => "adaptive"}, %{"effort" => "low"}}
+          ] do
+        # Only the request matters here, so the reply is Anthropic's 400.
+        Req.Test.expect(DailyOutput.AI, fn conn ->
+          {:ok, body, conn} = Plug.Conn.read_body(conn)
+          send(test, {:ai_request, Jason.decode!(body)})
+
+          conn
+          |> Plug.Conn.put_status(400)
+          |> Req.Test.json(%{
+            "type" => "error",
+            "error" => %{"type" => "invalid_request_error", "message" => "bad request"}
+          })
+        end)
+
+        AI.chat(nil,
+          model: "anthropic:claude-sonnet-5-5",
+          effort: effort,
+          schema: @schema,
+          messages: [%{role: "user", content: "Hoi"}],
+          max_tokens: 10
+        )
+
+        assert_received {:ai_request,
+                         %{"thinking" => ^thinking, "output_format" => %{"type" => "json_schema"}} =
+                           body}
+
+        assert body["output_config"] == output_config
+      end
     end
   end
 
@@ -70,13 +159,13 @@ defmodule DailyOutput.AITest do
       id: "resp_test",
       context: ReqLLM.Context.new([]),
       message: message,
-      model: "claude-sonnet-5-5",
+      model: "gpt-6.1-sol",
       usage: usage,
       object: object
     }
   end
 
-  describe "anthropic_shape/2" do
+  describe "normalize_response/2" do
     test "maps text and usage, keeping reasoning tokens and total cost" do
       response =
         req_response(ReqLLM.Context.assistant("Hoi zäme!"), %{
@@ -88,10 +177,10 @@ defmodule DailyOutput.AITest do
           total_cost: 0.0042
         })
 
-      shaped = AI.anthropic_shape(response, "fallback")
+      shaped = AI.normalize_response(response, "fallback")
 
       assert AI.text_content(shaped) == "Hoi zäme!"
-      assert shaped["model"] == "claude-sonnet-5-5"
+      assert shaped["model"] == "gpt-6.1-sol"
 
       assert shaped["usage"] == %{
                "input_tokens" => 10,
@@ -105,9 +194,9 @@ defmodule DailyOutput.AITest do
 
     test "missing usage fields default to 0 and the cost to nil" do
       response = %{req_response(ReqLLM.Context.assistant("x"), %{}) | model: nil}
-      shaped = AI.anthropic_shape(response, "claude-sonnet-5-5")
+      shaped = AI.normalize_response(response, "gpt-6.1-sol")
 
-      assert shaped["model"] == "claude-sonnet-5-5"
+      assert shaped["model"] == "gpt-6.1-sol"
       assert shaped["usage"]["reasoning_tokens"] == 0
       assert shaped["usage"]["total_cost"] == nil
     end

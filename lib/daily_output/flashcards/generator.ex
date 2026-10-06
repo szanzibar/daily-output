@@ -20,7 +20,8 @@ defmodule DailyOutput.Flashcards.Generator do
   alias DailyOutput.AI.LanguageProfile
 
   @doc """
-  Builds flashcards from `corrected_text` and the `mistakes` that were corrected.
+  Builds flashcards from `corrected_text` (the corrected sentences that had a mistake, one
+  per line) and the `mistakes` that were corrected.
 
   `mistakes` is a list of `%{original, corrected, category, explanation}`.
   Returns `{:ok, [%{"target_text" => ..., "native_text" => ...}]}` or `{:error, reason}`.
@@ -41,11 +42,11 @@ defmodule DailyOutput.Flashcards.Generator do
 
     system = """
     You build spaced-repetition flashcards from a language learner's writing that was just corrected.
-    The learner is a #{native_name} speaker learning #{profile.prompt_name}.
+    The learner is a native #{native_name} speaker learning #{profile.prompt_name}.
 
-    You are given the corrected #{profile.language_name} text (a minimal grammar fix of what the
-    student wrote) plus the list of mistakes that were corrected. Even after the grammar fix, the
-    student's own phrasing is often stiff or unnatural.
+    You are given the #{profile.language_name} sentences the student got wrong, one per line,
+    already corrected (a minimal fix of what they wrote), plus the list of mistakes. Even after
+    the fix, the student's own phrasing is often stiff or unnatural.
 
     Your goal: for each sentence the student struggled with, teach them the NATURAL, IDIOMATIC way a
     native speaker would express that same idea — that is what they should practice — and translate
@@ -53,11 +54,9 @@ defmodule DailyOutput.Flashcards.Generator do
 
     Rules:
     - ONE sentence per card. Each "target_text" is a SINGLE sentence — one idea, one main clause,
-      ending in exactly one period or question mark. Never put two sentences, a run-on, or the
-      whole message onto one card. When the corrected text spans several sentences, emit several
-      cards (one each); when it is one sentence, emit exactly one card.
-    - Make one card per sentence that contained a substantive mistake. Skip sentences that were
-      already correct, and skip corrections that were only capitalization (letter casing).
+      ending in exactly one period or question mark. Never put two sentences or a run-on onto one card.
+    - Make exactly one card per line. If a line is long or joins several ideas, build the card from
+      the part with the mistake. Never make a card for a part the student already got right.
     - "target_text" = the most natural, idiomatic #{profile.language_name} a native speaker would
       actually use to say what the student was trying to say. Do NOT merely patch the student's
       wording — rephrase it into natural #{profile.language_name}, preserving the intended meaning.
@@ -70,12 +69,11 @@ defmodule DailyOutput.Flashcards.Generator do
       vocabulary a #{level} learner wouldn't know.
     - Prefer ONE clear, canonical phrasing. The student must type target_text back EXACTLY, so avoid
       optional flavouring particles or word-order variants that have many equally valid forms.
-    - Split a long/compound sentence into separate single-idea sentences — one card each.
     - Keep sentences short and practical. Do not include quotation marks around the sentences.
     """
 
     user_content = """
-    Corrected #{profile.language_name} text:
+    Sentences with a mistake, corrected:
     #{corrected_text}
 
     What the student got wrong (context only — you need not preserve these constructions):
@@ -94,7 +92,7 @@ defmodule DailyOutput.Flashcards.Generator do
                # max_tokens is a ceiling, not a billed cost. A whole conversation's worth of
                # cards can be long, and 1536 once truncated the reply (zero cards).
                max_tokens: 4096
-             ] ++ Keyword.take(opts, [:model, :thinking])
+             ] ++ Keyword.take(opts, [:model, :effort])
            ) do
       {:ok, normalize_cards(cards)}
     end
@@ -119,7 +117,7 @@ defmodule DailyOutput.Flashcards.Generator do
           "\n\nConventions for #{profile.prompt_name} (target_text MUST follow these):\n#{LanguageProfile.conventions_block(profile)}\n"
 
     system = """
-    You are improving ONE #{profile.language_name} flashcard for a #{native_name} speaker
+    You are improving ONE #{profile.language_name} flashcard for a native #{native_name} speaker
     (CEFR level #{level}). The learner can't tell, from the #{native_name} prompt alone, what
     #{profile.language_name} sentence is wanted — the pair is too ambiguous or the translation
     is too loose.#{conventions_block}
@@ -148,7 +146,7 @@ defmodule DailyOutput.Flashcards.Generator do
              messages: [%{role: "user", content: user_content}],
              schema: flashcards_schema(),
              purpose: "flashcards",
-             max_tokens: 512
+             max_tokens: 2048
            ) do
       case normalize_cards(cards) do
         [pair | _] -> {:ok, pair}

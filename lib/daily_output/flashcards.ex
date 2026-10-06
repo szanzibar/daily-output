@@ -30,33 +30,28 @@ defmodule DailyOutput.Flashcards do
 
   @doc """
   Builds cards from a completed activity's corrections in one AI call: the journal's own
-  feedback plus each message's. Cards point back at the activity.
+  feedback plus each message's. Only the sentences with a mistake go in, so no card drills
+  something you already got right. Cards point back at the activity.
 
   Capitalization-only fixes are dropped first, so an activity with nothing substantive never
   calls the AI. Returns `{:ok, count}` or `{:error, reason}`.
   """
   def ingest(activity) do
-    corrections =
-      Enum.flat_map([activity.feedback | Enum.map(activity.messages, & &1.feedback)], fn
-        %{"annotated_text" => annotated} ->
-          case annotated |> Markers.parse() |> Markers.substantive() do
-            [] -> []
-            mistakes -> [{Markers.corrected_text(annotated), mistakes}]
-          end
+    feedbacks =
+      for %{"annotated_text" => annotated} <-
+            [activity.feedback | Enum.map(activity.messages, & &1.feedback)],
+          do: annotated
 
-        _ ->
-          []
-      end)
+    mistakes = Enum.flat_map(feedbacks, &(&1 |> Markers.parse() |> Markers.substantive()))
 
-    if corrections == [] do
+    if mistakes == [] do
       {:ok, 0}
     else
       config = Settings.get_config()
-      corrected = Enum.map_join(corrections, "\n", &elem(&1, 0))
-      mistakes = Enum.flat_map(corrections, &elem(&1, 1))
+      sentences = Enum.flat_map(feedbacks, &Markers.mistake_sentences/1)
 
       with {:ok, cards} <-
-             Generator.generate(corrected, mistakes,
+             Generator.generate(Enum.join(sentences, "\n"), mistakes,
                target_language: config.target_language,
                native_language: config.native_language,
                language_level: config.language_level

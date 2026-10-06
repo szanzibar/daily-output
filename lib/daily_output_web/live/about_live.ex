@@ -45,7 +45,7 @@ defmodule DailyOutputWeb.AboutLive do
       <div class="border-4 border-ink p-4 block-green font-mono space-y-2">
         <h2 class="text-xl font-black uppercase">{gettext("Built with")}</h2>
         <p>
-          {gettext("Phoenix LiveView and SQLite, with AI from Claude Sonnet 5.5 or GPT-5.6 Luna.")}
+          {gettext("Phoenix LiveView and SQLite, with AI from GPT-6.1 Sol or GPT-6 Luna.")}
         </p>
       </div>
 

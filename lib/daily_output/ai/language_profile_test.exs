@@ -42,4 +42,9 @@ defmodule DailyOutput.AI.LanguageProfileTest do
     assert block =~ "rōmaji"
     assert block =~ "Never output kanji, hiragana, or katakana"
   end
+
+  test "feedback_language/3 names the language, by level" do
+    assert LanguageProfile.feedback_language("B1", "de", "en") == "English"
+    assert LanguageProfile.feedback_language("C1", "fr", "en") == "French"
+  end
 end

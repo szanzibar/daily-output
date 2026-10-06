@@ -91,19 +91,6 @@ defmodule DailyOutputWeb.JournalComponents do
       <%!-- Focus Result --%>
       <.focus_result_box :if={@feedback["focus_result"]} result={@feedback["focus_result"]} />
 
-      <%!-- Commentary / Tipps --%>
-      <div :if={@feedback["commentary"] != []} class="border-4 border-ink p-5">
-        <h2 class="text-lg font-black uppercase mb-3 flex items-center gap-2">
-          <span class="inline-block w-3 h-3 block-blue"></span> {gettext("Tips")}
-        </h2>
-        <div :for={item <- @feedback["commentary"] || []} class="mb-3 last:mb-0">
-          <span class="text-xs font-mono uppercase px-2 py-0.5 border-2 border-ink mr-2">
-            {item["type"]}
-          </span>
-          <span class="text-sm">{item["text"]}</span>
-        </div>
-      </div>
-
       <div class="flex gap-3">
         {render_slot(@actions)}
       </div>

@@ -512,11 +512,11 @@ defmodule DailyOutputWeb.SettingsLive do
   end
 
   defp ai_models do
-    [{"Claude Sonnet 5.5", "83.4", "$2 / $10"}, {"GPT-5.6 Luna", "66.2", "$0.20 / $1.20"}]
+    [{"GPT-6.1 Sol", "77.6", "$2 / $10"}, {"GPT-6 Luna", "65.0", "$0.10 / $0.50"}]
   end
 
   defp ai_model_options do
-    [{"Claude Sonnet 5.5", "sonnet-5.5"}, {"GPT-5.6 Luna", "gpt-5.6-luna"}]
+    [{"GPT-6.1 Sol", "gpt-6.1-sol"}, {"GPT-6 Luna", "gpt-6-luna"}]
   end
 
   defp ai_provider_options do

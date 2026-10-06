@@ -1,40 +1,39 @@
 # Runs every AI purpose of the daily flow through the production functions and writes
-# tmp/bench/<model>-<thinking>.json for grading.
+# tmp/bench/<model>-<effort>.json for grading. Effort defaults to the model's production one.
 #
-#   mix run scripts/bench.exs <provider:model> [--thinking on|off]
-#   mix run scripts/bench.exs anthropic:claude-sonnet-5-5 --thinking off
-#   mix run scripts/bench.exs openai:gpt-5.6-luna
+#   mix run scripts/bench.exs <provider:model> [--effort none|low|medium|high]
+#   mix run scripts/bench.exs openai:gpt-6.1-sol
+#   mix run scripts/bench.exs openai:gpt-6-luna --effort low
 #
 # Fixtures are inline and each correction carries its expected fix. AI.chat records
 # api_usages rows as usual; the run deletes the ones it created.
 
 Logger.configure(level: :warning)
 
-alias DailyOutput.{Repo, Stats}
-alias DailyOutput.AI.{ConversationPartner, Proofreader}
+alias DailyOutput.{Activities, AI, Planner, Repo, Stats}
+alias DailyOutput.AI.{ConversationPartner, FocusWriter, Proofreader, SessionStarter}
 alias DailyOutput.Flashcards.{Generator, Markers}
 import Ecto.Query
 
-{parsed, args, _} = OptionParser.parse(System.argv(), strict: [thinking: :string])
-thinking = Keyword.get(parsed, :thinking, "off")
+{parsed, args, _} = OptionParser.parse(System.argv(), strict: [effort: :string])
 
-spec =
-  case args do
-    [spec] when thinking in ~w(on off) -> spec
-    _ -> raise "usage: mix run scripts/bench.exs <provider:model> [--thinking on|off]"
-  end
-
+[spec] = args
 [_provider, model_id] = String.split(spec, ":", parts: 2)
-out_path = "tmp/bench/#{String.replace(model_id, "/", "_")}-#{thinking}.json"
+effort = Keyword.get(parsed, :effort, to_string(AI.effort(model_id)))
+true = effort in ~w(none low medium high)
+out_path = "tmp/bench/#{String.replace(model_id, "/", "_")}-#{effort}.json"
 
-# The day's call mix. SessionStarter and FocusWriter don't exist until phase 3, so they cost 0.
-day_mix = %{
-  "proofread_message" => 5,
-  "conversation" => 6,
-  "assessment" => 1,
-  "flashcards" => 1,
-  "starter" => 1,
-  "focus" => 1
+# Each kind of day's call mix.
+day_mixes = %{
+  conversation: %{
+    "proofread_message" => 5,
+    "conversation" => 6,
+    "assessment" => 1,
+    "flashcards" => 1,
+    "starter" => 1,
+    "focus" => 1
+  },
+  journal: %{"proofread" => 1, "flashcards" => 1, "starter" => 1, "focus" => 1}
 }
 
 # {sentence, expected fix}. The expected fix is one good answer, not the only one.
@@ -136,7 +135,12 @@ conversation = [
   }
 ]
 
-conversation_focus = "Perfekt mit sein bei Bewegungsverben"
+conversation_focus = %{
+  "category" => "verb",
+  "title" => "Perfekt mit sein bei Bewegung",
+  "body" =>
+    "Verben der Bewegung und des Zustandswechsels bilden das Perfekt mit «sein». Wir sind nach Luzern gefahren."
+}
 
 journal = """
 Letzte Woche ich habe endlich angefangen, jeden Morgen zu joggen. Am ersten Tag ich bin nur zehn Minuten gelaufen, weil ich war so müde. Aber jetzt es geht viel besser.
@@ -150,7 +154,29 @@ Letzte Woche habe ich endlich angefangen, jeden Morgen zu joggen. Am ersten Tag 
 Wenn ich mehr Zeit hätte, würde ich auch am Abend trainieren. Mein Kollege hat mir gesagt, dass ich langsam anfangen soll, sonst verletze ich mich. Ich denke, er hat recht. Nächste Woche will ich mit ihm zusammen laufen, wenn das Wetter gut ist.
 """
 
-journal_focus = "Konjunktiv II (wenn ich … hätte, würde ich …)"
+journal_focus = %{
+  "category" => "verb",
+  "title" => "Konjunktiv II für Wünsche",
+  "body" =>
+    "Für Unwirkliches nimmst du «würde» + Infinitiv oder «hätte/wäre». Wenn ich mehr Zeit hätte, würde ich mehr lesen."
+}
+
+summary =
+  "You told me about your Saturday in Lucerne with your girlfriend: the Chapel Bridge, fondue, and a rainy Sunday with a Hitchcock film."
+
+# {label, kind, target, level, summary, angle, focus}
+starters = [
+  {"conversation-continuity", "conversation", "de", "B2", summary, "thread", conversation_focus},
+  {"conversation-cold", "conversation", "de", "B2", nil, "what-if", journal_focus},
+  {"journal-continuity", "journal", "de", "B2", summary, "story", conversation_focus},
+  {"journal-cold", "journal", "de", "B2", nil, "explain-how", journal_focus},
+  {"conversation-fr-cold", "conversation", "fr", "B1", nil, "plan",
+   %{
+     "category" => "verb",
+     "title" => "Passé composé with être",
+     "body" => "Verbs of movement take être in the passé composé. Je suis allé au marché."
+   }}
+]
 
 defmodule Bench do
   def on_stop(_event, _measurements, meta, _config), do: send(self(), {:ai_call, meta})
@@ -192,7 +218,7 @@ opts = fn target, level ->
     language_level: level,
     about_you: "",
     model: spec,
-    thinking: thinking == "on"
+    effort: String.to_atom(effort)
   ]
 end
 
@@ -215,14 +241,7 @@ run = fn purpose, label, input, expected, fun ->
   input_tokens = sum.(:input_tokens)
   output_tokens = sum.(:output_tokens)
 
-  cost =
-    Stats.cost(
-      model_id,
-      input_tokens,
-      output_tokens,
-      sum.(:cached_tokens),
-      sum.(:cache_creation_tokens)
-    )
+  cost = Stats.cost(model_id, input_tokens, output_tokens, sum.(:cached_tokens))
 
   status = Bench.status(result)
   IO.puts("#{status} #{div(micros, 1000)}ms")
@@ -239,15 +258,14 @@ run = fn purpose, label, input, expected, fun ->
     latency_ms: div(micros, 1000),
     input_tokens: input_tokens,
     output_tokens: output_tokens,
-    # Reads 0 on Anthropic: ReqLLM 1.17 looks for the wrong usage field. output_tokens
-    # includes thinking either way.
+    # Part of output_tokens.
     reasoning_tokens: sum.(:reasoning_tokens),
     cost: cost
   }
 end
 
 before_id = Repo.aggregate(from(u in "api_usages"), :max, :id) || 0
-IO.puts("bench #{spec} thinking=#{thinking}\n")
+IO.puts("bench #{spec} effort=#{effort}\n")
 
 correction_cases =
   for {set, target, level} <- [{german, "de", "B2"}, {french, "fr", "B1"}, {japanese, "ja", "B1"}],
@@ -273,9 +291,10 @@ correction_cases =
 
     history = prior ++ [Map.take(msg, [:role, :body])]
 
+    # The reply to the 5th message wraps up, as Today.reply/1 does.
     reply =
       run.("conversation", "reply-#{turn}", history, nil, fn ->
-        ConversationPartner.respond(history, opts.("de", "B2"))
+        ConversationPartner.respond(history, opts.("de", "B2") ++ [wrap_up: turn == 5])
       end)
 
     {[correction, reply], {msg.body, correction.parsed}}
@@ -284,11 +303,6 @@ correction_cases =
 
 feedback_by_body = Map.new(feedback_by_body)
 
-opener =
-  run.("conversation", "opener", "Was hast du am Wochenende gemacht?", nil, fn ->
-    ConversationPartner.open("Was hast du am Wochenende gemacht?", opts.("de", "B2"))
-  end)
-
 full_transcript =
   Enum.map(conversation, &%{role: &1.role, body: &1.body, feedback: feedback_by_body[&1.body]})
 
@@ -296,23 +310,14 @@ assessment =
   run.("assessment", "conversation", %{focus: conversation_focus}, nil, fn ->
     Proofreader.assess_conversation(
       full_transcript,
-      opts.("de", "B2") ++ [focus_topic: conversation_focus]
+      opts.("de", "B2") ++ [focus: conversation_focus]
     )
   end)
 
 # Built from the conversation's corrections the same way Flashcards.ingest/1 does.
-corrections =
-  Enum.flat_map(full_transcript, fn msg ->
-    annotated = (msg.feedback || %{})["annotated_text"] || ""
-
-    case annotated |> Markers.parse() |> Markers.substantive() do
-      [] -> []
-      mistakes -> [{Markers.corrected_text(annotated), mistakes}]
-    end
-  end)
-
-corrected_text = Enum.map_join(corrections, "\n", &elem(&1, 0))
-mistakes = Enum.flat_map(corrections, &elem(&1, 1))
+feedbacks = for %{feedback: %{"annotated_text" => annotated}} <- full_transcript, do: annotated
+mistakes = Enum.flat_map(feedbacks, &(&1 |> Markers.parse() |> Markers.substantive()))
+corrected_text = feedbacks |> Enum.flat_map(&Markers.mistake_sentences/1) |> Enum.join("\n")
 
 flashcards =
   run.("flashcards", "conversation", %{corrected: corrected_text, mistakes: mistakes}, nil, fn ->
@@ -321,12 +326,43 @@ flashcards =
 
 journal_case =
   run.("proofread", "journal", journal, journal_expected, fn ->
-    Proofreader.proofread(journal, opts.("de", "B2") ++ [focus_topic: journal_focus])
+    Proofreader.proofread(journal, opts.("de", "B2") ++ [focus: journal_focus])
   end)
+
+starter_cases =
+  for {label, kind, target, level, summary, angle, focus} <- starters do
+    input = %{kind: kind, summary: summary, angle: angle, focus: focus}
+
+    run.("starter", label, input, nil, fn ->
+      SessionStarter.start(
+        kind,
+        opts.(target, level) ++
+          [summary: summary, angle: Planner.angle_instruction(angle), focus: focus]
+      )
+    end)
+  end
+
+# The same mistake list Today.prepare/1 builds, from this run's conversation corrections.
+word_order =
+  [%{feedback: nil, messages: full_transcript}]
+  |> Activities.corrections()
+  |> Enum.filter(&(&1.category == "word-order"))
+
+focus_cases =
+  for {label, target, level, category, mistakes} <- [
+        {"de-mistakes", "de", "B2", "word-order", word_order},
+        {"de-cold", "de", "B2", nil, []},
+        {"ja-cold", "ja", "B1", nil, []}
+      ] do
+    run.("focus", label, %{category: category, mistakes: mistakes}, nil, fn ->
+      FocusWriter.write(category, mistakes, opts.(target, level))
+    end)
+  end
 
 cases =
   correction_cases ++
-    List.flatten(conversation_cases) ++ [opener, assessment, flashcards, journal_case]
+    List.flatten(conversation_cases) ++
+    [assessment, flashcards, journal_case] ++ starter_cases ++ focus_cases
 
 purposes =
   cases
@@ -340,25 +376,22 @@ purposes =
        avg_latency_ms: round(Bench.avg(Enum.map(rows, & &1.latency_ms))),
        avg_input_tokens: round(Bench.avg(Enum.map(rows, & &1.input_tokens))),
        avg_output_tokens: round(Bench.avg(Enum.map(rows, & &1.output_tokens))),
+       max_output_tokens: rows |> Enum.map(& &1.output_tokens) |> Enum.max(),
        avg_reasoning_tokens: round(Bench.avg(Enum.map(rows, & &1.reasoning_tokens))),
        avg_cost: Bench.avg(Enum.map(rows, & &1.cost))
      }}
   end)
 
-day_cost =
-  Enum.reduce(day_mix, 0.0, fn {purpose, n}, acc ->
-    acc + n * (purposes[purpose] || %{avg_cost: 0}).avg_cost
+day_costs =
+  Map.new(day_mixes, fn {day, mix} ->
+    {day, Enum.reduce(mix, 0.0, fn {purpose, n}, acc -> acc + n * purposes[purpose].avg_cost end)}
   end)
 
 report = %{
   model: spec,
-  thinking: thinking,
+  effort: effort,
   run_at: DateTime.utc_now(),
-  day_cost: %{
-    usd: day_cost,
-    mix: day_mix,
-    note: "starter and focus don't exist until phase 3, so they count as 0"
-  },
+  day_cost: %{usd: day_costs, mix: day_mixes},
   purposes: purposes,
   cases: cases
 }
@@ -368,13 +401,14 @@ File.write!(out_path, Jason.encode!(report, pretty: true))
 
 {deleted, _} = Repo.delete_all(from(u in "api_usages", where: u.id > ^before_id))
 
-IO.puts("\n#{String.pad_trailing("purpose", 18)} cases  miss  err  avg ms   avg $")
+IO.puts("\n#{String.pad_trailing("purpose", 18)} cases  miss  err  avg ms  max out   avg $")
 
 for {purpose, s} <- Enum.sort(purposes) do
   IO.puts(
-    "#{String.pad_trailing(purpose, 18)} #{String.pad_leading("#{s.cases}", 5)} #{String.pad_leading("#{s.parse_misses}", 5)} #{String.pad_leading("#{s.errors}", 4)} #{String.pad_leading("#{s.avg_latency_ms}", 7)}  #{:erlang.float_to_binary(s.avg_cost * 1.0, decimals: 5)}"
+    "#{String.pad_trailing(purpose, 18)} #{String.pad_leading("#{s.cases}", 5)} #{String.pad_leading("#{s.parse_misses}", 5)} #{String.pad_leading("#{s.errors}", 4)} #{String.pad_leading("#{s.avg_latency_ms}", 7)} #{String.pad_leading("#{s.max_output_tokens}", 8)}  #{:erlang.float_to_binary(s.avg_cost * 1.0, decimals: 5)}"
   )
 end
 
-IO.puts("\nday cost: $#{:erlang.float_to_binary(day_cost, decimals: 4)}")
+IO.puts("")
+for {day, usd} <- day_costs, do: IO.puts("#{day} day: $#{:erlang.float_to_binary(usd, decimals: 4)}")
 IO.puts("wrote #{out_path} (removed #{deleted} api_usages rows)")

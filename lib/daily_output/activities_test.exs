@@ -42,20 +42,39 @@ defmodule DailyOutput.ActivitiesTest do
     assert Enum.sort(Activities.correction_categories(Activities.today())) == ~w(case verb verb)
   end
 
-  test "save_body/2 keeps the journal draft" do
+  test "update/2 keeps the journal draft" do
     activity = Activities.create(%{kind: "journal"})
-    Activities.save_body(activity, "Heute habe ich")
+    Activities.update(activity, %{body: "Heute habe ich"})
     assert Activities.get!(activity.id).body == "Heute habe ich"
+  end
+
+  test "corrections/1 reads the markers of the journal and each message" do
+    journal =
+      Activities.create(%{
+        kind: "journal",
+        feedback: %{"annotated_text" => "Ich [[gehe||ging||verb||Vergangenheit]]."}
+      })
+
+    conversation = Activities.create(%{kind: "conversation"})
+    message = Activities.add_message(conversation, "user", "der Haus")
+
+    Activities.save_message_feedback(message, %{
+      "annotated_text" => "[[der||das||gender||Neutrum]] Haus"
+    })
+
+    assert [%{corrected: "ging", category: "verb"}, %{original: "der", explanation: "Neutrum"}] =
+             Activities.corrections([journal, Activities.get!(conversation.id)])
   end
 
   test "complete/3 stamps the review and returns the activity with messages" do
     activity = Activities.create(%{kind: "conversation"})
     Activities.add_message(activity, "user", "Hoi")
 
-    completed = Activities.complete(activity, %{"commentary" => []}, "We said hi.")
+    completed =
+      Activities.complete(activity, %{"focus_result" => %{"used" => true}}, "We said hi.")
 
     assert completed.completed_at
-    assert completed.feedback == %{"commentary" => []}
+    assert completed.feedback == %{"focus_result" => %{"used" => true}}
     assert completed.summary == "We said hi."
     assert [%{body: "Hoi"}] = completed.messages
     assert [%{id: id}] = Activities.completed()

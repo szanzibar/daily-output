@@ -29,6 +29,26 @@ defmodule DailyOutput.FlashcardsTest do
       assert {:ok, 0} = Flashcards.ingest(%{feedback: nil, messages: []})
       assert Flashcards.count_cards() == 0
     end
+
+    test "only the sentences with a mistake go to the AI" do
+      activity = %{
+        id: 1,
+        feedback: %{"annotated_text" => "Das war schön. Ich [[habe||bin||verb||sein]] gelaufen."},
+        messages: []
+      }
+
+      expect_ai(%{
+        "cards" => [%{"target_text" => "Ich bin gelaufen.", "native_text" => "I walked."}]
+      })
+
+      assert {:ok, 1} = Flashcards.ingest(activity)
+
+      assert_received {:ai_request,
+                       %{"input" => [_system, %{"content" => [%{"text" => content}]}]}}
+
+      assert content =~ "Ich bin gelaufen."
+      refute content =~ "Das war schön."
+    end
   end
 
   describe "review/2" do

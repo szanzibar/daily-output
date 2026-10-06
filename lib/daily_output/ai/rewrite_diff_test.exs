@@ -99,4 +99,58 @@ defmodule DailyOutput.AI.RewriteDiffTest do
       assert String.trim(e) != ""
     end
   end
+
+  test "each repeated word move gets its own sentence's explanation" do
+    orig =
+      "Letzte Woche ich habe angefangen. Am ersten Tag ich bin gelaufen. Wenn ich Zeit hätte, ich würde trainieren."
+
+    corr =
+      "Letzte Woche habe ich angefangen. Am ersten Tag bin ich gelaufen. Wenn ich Zeit hätte, würde ich trainieren."
+
+    annotated =
+      RewriteDiff.annotate(orig, corr, [
+        %{
+          "before" => "ich habe",
+          "after" => "habe ich",
+          "type" => "word-order",
+          "explanation" => "nach Letzte Woche"
+        },
+        %{
+          "before" => "ich bin",
+          "after" => "bin ich",
+          "type" => "word-order",
+          "explanation" => "nach der Zeitangabe"
+        },
+        %{
+          "before" => "hätte, ich würde",
+          "after" => "hätte, würde ich",
+          "type" => "word-order",
+          "explanation" => "nach dem Nebensatz"
+        }
+      ])
+
+    assert Enum.map(Markers.parse(annotated), & &1.explanation) ==
+             [
+               "nach Letzte Woche",
+               "nach Letzte Woche",
+               "nach der Zeitangabe",
+               "nach der Zeitangabe",
+               "nach dem Nebensatz",
+               "nach dem Nebensatz"
+             ]
+  end
+
+  test "a change next to punctuation still finds its explanation" do
+    annotated =
+      RewriteDiff.annotate("Videos von meinem Dirigent.", "Videos von meinem Dirigenten.", [
+        %{
+          "before" => "Dirigent",
+          "after" => "Dirigenten",
+          "type" => "case",
+          "explanation" => "schwaches Maskulinum"
+        }
+      ])
+
+    assert [%{explanation: "schwaches Maskulinum", category: "case"}] = Markers.parse(annotated)
+  end
 end

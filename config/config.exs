@@ -13,7 +13,7 @@ config :daily_output,
 
 # Fallback model when Settings can't be read; Settings picks the model otherwise. Override per
 # environment with AI_MODEL (runtime.exs).
-config :daily_output, :ai_model, "anthropic:claude-sonnet-5-5"
+config :daily_output, :ai_model, "openai:gpt-6.1-sol"
 
 # Configure the endpoint
 config :daily_output, DailyOutputWeb.Endpoint,

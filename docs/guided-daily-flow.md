@@ -34,7 +34,7 @@ conversation picks up where you stopped. Next day: a fresh conversation.
 | Focus | Picked automatically from mistake frequency, rotated for freshness. Graded at the end, **never blocks** the day. The focus pool page and manual tip-saving are gone. |
 | Flashcards | Fully automatic and part of the daily requirement. A "fix this card" action during practice is the escape hatch; the manage page stays but is rarely needed. |
 | Pages kept | Today (`/`), History (read-only), Progress, Settings, Flashcard manage, About. |
-| Models | Sonnet 5.5 (default) and GPT-5.6 Luna only, showing score + price. |
+| Models | GPT-6.1 Sol at effort low (default) and GPT-6 Luna at effort medium only, showing score + price. |
 | Data | Nuke: one fresh migration, no backwards compatibility. |
 
 ## Architecture: deep modules
@@ -98,21 +98,19 @@ rule sits behind a small interface, so steps can be reordered or swapped to expe
 
 ## Models
 
-- **Sonnet 5.5** (default): score 83.4, $2 / $10 per M tokens.
-- **GPT-5.6 Luna**: score 66.2, $0.20 / $1.20 per M tokens.
+- **GPT-6.1 Sol** (default), reasoning effort low: score 77.6, $2 / $10 per M tokens. It
+  rejects effort none.
+- **GPT-6 Luna**, effort medium: score 65.0, $0.10 / $0.50 per M tokens. At low it
+  reasons 0 tokens on structured calls, so it's no better than none.
 - Source: benchlm.ai, Oct 2026. Settings shows only these two numbers per model.
-- Measured usage is about 17k input + 2.5k output tokens per conversation day. That's
-  about **$0.06/day on Sonnet 5.5** and under $0.01/day on Luna, with thinking off.
-- Code changes:
-  - `spec_for/2` routes direct Sonnet → `anthropic:claude-sonnet-5-5` and direct Luna → `openai:<id>`.
-  - OpenRouter slugs for both.
-  - `get_api_key(:openai)` reads `OPENAI_API_KEY` (runtime.exs, `.env.example`, README).
-  - Thinking placement for `:openai`.
-  - Stats pricing tiers for both models.
-- **Verify before coding:** the exact Luna API id and OpenRouter slugs (via
-  `/v1/models`), whether Sonnet 5.5 accepts `thinking: disabled`, and which reasoning
-  param Luna takes.
-- **Delete:** Sonnet auto-discovery, the 404-retry, `Cache`.
+- Our bench picked them: Sol beat Sonnet 5.5 on calques, explanations, and focus grading
+  at lower cost. Luna at medium is about on par with Sol on corrections at ~1/12 the cost.
+- Measured day cost: Sol **$0.031** per conversation day and $0.015 per journal day; Luna
+  $0.0023 and $0.0014.
+- Ids are `gpt-6.1-sol` and `gpt-6-luna` direct (`OPENAI_API_KEY`), `openai/<id>` on
+  OpenRouter (`OPENROUTER_API_KEY`).
+- Effort belongs to the model (`AI.effort/1`); only the bench overrides it.
+- Calls time out after 60 s instead of ReqLLM's 300 s. ReqLLM retries a timeout up to 3 times.
 
 ## Deletions
 
@@ -137,13 +135,14 @@ rule sits behind a small interface, so steps can be reordered or swapped to expe
    on Sonnet 5.5 and Luna with thinking off and on, and grade the output. Only then slim
    the Settings card to the winners.
 
-   **Benchmark.** `mix run scripts/bench.exs <provider:model> [--thinking on|off]` runs
-   every AI purpose the daily flow uses through the production functions and writes
-   `tmp/bench/<model>-<thinking>.json`. An agent runs it and grades the file.
+   **Benchmark.** `mix run scripts/bench.exs <provider:model> [--effort none|low|medium|high]`
+   runs every AI purpose the daily flow uses through the production functions and writes
+   `tmp/bench/<model>-<effort>.json`. An agent runs it and grades the file.
    - Per case it records the input, raw output, parsed result, parse status, latency,
      input/output/reasoning tokens, and cost. Per purpose it totals parse misses.
-   - A day-cost line multiplies per-purpose averages by the daily call mix: 5
-     corrections, 6 partner replies, 1 review, 1 flashcard batch, 1 starter, 1 focus.
+   - Day-cost lines multiply per-purpose averages by the daily call mix. A conversation
+     day is 5 corrections, 6 partner replies, 1 review, 1 flashcard batch, 1 starter, and
+     1 focus. A journal day is 1 proofread, 1 flashcard batch, 1 starter, and 1 focus.
    - Fixtures are inline, so no DB is needed: the German sentences from
      `check_corrections.exs`, each with its expected fix written next to it so there's
      something to grade against; a short French and Japanese set; one journal entry; and
@@ -156,12 +155,11 @@ rule sits behind a small interface, so steps can be reordered or swapped to expe
    - Production hides parse misses: `proofread_message` falls back to the uncorrected
      text and flashcards to `[]`. Both return an error instead, which the UI shows with
      its one error state.
-   - `anthropic_shape/2` throws away ReqLLM's `reasoning_tokens` and `total_cost`. Keep
+   - `normalize_response/2` threw away ReqLLM's `reasoning_tokens` and `total_cost`. Keep
      both.
-   - ReqLLM strips `thinking` on Anthropic whenever a tool is forced, and every
-     structured purpose forces one. So the bench reports "can't think with a forced tool"
-     instead of faking an "on" run. If thinking turns out to matter, those calls switch to
-     `tool_choice: auto`.
+   - Structured calls reason fine now. Direct calls use ReqLLM's strict forced tool.
+     OpenRouter's forced tool isn't strict, so it uses json_schema. Direct stays on the tool
+     because json_schema made Luna reason about twice as long on the same calls.
 2. **Core domain.** Write the fresh migration and the `Activities` context, plus pure
    `Planner`, `Focus.choose`, and `Streak` modules with unit tests (picks are
    deterministic per date; covers freshness, cold start, bonus → freeze, and the streak
@@ -202,8 +200,7 @@ rule sits behind a small interface, so steps can be reordered or swapped to expe
 2. The journal Finish button appears 5:00 after the entry was started (wall clock, so it
    survives a refresh) and needs non-empty text. There's no word floor.
 3. The OpenAI key is an env var like the others, not entered in the UI.
-4. Thinking stays off everywhere, for latency and cost. Revisit for corrections only if
-   quality disappoints.
+4. Reasoning effort is per model: Sol low, Luna medium.
 5. The bonus activity reuses today's focus.
 6. Prod reset: you delete `/app/data/daily_output.db` at deploy. Locally I back up the dev
    DB (timestamped copy, matching the existing ones) before `mix ecto.reset`.

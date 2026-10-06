@@ -11,6 +11,7 @@ defmodule DailyOutput.Activities do
   require Logger
 
   alias DailyOutput.{Clock, Flashcards, Repo, Stats}
+  alias DailyOutput.Flashcards.Markers
   alias DailyOutput.Activities.{Activity, Message}
 
   @doc "Creates an activity on today's logical date."
@@ -59,6 +60,19 @@ defmodule DailyOutput.Activities do
         do: annotation["category"]
   end
 
+  @doc """
+  Every correction in `activities`, as `Flashcards.Markers.parse/1` maps, in the order the
+  activities come.
+  """
+  def corrections(activities) do
+    for activity <- activities,
+        %{"annotated_text" => annotated} <- [
+          activity.feedback | Enum.map(activity.messages, & &1.feedback)
+        ],
+        correction <- Markers.parse(annotated),
+        do: correction
+  end
+
   def add_message(%Activity{} = activity, role, body) do
     %Message{}
     |> Message.changeset(%{activity_id: activity.id, role: role, body: body})
@@ -69,9 +83,8 @@ defmodule DailyOutput.Activities do
     message |> Message.changeset(%{feedback: feedback}) |> Repo.update!()
   end
 
-  @doc "Saves the journal draft."
-  def save_body(%Activity{} = activity, body) do
-    activity |> Activity.changeset(%{body: body}) |> Repo.update!()
+  def update(%Activity{} = activity, attrs) do
+    activity |> Activity.changeset(attrs) |> Repo.update!()
   end
 
   @doc """

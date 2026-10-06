@@ -5,44 +5,6 @@ defmodule DailyOutput.AI.ProofreaderTest do
 
   alias DailyOutput.AI.Proofreader
 
-  describe "feedback_schema/1" do
-    test "without focus topic, focus_result is not required" do
-      schema = Proofreader.feedback_schema(nil)
-
-      # The model returns a rewrite + change list; annotations/annotated_text are derived from
-      # the diff (RewriteDiff), not schema fields.
-      assert schema["required"] == ["corrected", "corrections", "commentary"]
-      refute Map.has_key?(schema["properties"], "annotations")
-      refute Map.has_key?(schema["properties"], "annotated_text")
-      refute Map.has_key?(schema["properties"], "focus_result")
-      refute Map.has_key?(schema["properties"], "encouragement")
-    end
-
-    test "with focus topic, focus_result is required" do
-      schema = Proofreader.feedback_schema("Nebensatzkonnektoren")
-
-      assert "focus_result" in schema["required"]
-      focus_props = schema["properties"]["focus_result"]["properties"]
-      assert Map.has_key?(focus_props, "used")
-      assert Map.has_key?(focus_props, "correct")
-      assert Map.has_key?(focus_props, "comment")
-
-      assert focus_props["used"]["description"] =~ "exact keyword match is not required"
-      assert focus_props["correct"]["description"] =~ "Must be false when used=false"
-    end
-
-    test "with empty string focus topic, focus_result is not required" do
-      schema = Proofreader.feedback_schema("")
-      refute "focus_result" in schema["required"]
-    end
-
-    test "commentary type is constrained to valid values" do
-      schema = Proofreader.feedback_schema(nil)
-      commentary_props = schema["properties"]["commentary"]["items"]["properties"]
-      assert commentary_props["type"]["enum"] == ["pattern", "suggestion", "alternative"]
-    end
-  end
-
   describe "parse_message_feedback/1" do
     test "keeps markers inline in annotated_text and derives a flat annotations list" do
       text =
@@ -108,108 +70,6 @@ defmodule DailyOutput.AI.ProofreaderTest do
                "annotated_text" => "",
                "annotations" => []
              }
-    end
-  end
-
-  describe "parse_message_feedback/2 (guard against the original)" do
-    test "passes through when the markers only use the student's words" do
-      original = "Ich gehe gestern ins Kino."
-      output = "Ich [[gehe||ging||verb||Vergangenheit]] gestern ins Kino."
-
-      result = Proofreader.parse_message_feedback(output, original)
-      assert result["annotated_text"] == output
-      assert [%{"category" => "verb"}] = result["annotations"]
-    end
-
-    test "insertions are fine (empty before adds nothing foreign)" do
-      original = "Ich komme weil ich Zeit habe."
-      output = "Ich komme[[||,||punctuation||Komma vor «weil»]] weil ich Zeit habe."
-      assert Proofreader.parse_message_feedback(output, original)["annotations"] != []
-    end
-
-    test "word-order moves are kept (not flagged as contamination)" do
-      original = "dass ich Deutsch höre bei der Chorprobe"
-
-      output =
-        "dass ich [[Deutsch höre bei der Chorprobe||bei der Chorprobe Deutsch höre||word-order||Verb ans Ende]]"
-
-      result = Proofreader.parse_message_feedback(output, original)
-      assert result["annotated_text"] == output
-      assert result["annotations"] != []
-    end
-
-    test "falls back to uncorrected when the model rambles in prose" do
-      original = "Ich habe in die Stadt gegangen."
-
-      polluted =
-        "Ich [[habe||bin||verb||Perfekt mit sein]] in die Stadt gegangen. " <>
-          "Note: «in die Stadt» is actually correct — accusative for direction."
-
-      result = Proofreader.parse_message_feedback(polluted, original)
-      assert result == %{"annotated_text" => original, "annotations" => []}
-    end
-
-    test "falls back to uncorrected when the model re-emits the message (double output)" do
-      # The thinking-off failure mode: a first marked version, then a whole second attempt.
-      # Every word is the student's own, so the foreign-run check can't catch it — the
-      # length-inflation guard must.
-      original = "Gestern ich habe in die Stadt gegangen."
-
-      doubled =
-        "Gestern [[ich habe||habe ich||word-order||Verb an zweiter Stelle]] in die Stadt gegangen.\n\n" <>
-          "Gestern [[ich habe||bin ich||word-order||Korrektur oben]] in die Stadt gegangen."
-
-      result = Proofreader.parse_message_feedback(doubled, original)
-      assert result == %{"annotated_text" => original, "annotations" => []}
-    end
-
-    test "a normal single correction is not mistaken for inflation" do
-      original = "Gestern ich habe in die Stadt gegangen."
-
-      output =
-        "Gestern [[ich habe||bin ich||word-order||Verb an zweiter Stelle]] in die Stadt gegangen."
-
-      result = Proofreader.parse_message_feedback(output, original)
-      assert result["annotated_text"] == output
-      assert result["annotations"] != []
-    end
-  end
-
-  describe "assessment_schema/1" do
-    test "is correction-free: no annotated_text or annotations" do
-      schema = Proofreader.assessment_schema(nil)
-
-      refute Map.has_key?(schema["properties"], "annotated_text")
-      refute Map.has_key?(schema["properties"], "annotations")
-    end
-
-    test "without focus topic, requires only commentary" do
-      schema = Proofreader.assessment_schema(nil)
-
-      assert schema["required"] == ["commentary"]
-      refute Map.has_key?(schema["properties"], "focus_result")
-    end
-
-    test "with focus topic, focus_result is required" do
-      schema = Proofreader.assessment_schema("Nebensatzkonnektoren")
-
-      assert "focus_result" in schema["required"]
-      focus_props = schema["properties"]["focus_result"]["properties"]
-      assert Map.has_key?(focus_props, "used")
-      assert Map.has_key?(focus_props, "correct")
-      assert Map.has_key?(focus_props, "comment")
-    end
-
-    test "commentary type is constrained to valid values" do
-      schema = Proofreader.assessment_schema(nil)
-      commentary_props = schema["properties"]["commentary"]["items"]["properties"]
-      assert commentary_props["type"]["enum"] == ["pattern", "suggestion", "alternative"]
-    end
-
-    test "no longer offers encouragement or improvement_note fields" do
-      schema = Proofreader.assessment_schema(nil)
-      refute Map.has_key?(schema["properties"], "encouragement")
-      refute Map.has_key?(schema["properties"], "improvement_note")
     end
   end
 
@@ -285,210 +145,39 @@ defmodule DailyOutput.AI.ProofreaderTest do
     end
   end
 
-  describe "normalize_feedback/1" do
-    test "passes through complete feedback" do
-      input = %{
-        "annotated_text" => "Ich [[1:gehe||ging]] nach Hause.",
-        "annotations" => [%{"id" => 1, "explanation" => "Vergangenheitsform"}],
-        "commentary" => [%{"type" => "pattern", "text" => "Achte auf Zeitformen."}],
-        "encouragement" => "Gut gemacht!"
-      }
+  describe "journal_schema/0 and review_schema/0" do
+    test "the journal asks for a rewrite plus the wrap-up, no tips" do
+      schema = Proofreader.journal_schema()
 
-      result = Proofreader.normalize_feedback(input)
-      assert result["annotated_text"] == "Ich [[1:gehe||ging]] nach Hause."
-      assert length(result["annotations"]) == 1
-      assert result["encouragement"] == "Gut gemacht!"
-      refute Map.has_key?(result, "focus_result")
+      # annotations/annotated_text are derived from the diff (RewriteDiff), not schema fields.
+      assert schema["required"] == ["corrected", "corrections", "summary", "focus_result"]
+      assert Enum.sort(Map.keys(schema["properties"])) == Enum.sort(schema["required"])
     end
 
-    test "includes focus_result when present" do
-      input = %{
-        "annotated_text" => "Test.",
-        "annotations" => [],
-        "commentary" => [],
-        "encouragement" => "Toll!",
-        "focus_result" => %{"used" => true, "correct" => true, "comment" => "Gut!"}
-      }
+    test "the conversation review only wraps up" do
+      assert Proofreader.review_schema()["required"] == ["summary", "focus_result"]
+    end
+  end
 
-      result = Proofreader.normalize_feedback(input)
-      assert result["focus_result"]["used"] == true
-      assert result["focus_result"]["correct"] == true
+  describe "normalize_review/1" do
+    test "trims the summary and comment" do
+      assert Proofreader.normalize_review(%{
+               "summary" => " You told me about Lucerne. ",
+               "focus_result" => %{"used" => true, "correct" => true, "comment" => " Gut! "}
+             }) == %{
+               "summary" => "You told me about Lucerne.",
+               "focus_result" => %{"used" => true, "correct" => true, "comment" => "Gut!"}
+             }
     end
 
-    test "defaults missing fields" do
-      result = Proofreader.normalize_feedback(%{})
-      assert result["annotated_text"] == ""
-      assert result["annotations"] == []
-      assert result["commentary"] == []
-      assert result["encouragement"] == ""
-      refute Map.has_key?(result, "focus_result")
-      refute Map.has_key?(result, "improvement")
-      refute Map.has_key?(result, "improvement_note")
-    end
-
-    test "preserves the improvement signal and its narrative when present" do
-      input = %{
-        "annotated_text" => "",
-        "annotations" => [],
-        "commentary" => [],
-        "encouragement" => "Gut!",
-        "improvement_note" => "Du hast die Genus-Fehler nicht wiederholt!",
-        "improvement" => %{
-          "resolved_categories" => ["gender"],
-          "repeated_categories" => [],
-          "early_rate" => 20.0,
-          "late_rate" => 5.0
-        }
-      }
-
-      result = Proofreader.normalize_feedback(input)
-      assert result["improvement_note"] == "Du hast die Genus-Fehler nicht wiederholt!"
-      assert result["improvement"]["resolved_categories"] == ["gender"]
-      assert result["improvement"]["late_rate"] == 5.0
-    end
-
-    test "drops an empty improvement_note" do
-      result =
-        Proofreader.normalize_feedback(%{
-          "encouragement" => "x",
-          "improvement_note" => ""
+    test "an unused focus is never correct" do
+      review =
+        Proofreader.normalize_review(%{
+          "summary" => "x",
+          "focus_result" => %{"used" => false, "correct" => true, "comment" => "x"}
         })
 
-      refute Map.has_key?(result, "improvement_note")
-    end
-
-    test "decodes stringified commentary from API response" do
-      # The model sometimes returns arrays as JSON strings instead of structured data.
-      # After Ecto decodes the outer JSON, German typographic quotes like „App"
-      # contain bare ASCII " (U+0022) making Jason.decode fail on the inner string.
-      stringified_commentary =
-        "[\n  {\n    \"type\": \"pattern\",\n    \"text\": \"Das Genus von \u201eApp\" ist feminin: **die App**. Daher braucht man die feminine Form des unbestimmten Artikels und des Demonstrativpronomens: \u201eeine App\", \u201ediese App\". Merke: Viele englische Lehnwörter auf -App, -Mail oder -Cloud sind im Deutschen feminin.\"\n  },\n  {\n    \"type\": \"pattern\",\n    \"text\": \"Die Konstruktion \u201eum … zu + Infinitiv\" drückt einen Zweck aus. Das Verb steht immer am Ende: \u201eum **mir** zu **helfen**\". Vergleiche: \u201eIch lerne Deutsch, um einen Job zu finden.\" Das Reflexivpronomen oder Objekt steht direkt nach \u201eum\".\"\n  },\n  {\n    \"type\": \"pattern\",\n    \"text\": \"Sprachen werden im Deutschen immer grossgeschrieben, wenn sie als Substantiv stehen: **Deutsch**, **Englisch**, **Französisch**. Nur in der Wendung \u201eauf Deutsch\" oder \u201eer spricht deutsch\" (als Adverb) kann man kleinschreiben – aber im Zweifel: Grossschreibung ist immer sicher.\"\n  },\n  {\n    \"type\": \"suggestion\",\n    \"text\": \"Für \u201egenerate\" im Kontext von Sprachübungen könnte man sagen: \u201eWie sage ich \u201Agenerieren\u2018 auf Deutsch?\" oder einfach **generieren** verwenden – das Wort ist im Deutschen völlig gebräuchlich, z. B. \u201eKannst du mir einen Text generieren?\"\"\n  },\n  {\n    \"type\": \"alternative\",\n    \"text\": \"\u201eIch will mehr Deutsch üben\" ist korrekt und natürlich. Noch etwas idiomatischer wäre: \u201eIch möchte mein Deutsch verbessern\" oder \u201eIch will meine Deutschkenntnisse ausbauen\" – aber deine Version ist völlig verständlich und gut!\"\n  }\n]"
-
-      stringified_annotations =
-        "[\n  {\"id\": 1, \"explanation\": \"\u201eApp\" ist feminin: die App\"},\n  {\"id\": 2, \"explanation\": \"Femininform: eine App\"}\n]"
-
-      input = %{
-        "annotated_text" => "Test text",
-        "annotations" => stringified_annotations,
-        "commentary" => stringified_commentary,
-        "encouragement" => "Gut gemacht!"
-      }
-
-      result = Proofreader.normalize_feedback(input)
-
-      assert is_list(result["commentary"])
-      assert length(result["commentary"]) == 5
-      assert Enum.all?(result["commentary"], &is_map/1)
-
-      assert Enum.all?(
-               result["commentary"],
-               &(Map.has_key?(&1, "type") and Map.has_key?(&1, "text"))
-             )
-
-      assert hd(result["commentary"])["type"] == "pattern"
-      assert String.contains?(hd(result["commentary"])["text"], "die App")
-
-      assert is_list(result["annotations"])
-      assert length(result["annotations"]) == 2
-      assert hd(result["annotations"])["id"] == 1
-    end
-
-    test "decodes valid JSON strings for commentary and annotations" do
-      input = %{
-        "annotated_text" => "Test",
-        "annotations" => ~s([{"id": 1, "explanation": "fix"}]),
-        "commentary" => ~s([{"type": "pattern", "text": "a tip"}]),
-        "encouragement" => "Nice!"
-      }
-
-      result = Proofreader.normalize_feedback(input)
-
-      assert is_list(result["commentary"])
-      assert hd(result["commentary"])["type"] == "pattern"
-      assert is_list(result["annotations"])
-      assert hd(result["annotations"])["id"] == 1
-    end
-
-    test "handles German text with quotes" do
-      input = %{
-        "annotated_text" => "Und (wie sagt man \u201Eso far\u201C) geht es gut.",
-        "commentary" => [
-          %{
-            "type" => "pattern",
-            "text" => "\u201Ees ist gut, h\u00F6her singen zu lernen.\u201C braucht ein Komma."
-          }
-        ],
-        "annotations" => [],
-        "encouragement" => "Sehr gut!",
-        "focus_result" => %{"used" => true, "correct" => false, "comment" => "Fast!"}
-      }
-
-      result = Proofreader.normalize_feedback(input)
-      assert result["focus_result"]["used"] == true
-      assert result["focus_result"]["correct"] == false
-    end
-
-    test "decodes focus_result when it is a JSON string" do
-      input = %{
-        "annotated_text" => "Test",
-        "annotations" => [],
-        "commentary" => [],
-        "encouragement" => "Gut!",
-        "focus_result" => ~s({"used": true, "correct": true, "comment": "Bitte weiter ueben."})
-      }
-
-      result = Proofreader.normalize_feedback(input)
-
-      assert result["focus_result"]["used"] == true
-      assert result["focus_result"]["correct"] == true
-      assert result["focus_result"]["comment"] == "Bitte weiter ueben."
-    end
-
-    test "coerces string booleans in focus_result" do
-      input = %{
-        "annotated_text" => "Test",
-        "annotations" => [],
-        "commentary" => [],
-        "encouragement" => "Gut!",
-        "focus_result" => %{"used" => "true", "correct" => "false", "comment" => "Fast!"}
-      }
-
-      result = Proofreader.normalize_feedback(input)
-
-      assert result["focus_result"]["used"] == true
-      assert result["focus_result"]["correct"] == false
-    end
-
-    test "forces focus_result.correct to false when used is false" do
-      input = %{
-        "annotated_text" => "Test",
-        "annotations" => [],
-        "commentary" => [],
-        "encouragement" => "Gut!",
-        "focus_result" => %{"used" => false, "correct" => true, "comment" => "Nicht benutzt."}
-      }
-
-      result = Proofreader.normalize_feedback(input)
-
-      assert result["focus_result"]["used"] == false
-      assert result["focus_result"]["correct"] == false
-    end
-
-    test "handles malformed focus_result string safely" do
-      input = %{
-        "annotated_text" => "Test",
-        "annotations" => [],
-        "commentary" => [],
-        "encouragement" => "Gut!",
-        "focus_result" =>
-          ~s({"used": false, "correct": false, "comment": "Versuche zum Beispiel: \"Ich besuche meine Freundin\"."}])
-      }
-
-      result = Proofreader.normalize_feedback(input)
-
-      assert result["focus_result"]["used"] == false
-      assert result["focus_result"]["correct"] == false
-      assert result["focus_result"]["comment"] =~ "Ich besuche meine Freundin"
+      assert review["focus_result"]["correct"] == false
     end
   end
 end

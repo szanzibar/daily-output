@@ -18,10 +18,12 @@ config :daily_output, DailyOutputWeb.Endpoint,
   server: false
 
 # Don't run the reminder scheduler during tests, and don't auto-generate VAPID
-# keys — the push tests assert on the unconfigured state.
+# keys — the push tests assert on the unconfigured state. AI calls answer through
+# Req.Test stubs (see DailyOutput.AI), so the key is a dummy.
 config :daily_output,
   start_reminders: false,
-  ensure_vapid: false
+  ensure_vapid: false,
+  openai_api_key: "test"
 
 # Print only warnings and errors during test
 config :logger, level: :warning

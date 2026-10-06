@@ -34,6 +34,19 @@ defmodule DailyOutput.Flashcards.MarkersTest do
     end
   end
 
+  describe "mistake_sentences/1" do
+    test "keeps only the corrected sentences that had a substantive fix" do
+      text =
+        "Wir haben einen Film geschaut. Ich mag [[sehr||||word-order||x]] seine " <>
+          "[[Filme,||Filme sehr,||word-order||x]] weil sie [[sind spannend.||spannend sind.||word-order||y]]" <>
+          "\nDas [[haus||Haus||spelling||c]] ist schön."
+
+      assert Markers.mistake_sentences(text) == [
+               "Ich mag seine Filme sehr, weil sie spannend sind."
+             ]
+    end
+  end
+
   describe "capitalization_only?/2" do
     test "true when only the case differs" do
       assert Markers.capitalization_only?("haus", "Haus")

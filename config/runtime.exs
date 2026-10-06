@@ -6,13 +6,14 @@ if config_env() != :test do
 
   # All keys are optional so the app boots with whichever provider you've configured.
   # Which one you need follows the AI provider + model chosen in Settings (see
-  # DailyOutput.AI.spec_for/2): direct+Sonnet → ANTHROPIC, direct+Luna → OPENAI, OpenRouter → OPENROUTER.
+  # DailyOutput.AI.spec_for/2): direct → OPENAI, OpenRouter → OPENROUTER. ANTHROPIC is only
+  # for a model spec that points at Anthropic, like the bench's.
   config :daily_output, :anthropic_api_key, Dotenvy.env!("ANTHROPIC_API_KEY", :string, "")
   config :daily_output, :openai_api_key, Dotenvy.env!("OPENAI_API_KEY", :string, "")
   config :daily_output, :openrouter_api_key, Dotenvy.env!("OPENROUTER_API_KEY", :string, "")
 
-  # "provider:model" spec (e.g. "openai:gpt-5.6-luna") overriding the default in
-  # config.exs (anthropic:claude-sonnet-5-5); blank = keep that default.
+  # "provider:model" spec (e.g. "openai:gpt-6-luna") overriding the default in
+  # config.exs (openai:gpt-6.1-sol); blank = keep that default.
   case Dotenvy.env!("AI_MODEL", :string, "") do
     "" -> :ok
     spec -> config :daily_output, :ai_model, spec

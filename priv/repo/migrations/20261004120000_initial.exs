@@ -9,7 +9,7 @@ defmodule DailyOutput.Repo.Migrations.Initial do
       add :about_you, :text, default: ""
       add :ui_language, :string, default: "auto"
       add :theme, :string, default: "auto"
-      add :ai_model, :string, default: "sonnet-5.5"
+      add :ai_model, :string, default: "gpt-6.1-sol"
       add :ai_provider, :string, default: "direct"
       add :timezone, :string
       add :reminder_time, :time, default: "20:00:00", null: false

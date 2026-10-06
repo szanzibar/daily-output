@@ -130,14 +130,16 @@ defmodule DailyOutput.Stats do
 
   # ── API cost tracking ──────────────────────────────────
 
-  # USD per 1,000,000 tokens. Model ids from either route contain "sonnet" or "luna".
+  # USD per 1,000,000 tokens, picked by the tier name in the model id from any route. OpenAI
+  # doesn't charge cache writes, and we never turn on Anthropic's prompt caching.
   @pricing %{
-    sonnet: %{input: 2.0, output: 10.0, cache_read: 0.2, cache_write: 2.5},
-    luna: %{input: 0.2, output: 1.2, cache_read: 0.02, cache_write: 0.25}
+    sol: %{input: 2.0, output: 10.0, cache_read: 0.1},
+    luna: %{input: 0.1, output: 0.5, cache_read: 0.01},
+    sonnet: %{input: 2.0, output: 10.0, cache_read: 0.2}
   }
 
   @doc """
-  Records one API call's token usage from the (Anthropic-shaped) `response`, tagged with
+  Records one API call's token usage from the `AI.chat/2` `response`, tagged with
   `purpose`. Tolerant: a response without a `"usage"` map is ignored, so this never
   breaks the calling AI flow.
   """
@@ -180,13 +182,13 @@ defmodule DailyOutput.Stats do
       group_by: u.model,
       select:
         {u.model, sum(u.input_tokens), sum(u.output_tokens), sum(u.cache_read_tokens),
-         sum(u.cache_creation_tokens), count(u.id)}
+         count(u.id)}
     )
     |> Repo.all()
     |> Enum.reduce(%{cost: 0.0, input_tokens: 0, output_tokens: 0, calls: 0}, fn
-      {model, input, output, cache_read, cache_write, calls}, acc ->
+      {model, input, output, cache_read, calls}, acc ->
         %{
-          cost: acc.cost + cost(model, input, output, cache_read, cache_write),
+          cost: acc.cost + cost(model, input, output, cache_read),
           input_tokens: acc.input_tokens + (input || 0),
           output_tokens: acc.output_tokens + (output || 0),
           calls: acc.calls + calls
@@ -208,7 +210,7 @@ defmodule DailyOutput.Stats do
         where: u.inserted_at >= ^start,
         select:
           {u.inserted_at, u.purpose, u.model, u.input_tokens, u.output_tokens,
-           u.cache_read_tokens, u.cache_creation_tokens}
+           u.cache_read_tokens}
       )
       |> Repo.all()
       |> Enum.group_by(fn row -> Clock.to_logical_date(elem(row, 0)) end)
@@ -220,8 +222,8 @@ defmodule DailyOutput.Stats do
         |> Enum.group_by(&elem(&1, 1))
         |> Enum.map(fn {purpose, rows} ->
           cost =
-            Enum.reduce(rows, 0.0, fn {_t, _p, model, input, output, cr, cw}, acc ->
-              acc + cost(model, input, output, cr, cw)
+            Enum.reduce(rows, 0.0, fn {_t, _p, model, input, output, cache_read}, acc ->
+              acc + cost(model, input, output, cache_read)
             end)
 
           %{purpose: purpose, cost: cost}
@@ -238,14 +240,14 @@ defmodule DailyOutput.Stats do
       group_by: [u.purpose, u.model],
       select:
         {u.purpose, u.model, sum(u.input_tokens), sum(u.output_tokens), sum(u.cache_read_tokens),
-         sum(u.cache_creation_tokens), count(u.id)}
+         count(u.id)}
     )
     |> Repo.all()
     |> Enum.group_by(&elem(&1, 0))
     |> Enum.map(fn {purpose, rows} ->
       {cost, calls} =
-        Enum.reduce(rows, {0.0, 0}, fn {_p, model, input, output, cr, cw, n}, {c, k} ->
-          {c + cost(model, input, output, cr, cw), k + n}
+        Enum.reduce(rows, {0.0, 0}, fn {_p, model, input, output, cache_read, n}, {c, k} ->
+          {c + cost(model, input, output, cache_read), k + n}
         end)
 
       %{purpose: purpose, cost: cost, calls: calls}
@@ -253,12 +255,21 @@ defmodule DailyOutput.Stats do
     |> Enum.sort_by(& &1.cost, :desc)
   end
 
-  @doc "USD cost of one call's tokens on `model`."
-  def cost(model, input, output, cache_read, cache_write) do
-    p = if String.contains?(model || "", "luna"), do: @pricing.luna, else: @pricing.sonnet
+  @doc "USD cost of one call's tokens on `model`. `input` includes the `cache_read` tokens."
+  def cost(model, input, output, cache_read) do
+    model = model || ""
 
-    ((input || 0) * p.input + (output || 0) * p.output + (cache_read || 0) * p.cache_read +
-       (cache_write || 0) * p.cache_write) / 1_000_000
+    p =
+      cond do
+        model =~ "luna" -> @pricing.luna
+        model =~ "sonnet" -> @pricing.sonnet
+        true -> @pricing.sol
+      end
+
+    cache_read = cache_read || 0
+
+    (((input || 0) - cache_read) * p.input + cache_read * p.cache_read + (output || 0) * p.output) /
+      1_000_000
   end
 
   @doc "Formats a USD `amount` compactly: `$1.23`, `<$0.01`, or `$0.00`."

@@ -70,7 +70,7 @@ defmodule DailyOutput.SettingsTest do
       assert config.language_level == "B2"
       assert config.about_you == ""
       assert config.ai_provider == "direct"
-      assert config.ai_model == "sonnet-5.5"
+      assert config.ai_model == "gpt-6.1-sol"
     end
   end
 
@@ -79,10 +79,10 @@ defmodule DailyOutput.SettingsTest do
       {:ok, config} = Settings.ensure_config()
 
       {:ok, updated} =
-        Settings.update_config(config, %{ai_provider: "openrouter", ai_model: "gpt-5.6-luna"})
+        Settings.update_config(config, %{ai_provider: "openrouter", ai_model: "gpt-6-luna"})
 
       assert updated.ai_provider == "openrouter"
-      assert updated.ai_model == "gpt-5.6-luna"
+      assert updated.ai_model == "gpt-6-luna"
     end
 
     test "rejects unknown provider or model" do

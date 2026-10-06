@@ -9,14 +9,17 @@ defmodule DailyOutput.AI.Proofreader do
   malformed or garbled marker (the old failure on word-order moves) is impossible by
   construction. The stored shape is unchanged: `annotated_text` (inline markers) + a derived
   `annotations` list (see `parse_message_feedback/1`), which the front end, flashcards and
-  stats all still read. `assess_conversation/2` does no correcting — only commentary + focus.
+  stats all still read.
+
+  The wrap-up calls, `proofread/2` and `assess_conversation/2`, also grade today's focus
+  (`focus_result`) and write a one-sentence `summary` the next session picks up from.
   """
 
   require Logger
 
   alias DailyOutput.AI
-  alias DailyOutput.AI.LanguageProfile
-  alias DailyOutput.AI.RewriteDiff
+  alias DailyOutput.AI.{LanguageProfile, RewriteDiff}
+  alias DailyOutput.Flashcards.Markers
 
   # Error categories used to tag per-message corrections. They let us measure, at the end
   # of a conversation, which kinds of mistakes the student repeated vs. stopped making.
@@ -41,16 +44,11 @@ defmodule DailyOutput.AI.Proofreader do
     - Outright errors — grammar, agreement, case, gender, word order, verb forms, spelling, wrong words.
     - Unnatural phrasing — wording that is understandable but that a native speaker wouldn't use: a literal translation from #{native}, an awkward word choice, a stiff preposition or word order. Do NOT skip these because the meaning is clear; they are what the student most needs to learn.
 
+    Watch especially for set phrases copied word for word from #{native}. They're grammatical, so they slip through. If a phrase mirrors #{native} and the usual native phrase is a different one, it's a mistake, even if some natives say it too: replace the whole phrase with the usual one. Fixing only its grammar is not enough.
+
     Be thorough but balanced, and tailor to a CEFR #{level} learner: mark the errors and unnatural phrasing that will help them progress — common mistakes included — but don't nitpick, don't flag constructions clearly above their level, and leave anything already correct and natural untouched. Never invent errors.\
     """
   end
-
-  # Shared prompt scaffolding so the journal and chat correctors (and the conversation review)
-  # build the same system prompt from the same rules — one place to change, no drift.
-
-  # B2+ students get all feedback in the target language; below that, in their native language.
-  defp feedback_lang(level, target, native),
-    do: if(level in ["B2", "C1", "C2"], do: target, else: native)
 
   defp context_block(""), do: ""
   defp context_block(context), do: "\n\nAdditional context about the student:\n#{context}\n"
@@ -61,54 +59,40 @@ defmodule DailyOutput.AI.Proofreader do
     do:
       "\n\nLanguage-specific conventions for #{profile.prompt_name}:\n#{LanguageProfile.conventions_block(profile)}\n"
 
-  # Shared prompt text for the focus-concept judgement, used by both the journal review and
-  # the end-of-conversation review. `scope` is the noun for the thing being judged ("entry"
-  # or "conversation"). Empty when no focus concept was set.
-  defp focus_instructions(focus_topic, _scope) when focus_topic in [nil, ""], do: ""
-
-  defp focus_instructions(focus_topic, scope) do
+  # The wrap-up asks shared by the journal proofread and the conversation review. `scope` is
+  # "entry" or "conversation".
+  defp review_instructions(%{"title" => title, "body" => body}, scope, native, feedback_lang) do
     """
+    "summary": one short sentence (at most 25 words) in #{native}, to the student ("you …"), on what this #{scope} was about, with a concrete detail or two (people, places, plans), so the next session can pick up where they left off.
 
-    The student chose to focus on this concept for this #{scope}: «#{focus_topic}»
-    You MUST include a focus_result. Judge focus usage by meaning, not exact keywords:
-    - used=true if they attempted the concept in any valid variant (inflection, paraphrase, synonym, equivalent connector, minor typo)
-    - used=false only if there is no attempt anywhere in the #{scope}
-    - correct=true only if used=true and the usage is correct in context
-    - if used=false, correct MUST be false; the comment MUST match the booleans, never praising correct usage when used=false
+    "focus_result": today's focus was «#{title}» (#{body}). Grade what the student wrote, not the corrected version. Judge by meaning, not exact keywords:
+    - used: did they attempt it anywhere in the #{scope}? Any inflection or variant counts.
+    - correct: every attempt was right as written. If any correction changes the focus itself, it's false; corrections elsewhere in a sentence don't count. Always false when not used.
+    - comment: one short sentence in #{feedback_lang} that matches the two booleans.
     """
   end
 
-  # Shared definition of what "commentary" is, so the journal and conversation reviews ask
-  # for the same thing.
-  defp commentary_instruction do
-    "AT MOST 2 pattern-level teaching points the student can turn into a future focus area, one short sentence each (max ~15 words), grounded in patterns the student actually repeated — a summary of the highest-value patterns, NOT a restatement of each correction. Return fewer or none if nothing pattern-level is worth practising."
-  end
-
+  @doc """
+  Proofreads a journal entry and grades today's `:focus` (the banner map). Returns
+  `{:ok, %{"annotated_text", "annotations", "summary", "focus_result"}}` or `{:error, reason}`.
+  """
   def proofread(text, opts) do
     target = Keyword.fetch!(opts, :target_language)
-    native = Keyword.fetch!(opts, :native_language)
+    native = LanguageProfile.resolve(Keyword.fetch!(opts, :native_language)).language_name
     level = Keyword.get(opts, :language_level, "B2")
-    context = Keyword.get(opts, :about_you, "")
-    focus_topic = Keyword.get(opts, :focus_topic)
     profile = LanguageProfile.resolve(target)
-
-    context_block = context_block(context)
-    focus_block = focus_instructions(focus_topic, "entry")
-    feedback_lang = feedback_lang(level, target, native)
-    language_conventions_block = language_conventions(profile)
+    feedback_lang = LanguageProfile.feedback_language(level, target, opts[:native_language])
 
     system = """
-    You are a #{profile.prompt_name} teacher proofreading a journal entry written by a #{native} speaker at CEFR level #{level}.#{language_conventions_block}
+    You are a #{profile.prompt_name} teacher proofreading a journal entry written by a native #{native} speaker at CEFR level #{level}.#{language_conventions(profile)}
 
     #{correction_goal(profile, native, level)}
 
     Respond with:
     1. "corrected" — the ENTIRE entry rewritten correctly and naturally. Change ONLY what needs fixing; keep every correct word, all punctuation, and all line breaks (including the blank lines between paragraphs) identical. Do NOT add any markup.
     2. "corrections" — one entry per change, in the order the changes appear, each with "before" (the student's original words, empty if you inserted), "after" (your correction, empty if you deleted), "type" (one of {#{Enum.join(@categories, ", ")}}), and "explanation" (5-10 words on what was wrong). Every change in "corrected" has exactly one entry here.
-    3. "commentary" — #{commentary_instruction()}
-
-    Write ALL explanation text in #{feedback_lang}.
-    #{context_block}#{focus_block}
+    3. #{review_instructions(Keyword.fetch!(opts, :focus), "entry", native, feedback_lang)}
+    Write ALL explanation text in #{feedback_lang}.#{context_block(Keyword.get(opts, :about_you, ""))}
     """
 
     with {:ok, client} <- AI.client(),
@@ -120,57 +104,37 @@ defmodule DailyOutput.AI.Proofreader do
                messages: [
                  %{role: "user", content: "Please proofread this journal entry:\n\n#{text}"}
                ],
-               schema: feedback_schema(focus_topic),
+               schema: journal_schema(),
                purpose: "proofread",
-               # A full-entry rewrite + a change list + commentary; 4096 keeps a long entry from
-               # truncating. max_tokens is a ceiling, not a cost (billed by real usage).
-               max_tokens: 4096
-             ] ++ Keyword.take(opts, [:model, :thinking])
+               # A ceiling, not a cost. A full-entry rewrite, its change list, and the reasoning
+               # all count; Luna used 1976 on a 90-word entry.
+               max_tokens: 8192
+             ] ++ Keyword.take(opts, [:model, :effort])
            ),
          {:ok, corrections} <- rewrite_feedback(input, text) do
-      {:ok, normalize_feedback(Map.merge(input, corrections))}
+      {:ok, Map.merge(corrections, normalize_review(input))}
     end
   end
 
   @doc """
-  End-of-conversation review — runs once when the student hits "Done".
+  Wraps up a finished conversation. Each message was already corrected as it was sent, so
+  this only writes the `summary` and grades today's `:focus`. `messages` is the transcript as
+  `%{role, body}` maps, with `feedback` on the student's.
 
-  Individual messages are already corrected inline as they are sent, so this does NOT
-  re-correct text. It only does the wrap-up work: distill at most 2 pattern-level teaching
-  points the student can turn into future focus areas (`commentary`), and judge whether the
-  focus concept was used (`focus_result`).
-
-  `messages` is the full transcript as a list of `%{role, body, feedback}` — each user
-  message's `feedback` (its inline corrections) is summarised into the prompt so the
-  review is grounded in the mistakes that actually happened, without re-finding them.
-
-  Returns `{:ok, %{"commentary" => [...], "focus_result" => ...}}`
-  (no `annotated_text`/`annotations`/`encouragement`) or `{:error, reason}`.
+  Returns `{:ok, %{"summary", "focus_result"}}` or `{:error, reason}`.
   """
   def assess_conversation(messages, opts) do
     target = Keyword.fetch!(opts, :target_language)
-    native = Keyword.fetch!(opts, :native_language)
+    native = LanguageProfile.resolve(Keyword.fetch!(opts, :native_language)).language_name
     level = Keyword.get(opts, :language_level, "B2")
-    context = Keyword.get(opts, :about_you, "")
-    focus_topic = Keyword.get(opts, :focus_topic)
     profile = LanguageProfile.resolve(target)
-
-    feedback_lang = feedback_lang(level, target, native)
-    context_block = context_block(context)
-    focus_block = focus_instructions(focus_topic, "conversation")
+    feedback_lang = LanguageProfile.feedback_language(level, target, opts[:native_language])
 
     system = """
-    You are a #{profile.prompt_name} teacher reviewing a finished casual conversation a #{native} speaker (CEFR level #{level}) just had.
+    You review a finished casual chat in #{profile.prompt_name} between a native #{native} speaker (CEFR level #{level}) and a partner. The student's messages were already corrected; their fixes are listed under each one. Don't correct anything.
 
-    The student's individual messages were ALREADY corrected inline as they were sent. Do NOT correct or rewrite their text again — that work is done.
-
-    Your only job is to distill future focus areas:
-    - "commentary": #{commentary_instruction()}
-    - If a focus concept was set, also judge whether they used it (focus_result).
-
-    Calibrate to #{level}: pick what will move them toward the next level.
-    Write ALL text in #{feedback_lang}.
-    #{context_block}#{focus_block}
+    Respond with:
+    #{review_instructions(Keyword.fetch!(opts, :focus), "conversation", native, feedback_lang)}
     """
 
     with {:ok, client} <- AI.client(),
@@ -179,74 +143,64 @@ defmodule DailyOutput.AI.Proofreader do
              client,
              [
                system: system,
-               messages: [%{role: "user", content: assessment_transcript(messages, profile)}],
-               schema: assessment_schema(focus_topic),
+               messages: [%{role: "user", content: assessment_transcript(messages)}],
+               schema: review_schema(),
                purpose: "assessment",
-               max_tokens: 512
-             ] ++ Keyword.take(opts, [:model, :thinking])
+               max_tokens: 1024
+             ] ++ Keyword.take(opts, [:model, :effort])
            ) do
-      {:ok, normalize_feedback(input)}
+      {:ok, normalize_review(input)}
     end
   end
 
-  # The full transcript, with each student message's already-applied corrections summarised
-  # below it (category: explanation) so the review is grounded without re-correcting.
-  defp assessment_transcript(messages, profile) do
-    lines =
-      Enum.map_join(messages, "\n", fn msg ->
-        speaker = if msg.role == "user", do: "Student", else: "Partner (#{profile.prompt_name})"
-        base = "#{speaker}: #{msg.body}"
+  # The transcript with each student message's fixes as before → after, so the focus grade
+  # sees what went wrong without the explanations.
+  defp assessment_transcript(messages) do
+    Enum.map_join(messages, "\n", fn
+      %{role: "user"} = msg ->
+        fixes =
+          (msg.feedback && msg.feedback["annotated_text"])
+          |> Markers.parse()
+          |> Enum.map_join("; ", &"#{&1.original} → #{&1.corrected}")
 
-        case msg.role == "user" && corrections_summary(msg) do
-          summary when is_binary(summary) and summary != "" ->
-            base <> "\n  (corrections already given — #{summary})"
+        if fixes == "",
+          do: "Student: #{msg.body}",
+          else: "Student: #{msg.body}\n  (fixed: #{fixes})"
 
-          _ ->
-            base
-        end
-      end)
-
-    "The finished conversation (each student message was already corrected inline):\n#{lines}\n"
+      msg ->
+        "Partner: #{msg.body}"
+    end)
   end
-
-  defp corrections_summary(%{feedback: %{"annotations" => anns}}) when is_list(anns) do
-    anns
-    |> Enum.map(fn a -> "#{a["category"]}: #{a["explanation"]}" end)
-    |> Enum.reject(&(&1 == ": "))
-    |> Enum.join("; ")
-  end
-
-  defp corrections_summary(_), do: ""
 
   @doc """
   Proofreads a single conversation message, right after the student sends it.
 
-  Unlike `proofread/2` (a journal entry) this is calibrated for casual chat: it only
-  flags real grammar/usage/spelling errors, never informal register, and each correction
-  is tagged with a `category` so we can later measure improvement within the conversation.
-  Prior turns are passed via `:context_messages` (a list of `%{role, body}`) so the model
-  understands what the student is replying to, but it corrects ONLY the latest message.
+  Unlike `proofread/2` (a journal entry) this is calibrated for casual chat: casual register
+  stays, but word-for-word translations get fixed. Each correction is tagged with a
+  `category` so we can later measure improvement within the conversation. Prior turns are
+  passed via `:context_messages` (a list of `%{role, body}`) so the model understands what
+  the student is replying to, but it corrects ONLY the latest message.
 
   Returns `{:ok, %{"annotated_text" => ..., "annotations" => [...]}}` or `{:error, reason}`.
   """
   def proofread_message(text, opts) do
     target = Keyword.fetch!(opts, :target_language)
-    native = Keyword.fetch!(opts, :native_language)
+    native = LanguageProfile.resolve(Keyword.fetch!(opts, :native_language)).language_name
     level = Keyword.get(opts, :language_level, "B2")
     context = Keyword.get(opts, :about_you, "")
     history = Keyword.get(opts, :context_messages, [])
     profile = LanguageProfile.resolve(target)
 
-    feedback_lang = feedback_lang(level, target, native)
+    feedback_lang = LanguageProfile.feedback_language(level, target, opts[:native_language])
     context_block = context_block(context)
     language_conventions_block = language_conventions(profile)
 
     system = """
-    You are a #{profile.prompt_name} teacher correcting one message a #{native} speaker (CEFR level #{level}) just sent in a casual chat.#{language_conventions_block}
+    You are a #{profile.prompt_name} teacher correcting one message a native #{native} speaker (CEFR level #{level}) just sent in a casual chat.#{language_conventions_block}
 
     #{correction_goal(profile, native, level)}
 
-    This is spoken-style chat, so don't flag informal register or contractions that are normal in speech — but DO flag phrasing that isn't idiomatic.
+    This is a casual text chat, so casual register is correct: dropped subjects, clipped or contracted words, and colloquial forms that natives type in chat are NOT mistakes. Leave them exactly as they are. A word-for-word translation from #{native} is different: it's a mistake, however casual the chat.
 
     Write ALL explanation text in #{feedback_lang}.
     #{context_block}
@@ -276,10 +230,9 @@ defmodule DailyOutput.AI.Proofreader do
                messages: [%{role: "user", content: user_content}],
                schema: message_schema(),
                purpose: "proofread_message",
-               # A rewrite of one chat message + a short change list; 1024 is plenty and caps a
-               # runaway. max_tokens is a ceiling, not a cost — billed by real usage.
-               max_tokens: 1024
-             ] ++ Keyword.take(opts, [:model, :thinking])
+               # A ceiling, not a cost. Reasoning counts against it, and Luna once used 613.
+               max_tokens: 2048
+             ] ++ Keyword.take(opts, [:model, :effort])
            ),
          {:ok, feedback} <- rewrite_feedback(input, text) do
       {:ok, normalize_message_feedback(feedback)}
@@ -292,7 +245,7 @@ defmodule DailyOutput.AI.Proofreader do
   def rewrite_feedback(%{"corrected" => corrected} = input, original)
       when is_binary(corrected) and corrected != "" do
     annotated = RewriteDiff.annotate(original, corrected, input["corrections"])
-    {:ok, parse_message_feedback(annotated, original)}
+    {:ok, parse_message_feedback(annotated)}
   end
 
   def rewrite_feedback(input, _original) do
@@ -370,29 +323,6 @@ defmodule DailyOutput.AI.Proofreader do
 
   def parse_message_feedback(_), do: %{"annotated_text" => "", "annotations" => []}
 
-  @doc """
-  Parses `output` and guards it against the known `original` message.
-
-  The one way the model misbehaves on ambiguous sentences is rambling/retracting in prose
-  (e.g. «actually this is correct…»), which injects a run of words the student never wrote.
-  We reduce every marker to its `before` side and reject only when several consecutive words
-  are foreign to `original`; isolated duplicates or spacing artifacts from many corrections are
-  fine, so a long, heavily-marked entry is not thrown away over one quirk.
-  """
-  def parse_message_feedback(output, original) when is_binary(output) and is_binary(original) do
-    parsed = parse_message_feedback(output)
-
-    if uncontaminated?(parsed["annotated_text"], original) do
-      parsed
-    else
-      Logger.warning(
-        "proofread: output injected prose the student never wrote; showing it uncorrected. output=#{inspect(output)}"
-      )
-
-      %{"annotated_text" => original, "annotations" => []}
-    end
-  end
-
   # Keep real markers inline, verbatim; drop a no-op marker (before == after) to plain text.
   defp render_markers(text) do
     @marker
@@ -429,52 +359,6 @@ defmodule DailyOutput.AI.Proofreader do
       _ -> :malformed
     end
   end
-
-  # Reduce markers to the student's original words; clean output has no run of foreign words.
-  # Injected prose is a contiguous run of words absent from the source; isolated artifacts are not.
-  @max_foreign_run 3
-  # With thinking disabled the model sometimes re-emits the whole message a second time
-  # (a visible "second attempt") instead of reasoning privately. Once markers are reduced
-  # to the student's own words, that doubles the word count — but every word is the
-  # student's, so longest_foreign_run can't see it. Guard on gross length inflation too:
-  # a faithful correction reduces back to ~the original length (insertions collapse to ""),
-  # so anything past 1.5x is duplication/garble → fall back to the uncorrected text.
-  @max_length_ratio 1.5
-  defp uncontaminated?(annotated_text, original) do
-    source_words = words(original)
-    source = MapSet.new(source_words)
-
-    reduced =
-      Regex.replace(@marker, annotated_text, fn whole, inner ->
-        case marker_parts(inner) do
-          {before, _after, _type, _expl} -> before
-          :malformed -> whole
-        end
-      end)
-
-    reduced_words = words(reduced)
-
-    longest_foreign_run(reduced_words, source) <= @max_foreign_run and
-      not length_inflated?(length(reduced_words), length(source_words))
-  end
-
-  defp length_inflated?(reduced_len, original_len) when original_len > 0,
-    do: reduced_len > round(original_len * @max_length_ratio)
-
-  defp length_inflated?(_reduced_len, _original_len), do: false
-
-  defp longest_foreign_run(words, source) do
-    {max, _run} =
-      Enum.reduce(words, {0, 0}, fn word, {max, run} ->
-        if MapSet.member?(source, word),
-          do: {max, 0},
-          else: {max(max, run + 1), run + 1}
-      end)
-
-    max
-  end
-
-  defp words(text), do: text |> String.downcase() |> String.split(~r/\s+/, trim: true)
 
   @doc """
   Normalizes per-message feedback to `%{"annotated_text", "annotations"}`.
@@ -514,262 +398,57 @@ defmodule DailyOutput.AI.Proofreader do
   defp normalize_category(_), do: "other"
 
   @doc false
-  def feedback_schema(focus_topic) do
-    base = %{
-      "corrected" => %{
-        "type" => "string",
-        "description" =>
-          "The ENTIRE entry rewritten correctly and naturally, keeping every correct word, all punctuation, and all line breaks identical. No markup."
-      },
-      "corrections" => %{"type" => "array", "items" => correction_item_schema()},
-      "commentary" => commentary_schema()
+  def journal_schema do
+    %{
+      "type" => "object",
+      "properties" =>
+        Map.merge(review_schema()["properties"], %{
+          "corrected" => %{
+            "type" => "string",
+            "description" =>
+              "The ENTIRE entry rewritten correctly and naturally, keeping every correct word, all punctuation, and all line breaks identical. No markup."
+          },
+          "corrections" => %{"type" => "array", "items" => correction_item_schema()}
+        }),
+      "required" => ["corrected", "corrections", "summary", "focus_result"],
+      "additionalProperties" => false
     }
-
-    with_focus_result(base, ["corrected", "corrections", "commentary"], focus_topic)
   end
 
   @doc false
-  def assessment_schema(focus_topic) do
-    with_focus_result(%{"commentary" => commentary_schema()}, ["commentary"], focus_topic)
-  end
-
-  # commentary + focus_result are identical for the journal review (feedback_schema) and the
-  # end-of-conversation review (assessment_schema), so both build from these shared fragments.
-  defp commentary_schema do
-    %{
-      "type" => "array",
-      "items" => %{
-        "type" => "object",
-        "properties" => %{
-          "type" => %{"type" => "string", "enum" => ["pattern", "suggestion", "alternative"]},
-          "text" => %{
-            "type" => "string",
-            "description" =>
-              "One pattern-level teaching point to turn into a focus area — one short sentence, max ~15 words"
-          }
-        },
-        "required" => ["type", "text"],
-        "additionalProperties" => false
-      }
-    }
-  end
-
-  defp focus_result_schema do
+  def review_schema do
     %{
       "type" => "object",
       "properties" => %{
-        "used" => %{
-          "type" => "boolean",
-          "description" =>
-            "Did the student attempt this concept anywhere? true for inflections/paraphrases/synonyms; exact keyword match is not required"
-        },
-        "correct" => %{
-          "type" => "boolean",
-          "description" =>
-            "If used=true, did they use it correctly in context? Must be false when used=false"
-        },
-        "comment" => %{
-          "type" => "string",
-          "description" => "Brief feedback consistent with used/correct booleans"
+        "summary" => %{"type" => "string", "description" => "One sentence: where they left off"},
+        "focus_result" => %{
+          "type" => "object",
+          "properties" => %{
+            "used" => %{"type" => "boolean"},
+            "correct" => %{"type" => "boolean", "description" => "Must be false when used=false"},
+            "comment" => %{"type" => "string"}
+          },
+          "required" => ["used", "correct", "comment"],
+          "additionalProperties" => false
         }
       },
-      "required" => ["used", "correct", "comment"],
+      "required" => ["summary", "focus_result"],
       "additionalProperties" => false
     }
   end
 
-  defp with_focus_result(properties, required, focus_topic) do
-    {properties, required} =
-      if focus_topic && focus_topic != "" do
-        {Map.put(properties, "focus_result", focus_result_schema()), required ++ ["focus_result"]}
-      else
-        {properties, required}
-      end
-
+  @doc false
+  def normalize_review(%{
+        "summary" => summary,
+        "focus_result" => %{"used" => used, "correct" => correct, "comment" => comment}
+      }) do
     %{
-      "type" => "object",
-      "properties" => properties,
-      "required" => required,
-      "additionalProperties" => false
+      "summary" => String.trim(summary),
+      "focus_result" => %{
+        "used" => used,
+        "correct" => used and correct,
+        "comment" => String.trim(comment)
+      }
     }
-  end
-
-  @doc """
-  Normalizes feedback fields, decoding any JSON strings that should be lists.
-  Called both when saving new feedback and when loading from the database.
-  """
-  def normalize_feedback(nil), do: nil
-
-  def normalize_feedback(feedback) do
-    base = %{
-      "annotated_text" => feedback["annotated_text"] || "",
-      "annotations" => decode_if_string(feedback["annotations"]) || [],
-      "commentary" => decode_if_string(feedback["commentary"]) || [],
-      "encouragement" => feedback["encouragement"] || ""
-    }
-
-    base
-    |> put_focus_result(feedback)
-    |> put_optional("improvement_note", feedback["improvement_note"])
-    |> put_optional("improvement", feedback["improvement"])
-  end
-
-  defp put_focus_result(base, feedback) do
-    case feedback["focus_result"] |> decode_focus_result() |> normalize_focus_result() do
-      nil -> base
-      focus_result -> Map.put(base, "focus_result", focus_result)
-    end
-  end
-
-  # Carry an optional field through normalization only when it actually has content.
-  defp put_optional(map, _key, nil), do: map
-  defp put_optional(map, _key, ""), do: map
-  defp put_optional(map, key, value), do: Map.put(map, key, value)
-
-  defp normalize_focus_result(nil), do: nil
-
-  defp normalize_focus_result(%{} = result) do
-    used = normalize_bool(Map.get(result, "used"))
-    correct = normalize_bool(Map.get(result, "correct"))
-
-    result
-    |> Map.put("used", used)
-    |> Map.put("correct", if(used, do: correct, else: false))
-  end
-
-  defp decode_focus_result(nil), do: nil
-
-  defp decode_focus_result(%{} = result), do: result
-
-  defp decode_focus_result(result) when is_list(result) do
-    Enum.find(result, &is_map/1)
-  end
-
-  defp decode_focus_result(result) when is_binary(result) do
-    trimmed = String.trim(result)
-
-    case Jason.decode(trimmed) do
-      {:ok, %{} = decoded} ->
-        decoded
-
-      {:ok, [%{} = first | _]} ->
-        first
-
-      _ ->
-        parsed =
-          trimmed
-          |> String.trim_leading("[")
-          |> String.trim_trailing("]")
-          |> lenient_parse_object()
-
-        if map_size(parsed) > 0, do: parsed, else: nil
-    end
-  end
-
-  defp decode_focus_result(_), do: nil
-
-  defp normalize_bool(true), do: true
-  defp normalize_bool(false), do: false
-
-  defp normalize_bool(value) when is_binary(value) do
-    case String.downcase(String.trim(value)) do
-      "true" -> true
-      "1" -> true
-      "yes" -> true
-      "y" -> true
-      "ja" -> true
-      _ -> false
-    end
-  end
-
-  defp normalize_bool(1), do: true
-  defp normalize_bool(_), do: false
-
-  defp decode_if_string(val) when is_binary(val) do
-    case Jason.decode(val) do
-      {:ok, decoded} ->
-        decoded
-
-      {:error, _} ->
-        # The model sometimes returns arrays as strings with unescaped quotes
-        # inside text values (e.g. German „App" where " is U+0022).
-        # Jason can't parse these, so we split by object boundaries and
-        # extract key-value pairs manually.
-        lenient_parse_json_array(val)
-    end
-  end
-
-  defp decode_if_string(val), do: val
-
-  defp lenient_parse_json_array(str) do
-    trimmed = str |> String.trim() |> String.trim_leading("[") |> String.trim_trailing("]")
-
-    if String.trim(trimmed) == "" do
-      []
-    else
-      trimmed
-      |> String.split(~r/\}\s*,\s*\{/)
-      |> Enum.map(&lenient_parse_object/1)
-      |> Enum.filter(&(map_size(&1) > 0))
-    end
-  end
-
-  defp lenient_parse_object(chunk) do
-    chunk = chunk |> String.trim() |> String.trim_leading("{") |> String.trim_trailing("}")
-
-    # Find all "key": positions
-    key_positions =
-      Regex.scan(~r/"(\w+)"\s*:\s*/, chunk, return: :index)
-      |> Enum.map(fn [{full_start, full_len}, {key_start, key_len}] ->
-        key = String.slice(chunk, key_start, key_len)
-        value_start = full_start + full_len
-        {key, value_start}
-      end)
-
-    key_positions
-    |> Enum.with_index()
-    |> Enum.reduce(%{}, fn {{key, val_start}, idx}, acc ->
-      # Value extends until the next key's pattern or end of chunk
-      next_key_start =
-        case Enum.at(key_positions, idx + 1) do
-          {_, next_start} ->
-            # Back up past the comma and whitespace before the next key
-            chunk
-            |> String.slice(0, next_start)
-            |> String.replace(~r/,\s*"[^"]*"\s*:\s*\z/, "")
-            |> String.length()
-
-          nil ->
-            String.length(chunk)
-        end
-
-      raw_value = String.slice(chunk, val_start, next_key_start - val_start) |> String.trim()
-
-      value =
-        cond do
-          # Number
-          Regex.match?(~r/\A\d+\z/, raw_value) ->
-            String.to_integer(raw_value)
-
-          # Boolean
-          raw_value == "true" ->
-            true
-
-          raw_value == "false" ->
-            false
-
-          # String — strip surrounding quotes and clean up residual escapes
-          String.starts_with?(raw_value, "\"") ->
-            raw_value
-            |> String.trim_leading("\"")
-            |> String.trim_trailing("\"")
-            |> String.replace("\\\"", "\"")
-
-          true ->
-            raw_value
-        end
-
-      Map.put(acc, key, value)
-    end)
   end
 end

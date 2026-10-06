@@ -252,11 +252,6 @@ msgstr ""
 msgid "Timed writing entries"
 msgstr ""
 
-#: lib/daily_output_web/components/journal_components.ex
-#, elixir-autogen, elixir-format
-msgid "Tips"
-msgstr ""
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "UI Language"
@@ -873,11 +868,6 @@ msgstr ""
 msgid "Reviewing"
 msgstr ""
 
-#: lib/daily_output_web/live/progress_live.ex
-#, elixir-autogen, elixir-format
-msgid "Estimated Anthropic API spend per day, by feature. The last 7 days."
-msgstr ""
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Appearance"
@@ -948,11 +938,6 @@ msgstr ""
 msgid "Flashcards from your mistakes"
 msgstr ""
 
-#: lib/daily_output_web/live/about_live.ex
-#, elixir-autogen, elixir-format
-msgid "Phoenix LiveView and SQLite, with AI from Claude Sonnet 5.5 or GPT-5.6 Luna."
-msgstr ""
-
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "Score %{score}"
@@ -976,4 +961,24 @@ msgstr ""
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
 msgid "e.g. I sing in a choir, I'm moving to Zurich, and I struggle with verb tenses."
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Daily focus"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Openers and prompts"
+msgstr ""
+
+#: lib/daily_output_web/live/progress_live.ex
+#, elixir-autogen, elixir-format
+msgid "Estimated AI spend per day, by feature. The last 7 days."
+msgstr ""
+
+#: lib/daily_output_web/live/about_live.ex
+#, elixir-autogen, elixir-format
+msgid "Phoenix LiveView and SQLite, with AI from GPT-6.1 Sol or GPT-6 Luna."
 msgstr ""

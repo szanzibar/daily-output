@@ -56,6 +56,15 @@ defmodule DailyOutput.AI.LanguageProfile do
     Map.merge(base_profile, Map.get(@profiles, code, %{}))
   end
 
+  @doc """
+  The language every explanation the student reads is written in: the target language from
+  B2 up, their native language below that. A name, never a code, so prompts read naturally.
+  """
+  def feedback_language(level, target, _native) when level in ~w(B2 C1 C2),
+    do: resolve(target).prompt_name
+
+  def feedback_language(_level, _target, native), do: resolve(native).language_name
+
   def conventions_block(profile) do
     profile.conventions
     |> Enum.map(&"- #{&1}")

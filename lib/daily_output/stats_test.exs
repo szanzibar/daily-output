@@ -75,9 +75,9 @@ defmodule DailyOutput.StatsTest do
   describe "usage_by_day/1" do
     test "one ascending row per day; today is split by purpose, highest cost first" do
       today = Clock.today()
-      # Sonnet 5.5 pricing: $2/M input, $10/M output.
-      log_usage("flashcards", "claude-sonnet-5-5", input: 1_000_000)
-      log_usage("proofread", "claude-sonnet-5-5", output: 1_000_000)
+      # Sol pricing: $2/M input, $10/M output.
+      log_usage("flashcards", "gpt-6.1-sol", input: 1_000_000)
+      log_usage("proofread", "gpt-6.1-sol", output: 1_000_000)
 
       days = Stats.usage_by_day(7)
 
@@ -99,18 +99,19 @@ defmodule DailyOutput.StatsTest do
     end
   end
 
-  describe "cost/5" do
-    test "prices Sonnet 5.5 and GPT-5.6 Luna by their direct and OpenRouter ids" do
-      for model <- ["claude-sonnet-5-5", "anthropic/claude-sonnet-5.5"] do
-        assert_in_delta Stats.cost(model, 1_000_000, 1_000_000, 1_000_000, 1_000_000),
-                        14.7,
-                        1.0e-9
+  describe "cost/4" do
+    test "prices each tier by its direct and OpenRouter ids, cached input at the cache rate" do
+      # 1M input, half of it cached, and 1M output.
+      for model <- ["gpt-6.1-sol", "openai/gpt-6.1-sol"] do
+        assert_in_delta Stats.cost(model, 1_000_000, 1_000_000, 500_000), 11.05, 1.0e-9
       end
 
-      for model <- ["gpt-5.6-luna", "openai/gpt-5.6-luna"] do
-        assert_in_delta Stats.cost(model, 1_000_000, 1_000_000, 1_000_000, 1_000_000),
-                        1.67,
-                        1.0e-9
+      for model <- ["gpt-6-luna", "openai/gpt-6-luna"] do
+        assert_in_delta Stats.cost(model, 1_000_000, 1_000_000, 500_000), 0.555, 1.0e-9
+      end
+
+      for model <- ["claude-sonnet-5-5", "anthropic/claude-sonnet-5.5"] do
+        assert_in_delta Stats.cost(model, 1_000_000, 1_000_000, 500_000), 11.1, 1.0e-9
       end
     end
   end

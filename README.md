@@ -2,7 +2,7 @@
 
 **Write and speak in your target language every day, get instant level-appropriate corrections — then drill your own mistakes as flashcards.**
 
-A self-hosted, single-user language-practice journal built with Phoenix LiveView and SQLite. AI runs through [ReqLLM](https://hex.pm/packages/req_llm) — **Claude Sonnet 5.5 by default, or GPT-5.6 Luna** — direct or via OpenRouter. Installable as a PWA. Brutalist UI, no external design system.
+A self-hosted, single-user language-practice journal built with Phoenix LiveView and SQLite. AI runs through [ReqLLM](https://hex.pm/packages/req_llm) — **GPT-6.1 Sol by default, or GPT-6 Luna** — direct or via OpenRouter. Installable as a PWA. Brutalist UI, no external design system.
 
 ## Why
 
@@ -18,7 +18,7 @@ The only way to get better at a language is to produce output — writing and sp
 - **Streaks** — a daily challenge (one entry + one conversation) with tiered streaks and earned freezes so one missed day doesn't reset you.
 - **Progress** — words written and corrections per 100 words over time, plus your daily AI spend.
 - **Daily reminders** — opt-in push notifications, managed per device.
-- **Choice of model** — Claude Sonnet 5.5 (default) or GPT-5.6 Luna, via each vendor's native API or OpenRouter.
+- **Choice of model** — GPT-6.1 Sol (default) or GPT-6 Luna, via OpenAI's native API or OpenRouter.
 - **Installable PWA** — add to your home screen; English/German UI that switches to your target language at B1+.
 
 ## Screenshots
@@ -40,9 +40,9 @@ services:
     ports:
       - "${PORT:-4000}:4000"
     environment:
-      # The AI key for the model/provider you pick in Settings. Default is Sonnet 5.5:
-      ANTHROPIC_API_KEY: "sk-ant-your-key"
-      # ...or use OPENAI_API_KEY (GPT-5.6 Luna) / OPENROUTER_API_KEY instead.
+      # The AI key for the provider you pick in Settings. Default is OpenAI's own API:
+      OPENAI_API_KEY: "sk-your-key"
+      # ...or use OPENROUTER_API_KEY instead.
       # Public hostname your reverse proxy serves (used for HTTPS origin checks):
       PHX_HOST: "example.com"
     volumes:
@@ -60,19 +60,20 @@ That's it. On first boot the container generates its `SECRET_KEY_BASE`, creates 
 
 ## Configuration
 
-The only thing DailyOutput needs is **one AI key**, matching the model + provider you choose in Settings:
+The only thing DailyOutput needs is **one AI key**, matching the provider you choose in Settings:
 
-| Model | Provider | Key |
-|---|---|---|
-| Claude Sonnet 5.5 *(default)* | Native API | `ANTHROPIC_API_KEY` |
-| GPT-5.6 Luna | Native API | `OPENAI_API_KEY` |
-| either | OpenRouter | `OPENROUTER_API_KEY` |
+| Provider | Key |
+|---|---|
+| Native API *(default)* | `OPENAI_API_KEY` |
+| OpenRouter | `OPENROUTER_API_KEY` |
+
+`ANTHROPIC_API_KEY` is optional. It's only used if you point a model at Anthropic, like `mix run scripts/bench.exs anthropic:claude-sonnet-5-5`.
 
 Everything else is set on the in-app **Settings** page:
 
 | Setting | Description |
 |---|---|
-| AI model & provider | Claude Sonnet 5.5 or GPT-5.6 Luna; native API or OpenRouter |
+| AI model & provider | GPT-6.1 Sol or GPT-6 Luna; native API or OpenRouter |
 | Timer & exchanges | Minutes per entry; minimum conversation turns to complete |
 | Flashcards per day | Target number of cards that make a full flashcard day |
 | Target / native language | The language you're learning and your first language |
@@ -96,7 +97,7 @@ Requires Elixir `~> 1.15` (with Erlang/OTP) and Node.js (for the JS test suite).
 
 ```bash
 mix setup                # deps, DB, assets
-cp .env.example .env      # add an AI key — ANTHROPIC_API_KEY by default
+cp .env.example .env      # add an AI key — OPENAI_API_KEY by default
 mix phx.server            # http://localhost:4000
 ```
 
@@ -107,17 +108,17 @@ mix test        # colocated with source under lib/
 mix precommit   # compile (warnings as errors), format, full test suite
 ```
 
-Before changing a prompt or the default model, run the benchmark. It sends fixed fixtures through every AI purpose and writes `tmp/bench/<model>-<thinking>.json` with outputs, latency, tokens, and cost:
+Before changing a prompt or the default model, run the benchmark. It sends fixed fixtures through every AI purpose and writes `tmp/bench/<model>-<effort>.json` with outputs, latency, tokens, and cost:
 
 ```bash
-mix run scripts/bench.exs anthropic:claude-sonnet-5-5 --thinking off
+mix run scripts/bench.exs openai:gpt-6.1-sol
 ```
 
 ### Architecture
 
 - **Phoenix LiveView** — every page is a stateful LiveView; no REST API.
 - **Ecto + SQLite** — a single file-based database, no Postgres.
-- **ReqLLM** — one client across providers (Anthropic, OpenAI, OpenRouter).
+- **ReqLLM** — one client across providers (OpenAI, OpenRouter, Anthropic).
 - **Tailwind v4** — a custom brutalist theme; JS is limited to DOM measurement and textarea auto-expand.
 - **Gettext** — English source strings, German translations.
 

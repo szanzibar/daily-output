@@ -21,13 +21,15 @@ defmodule DailyOutput.AI.RewriteDiff do
 
   @doc """
   Builds `annotated_text` for `original` given the model's `corrected` rewrite and its
-  `corrections` list (`[%{"after" => ..., "type" => ..., "explanation" => ...}]`, `"before"`
-  optional). Spans come from the diff; type/explanation are matched to each span from the list.
+  `corrections` list (`[%{"before" => ..., "after" => ..., "type" => ..., "explanation" => ...}]`).
+  Spans come from the diff; type/explanation are matched to each span from the list.
   """
   def annotate(original, corrected, corrections)
       when is_binary(original) and is_binary(corrected) do
-    regions = regions(original, corrected)
-    metas = match(regions, List.wrap(corrections))
+    orig = tokens_with_offsets(original)
+    corr = Enum.map(tokens_with_offsets(corrected), & &1.text)
+    regions = regions(orig, corr, byte_size(original))
+    metas = match(regions, orig, corr, List.wrap(corrections))
 
     {out, cursor} =
       regions
@@ -48,20 +50,6 @@ defmodule DailyOutput.AI.RewriteDiff do
 
   def annotate(original, _corrected, _corrections), do: original
 
-  @doc """
-  The ordered list of `%{"before" => ..., "after" => ...}` changes between `original` and
-  `corrected` — the diff regions themselves, with no explanations. This is what a two-call flow
-  hands to the "explain each change" step: the diff (not the model) decides the change list, so
-  every change gets labelled exactly once, in order.
-  """
-  def changes(original, corrected) when is_binary(original) and is_binary(corrected) do
-    original
-    |> regions(corrected)
-    |> Enum.map(&%{"before" => &1.before, "after" => &1.after})
-  end
-
-  def changes(_original, _corrected), do: []
-
   defp marker(before, after_, %{"type" => type, "explanation" => expl}) do
     "[[#{before}||#{after_}||#{type}||#{String.trim(expl)}]]"
   end
@@ -69,14 +57,11 @@ defmodule DailyOutput.AI.RewriteDiff do
   # ── Region diff ─────────────────────────────────────────────────────────────
   # Word tokens of the original carry their byte offset so the rebuild preserves every
   # original space/newline outside a region. The rewrite is compared by word text only.
-  defp regions(original, corrected) do
-    orig = tokens_with_offsets(original)
-    corr = Enum.map(tokens_with_offsets(corrected), & &1.text)
+  defp regions(orig, corr, orig_bytes) do
     a = orig |> Enum.map(& &1.text) |> List.to_tuple()
-    b = List.to_tuple(corr)
-    {ai, bi} = lcs(a, b)
+    {ai, bi} = lcs(a, List.to_tuple(corr))
 
-    build_regions(orig, corr, Enum.zip(ai, bi), byte_size(original))
+    build_regions(orig, corr, Enum.zip(ai, bi), orig_bytes)
   end
 
   # Walk matched (orig_idx, corr_idx) pairs; between two anchors, the original words in the gap
@@ -115,7 +100,16 @@ defmodule DailyOutput.AI.RewriteDiff do
           {first.start, last.start + last.len}
       end
 
-    [%{before: before, after: after_, start: start, stop: stop} | regions]
+    region = %{
+      before: before,
+      after: after_,
+      start: start,
+      stop: stop,
+      orig: {oi, mo},
+      corr: {ci, mc}
+    }
+
+    [region | regions]
   end
 
   defp tokens_with_offsets(text) do
@@ -125,27 +119,55 @@ defmodule DailyOutput.AI.RewriteDiff do
   end
 
   # ── Metadata matching ─────────────────────────────────────────────────────
-  # Attach each region's {type, explanation} from the model's change list by WORD OVERLAP:
-  # the correction sharing the most words with the region's before∪after wins. No position/
-  # order fallback — on a long entry the model's list rarely lines up 1:1 with the diff's
-  # regions, and grabbing "the next one" mislabels a span (a wrong explanation is worse than
-  # none). Overlap also makes it order-independent, lets one correction cover a split span, and
-  # matches a move's strike-half ("sich" deleted here) to its insertion correction ("sich"). A
-  # region no correction overlaps stays unexplained rather than mislabelled.
-  defp match(regions, corrections) do
+  # Each correction is located in the text (`before` among the original words, `after` among
+  # the rewrite's), so a repeated word like a moved "ich" takes its own sentence's explanation.
+  # A region nothing was located at falls back to the correction sharing the most words.
+  defp match(regions, orig, corr, corrections) do
+    orig_words = Enum.map(orig, &normalize(&1.text))
+    corr_words = Enum.map(corr, &normalize/1)
+
+    {located, _} =
+      Enum.map_reduce(corrections, {0, 0}, fn c, {from_o, from_c} ->
+        o = find_span(orig_words, needle(c["before"]), from_o)
+        k = find_span(corr_words, needle(c["after"]), from_c)
+        {{c, o, k}, {next(o, from_o), next(k, from_c)}}
+      end)
+
     Enum.map(regions, fn r ->
       target = wordset(r.before, r.after)
+      here = for {c, o, k} <- located, overlaps?(r.orig, o) or overlaps?(r.corr, k), do: c
 
-      corrections
-      |> Enum.map(fn c -> {overlap(target, wordset(c["before"], c["after"])), c} end)
-      |> Enum.filter(fn {n, _c} -> n > 0 end)
-      |> Enum.max_by(fn {n, _c} -> n end, fn -> nil end)
+      if(here == [], do: corrections, else: here)
+      |> Enum.map(fn c ->
+        words = wordset(c["before"], c["after"])
+        {overlap(target, words), -MapSet.size(words), c}
+      end)
+      |> Enum.filter(fn {shared, _, _} -> shared > 0 end)
+      |> Enum.max_by(fn {shared, smaller, _} -> {shared, smaller} end, fn -> nil end)
       |> case do
-        {_n, c} -> meta(c)
+        {_, _, c} -> meta(c)
         nil -> %{"type" => "other", "explanation" => ""}
       end
     end)
   end
+
+  defp find_span(_words, [], _from), do: nil
+
+  defp find_span(words, needle, from) do
+    span = fn from ->
+      Enum.find_value(from..(length(words) - length(needle))//1, fn i ->
+        if Enum.slice(words, i, length(needle)) == needle, do: {i, i + length(needle)}
+      end)
+    end
+
+    span.(from) || span.(0)
+  end
+
+  defp next(nil, from), do: from
+  defp next({start, _stop}, _from), do: start + 1
+
+  defp overlaps?({a, b}, {s, e}), do: a < e and s < b
+  defp overlaps?(_range, nil), do: false
 
   defp meta(c) do
     %{
@@ -154,9 +176,15 @@ defmodule DailyOutput.AI.RewriteDiff do
     }
   end
 
-  defp wordset(a, b), do: MapSet.new(words(a) ++ words(b))
-  defp words(nil), do: []
-  defp words(s), do: s |> to_string() |> String.downcase() |> String.split(~r/\s+/, trim: true)
+  defp needle(nil), do: []
+
+  defp needle(s),
+    do: s |> to_string() |> String.split(~r/\s+/, trim: true) |> Enum.map(&normalize/1)
+
+  # Case- and punctuation-blind, so "müde." in the text matches "müde" in a correction.
+  defp normalize(word), do: word |> String.downcase() |> String.replace(~r/^\p{P}+|\p{P}+$/u, "")
+
+  defp wordset(a, b), do: MapSet.new(needle(a) ++ needle(b)) |> MapSet.delete("")
   defp overlap(a, b), do: MapSet.size(MapSet.intersection(a, b))
 
   # ── Longest common subsequence of two word tuples (case-sensitive) ──────────

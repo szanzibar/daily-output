@@ -53,6 +53,33 @@ defmodule DailyOutput.Flashcards.Markers do
     end)
   end
 
+  @doc """
+  The corrected sentences that had a substantive correction, so a card never drills a
+  sentence the student already got right.
+  """
+  def mistake_sentences(text) when is_binary(text) do
+    # A control char flags each fix, so the sentence split runs on plain corrected text.
+    Regex.replace(@marker, text, fn whole, inner ->
+      case parts(inner) do
+        {before, after_, _type, _expl} ->
+          if before == after_ or capitalization_only?(before, after_),
+            do: after_,
+            else: "\u0001" <> after_
+
+        :malformed ->
+          whole
+      end
+    end)
+    |> String.split(~r/(?<=[.!?])\s+|\n/u, trim: true)
+    |> Enum.filter(&String.contains?(&1, "\u0001"))
+    |> Enum.map(
+      &(&1
+        |> String.replace("\u0001", "")
+        |> String.replace(~r/\s+/u, " ")
+        |> String.trim())
+    )
+  end
+
   # Inner of a marker -> {before, after, type, explanation}; trailing fields default so a
   # 2- or 3-field marker still parses. Mirrors `AI.Proofreader.marker_parts/1`.
   defp parts(inner) do
