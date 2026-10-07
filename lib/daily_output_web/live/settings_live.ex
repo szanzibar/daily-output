@@ -329,10 +329,10 @@ defmodule DailyOutputWeb.SettingsLive do
               ]}>
                 {if(api_key_ok?(@config), do: gettext("Key set"), else: gettext("Key missing"))}
               </span>
-              <span class="text-sm text-base-content/60">{required_env_var(@config)}</span>
+              <span class="text-sm text-base-content/60">{DailyOutput.AI.key_var(@config)}</span>
             </div>
             <p :if={!api_key_ok?(@config)} class="text-xs text-base-content/60 font-mono">
-              {gettext("Set %{var} in your .env file.", var: required_env_var(@config))}
+              {gettext("Set %{var} in your .env file.", var: DailyOutput.AI.key_var(@config))}
             </p>
           </div>
         </div>
@@ -523,16 +523,5 @@ defmodule DailyOutputWeb.SettingsLive do
     [{gettext("Native API"), "direct"}, {"OpenRouter", "openrouter"}]
   end
 
-  # Which provider the current choice routes to; AI.spec_for/2 is the single source of truth,
-  # so the key status can't drift from what a call actually uses.
-  defp required_provider(config) do
-    DailyOutput.AI.spec_for(config.ai_provider, config.ai_model)
-    |> String.split(":", parts: 2)
-    |> hd()
-    |> String.to_existing_atom()
-  end
-
-  defp required_env_var(config), do: DailyOutput.AI.api_key_var(required_provider(config))
-
-  defp api_key_ok?(config), do: DailyOutput.AI.api_key_set?(required_provider(config))
+  defp api_key_ok?(config), do: is_nil(DailyOutput.AI.missing_key_var(config))
 end

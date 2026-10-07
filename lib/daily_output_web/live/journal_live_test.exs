@@ -83,5 +83,18 @@ defmodule DailyOutputWeb.JournalLiveTest do
 
     assert has_element?(view, "#finish-error")
     assert has_element?(view, "#journal-editor", "Am Samstag bin ich gewandert.")
+
+    expect_ai(%{
+      "corrected" => "Am Samstag bin ich gewandert.",
+      "corrections" => [],
+      "summary" => "You went hiking.",
+      "focus_result" => %{"used" => true, "correct" => true, "comment" => "Richtig!"}
+    })
+
+    view |> element("#finish-error button") |> render_click()
+    assert has_element?(view, "#finish-loading")
+    render_async(view)
+
+    assert has_element?(view, "#results #journal-corrections")
   end
 end

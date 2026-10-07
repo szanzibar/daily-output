@@ -162,6 +162,7 @@ msgstr "Partner"
 msgid "Save"
 msgstr "Speichern"
 
+#: lib/daily_output_web/components/activity_components.ex
 #: lib/daily_output_web/components/layouts.ex
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -878,7 +879,6 @@ msgid "Send"
 msgstr "Senden"
 
 #: lib/daily_output_web/components/activity_components.ex
-#: lib/daily_output_web/components/translatable_text.ex
 #, elixir-autogen, elixir-format
 msgid "Try again"
 msgstr "Nochmal versuchen"
@@ -1041,3 +1041,8 @@ msgstr[1] "%{count} Karten fällig"
 #, elixir-autogen, elixir-format
 msgid "Freezes full"
 msgstr "Joker voll"
+
+#: lib/daily_output_web/components/activity_components.ex
+#, elixir-autogen, elixir-format
+msgid "No AI key is set. Add %{var} to the server's environment and restart."
+msgstr "Kein KI-Schlüssel gesetzt. Füge %{var} zur Umgebung des Servers hinzu und starte ihn neu."

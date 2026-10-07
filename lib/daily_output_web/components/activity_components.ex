@@ -9,7 +9,7 @@ defmodule DailyOutputWeb.ActivityComponents do
 
   import DailyOutputWeb.CoreComponents, only: [icon: 1, rich_text: 1]
 
-  alias DailyOutput.Markers
+  alias DailyOutput.{AI, Markers}
   alias DailyOutputWeb.TranslatableText
 
   @doc "An activity's page. A finished one shows its results, so History links here too."
@@ -59,23 +59,46 @@ defmodule DailyOutputWeb.ActivityComponents do
     """
   end
 
-  @doc "The one error state every AI call gets. Retry sends `retry` to the page."
+  @doc """
+  The one error state every AI call gets. Retry sends `retry` to `target`, or the page. With
+  no API key set it says which one to add instead, because retrying can't help.
+  """
   attr :id, :string, required: true
   attr :message, :string, required: true
+  attr :inline, :boolean, default: false, doc: "a quiet line under one message, not a box"
+  attr :target, :any, default: nil
 
   def ai_error(assigns) do
+    assigns = assign(assigns, missing_key: AI.missing_key_var())
+
     ~H"""
     <div
       id={@id}
-      class="border-4 border-ink block-red p-4 flex flex-wrap items-center justify-between gap-3"
+      class={
+        if @inline,
+          do: "chat-checking",
+          else: "border-4 border-ink block-red p-4 flex flex-wrap items-center justify-between gap-3"
+      }
     >
-      <p class="font-bold text-sm">{@message}</p>
+      <p :if={@missing_key} id={"#{@id}-missing-key"} class={!@inline && "font-bold text-sm"}>
+        {gettext("No AI key is set. Add %{var} to the server's environment and restart.",
+          var: @missing_key
+        )}
+        <.link navigate={~p"/settings"} class="underline">{gettext("Settings")}</.link>
+      </p>
+      <p :if={!@missing_key} class={!@inline && "font-bold text-sm"}>{@message}</p>
       <button
+        :if={!@missing_key}
         type="button"
         phx-click="retry"
-        class="brutal-btn px-4 py-2 text-sm block-yellow inline-flex items-center gap-2"
+        phx-target={@target}
+        class={
+          if @inline,
+            do: "underline font-black cursor-pointer",
+            else: "brutal-btn px-4 py-2 text-sm block-yellow inline-flex items-center gap-2"
+        }
       >
-        <.icon name="hero-arrow-path" class="size-4" /> {gettext("Try again")}
+        <.icon :if={!@inline} name="hero-arrow-path" class="size-4" /> {gettext("Try again")}
       </button>
     </div>
     """
@@ -146,12 +169,12 @@ defmodule DailyOutputWeb.ActivityComponents do
                 {gettext("checking")}
                 <span class="chat-mini-blocks"><span></span><span></span><span></span></span>
               </div>
-              <div :if={msg.id in @failed} id={"correction-error-#{msg.id}"} class="chat-checking">
-                {gettext("Couldn't check this one.")}
-                <button type="button" phx-click="retry" class="underline font-black">
-                  {gettext("Try again")}
-                </button>
-              </div>
+              <.ai_error
+                :if={msg.id in @failed}
+                id={"correction-error-#{msg.id}"}
+                message={gettext("Couldn't check this one.")}
+                inline
+              />
             </div>
         <% end %>
       <% end %>

@@ -10,6 +10,7 @@ defmodule DailyOutputWeb.TranslatableText do
   use Gettext, backend: DailyOutputWeb.Gettext
 
   import DailyOutputWeb.CoreComponents, only: [icon: 1]
+  import DailyOutputWeb.ActivityComponents, only: [ai_error: 1]
 
   alias DailyOutput.Settings
   alias DailyOutput.AI.Translator
@@ -78,17 +79,12 @@ defmodule DailyOutputWeb.TranslatableText do
               <span></span><span></span><span></span>
             </span>
           <% :failed -> %>
-            <p id={"#{@id}-error"} class="chat-checking">
-              {gettext("Couldn't translate this.")}
-              <button
-                type="button"
-                phx-click="retry"
-                phx-target={@myself}
-                class="underline font-black cursor-pointer"
-              >
-                {gettext("Try again")}
-              </button>
-            </p>
+            <.ai_error
+              id={"#{@id}-error"}
+              message={gettext("Couldn't translate this.")}
+              inline
+              target={@myself}
+            />
           <% translation -> %>
             <p id={"#{@id}-text"} class="text-[0.9em] font-medium opacity-70">{translation}</p>
         <% end %>

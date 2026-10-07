@@ -27,7 +27,12 @@ defmodule DailyOutput.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: DailyOutput.Supervisor]
-    Supervisor.start_link(children, opts)
+    {:ok, pid} = Supervisor.start_link(children, opts)
+
+    # Releases only, right after they migrate: the key follows the model picked in Settings,
+    # and dev keeps Phoenix's pending-migrations page.
+    unless skip_migrations?(), do: DailyOutput.AI.warn_if_key_missing()
+    {:ok, pid}
   end
 
   # Generates/loads the VAPID keypair right after migrations, before we serve

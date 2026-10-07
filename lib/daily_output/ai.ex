@@ -1,7 +1,7 @@
 defmodule DailyOutput.AI do
   @moduledoc """
   AI context wrapping ReqLLM. Every call goes through `chat/1`, which picks the model, sets
-  its reasoning effort, and records usage for cost tracking.
+  its reasoning effort, records usage for cost tracking, and logs one line per call.
 
   Settings offers two models, GPT-6.1 Sol (default) and GPT-6 Luna, each reached directly or
   through OpenRouter (see `spec_for/2`). Anthropic stays wired up for the bench and the next
@@ -27,6 +27,29 @@ defmodule DailyOutput.AI do
   @doc "The env var that holds `provider`'s API key."
   def api_key_var(provider), do: Map.fetch!(@key_vars, provider)
 
+  @doc "The env var the model picked in Settings reads its API key from."
+  def key_var(config), do: api_key_var(selected_provider(config))
+
+  @doc "`key_var/1` when that key isn't set, so every AI call fails. Nil when it is."
+  def missing_key_var(config \\ Settings.get_config()) do
+    provider = selected_provider(config)
+    if !api_key_set?(provider), do: api_key_var(provider)
+  end
+
+  @doc "Warns at boot when the model picked in Settings has no API key."
+  def warn_if_key_missing do
+    if var = missing_key_var() do
+      Logger.warning(
+        "AI: #{var} is not set, so AI features won't work until you set it and restart."
+      )
+    end
+  end
+
+  defp selected_provider(config) do
+    {provider, _model_id} = parse_spec(spec_for(config.ai_provider, config.ai_model))
+    provider
+  end
+
   defp get_api_key(provider) do
     case Application.get_env(:daily_output, :"#{provider}_api_key") ||
            System.get_env(@key_vars[provider]) do
@@ -45,13 +68,31 @@ defmodule DailyOutput.AI do
   def chat(opts) do
     {purpose, opts} = Keyword.pop!(opts, :purpose)
     {provider, model_id} = resolve_model(opts)
+    started = System.monotonic_time(:millisecond)
 
-    with {:ok, api_key} <- get_api_key(provider),
-         {:ok, response} <- req_llm_chat(provider, api_key, model_id, opts) do
-      record_usage(purpose, response)
-      if opts[:schema], do: structured(response), else: {:ok, ReqLLM.Response.text(response)}
+    result =
+      with {:ok, api_key} <- get_api_key(provider),
+           {:ok, response} <- req_llm_chat(provider, api_key, model_id, opts) do
+        Logger.info(
+          "AI #{purpose} #{model_id}: #{System.monotonic_time(:millisecond) - started} ms, " <>
+            "#{response.usage[:input_tokens]} in / #{response.usage[:output_tokens]} out tokens"
+        )
+
+        record_usage(purpose, response)
+        if opts[:schema], do: structured(response), else: {:ok, ReqLLM.Response.text(response)}
+      end
+
+    with {:error, reason} <- result do
+      Logger.error("AI #{purpose} #{model_id} failed: #{describe(reason, provider)}")
     end
+
+    result
   end
+
+  # ReqLLM errors also hold the request and response bodies, so log only their message.
+  defp describe(:api_key_not_set, provider), do: "#{api_key_var(provider)} is not set"
+  defp describe(reason, _provider) when is_exception(reason), do: Exception.message(reason)
+  defp describe(reason, _provider), do: inspect(reason)
 
   @doc false
   def structured(%ReqLLM.Response{} = response) do
@@ -80,7 +121,12 @@ defmodule DailyOutput.AI do
 
   # A per-call `:model` spec (the bench) beats the Settings choice.
   defp resolve_model(opts) do
-    spec = opts[:model] || then(Settings.get_config(), &spec_for(&1.ai_provider, &1.ai_model))
+    parse_spec(
+      opts[:model] || then(Settings.get_config(), &spec_for(&1.ai_provider, &1.ai_model))
+    )
+  end
+
+  defp parse_spec(spec) do
     [provider, model_id] = String.split(spec, ":", parts: 2)
     {Map.fetch!(@providers, provider), model_id}
   end

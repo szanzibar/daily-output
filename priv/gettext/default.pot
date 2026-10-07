@@ -162,6 +162,7 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
+#: lib/daily_output_web/components/activity_components.ex
 #: lib/daily_output_web/components/layouts.ex
 #: lib/daily_output_web/live/settings_live.ex
 #, elixir-autogen, elixir-format
@@ -878,7 +879,6 @@ msgid "Send"
 msgstr ""
 
 #: lib/daily_output_web/components/activity_components.ex
-#: lib/daily_output_web/components/translatable_text.ex
 #, elixir-autogen, elixir-format
 msgid "Try again"
 msgstr ""
@@ -1040,4 +1040,9 @@ msgstr[1] ""
 #: lib/daily_output_web/live/today_live.ex
 #, elixir-autogen, elixir-format
 msgid "Freezes full"
+msgstr ""
+
+#: lib/daily_output_web/components/activity_components.ex
+#, elixir-autogen, elixir-format
+msgid "No AI key is set. Add %{var} to the server's environment and restart."
 msgstr ""

@@ -41,21 +41,92 @@ defmodule DailyOutput.AITest do
       Application.put_env(:daily_output, :openrouter_api_key, "")
       refute AI.api_key_set?(:openrouter)
     end
+
+    test "the Settings model needs its provider's key, and names it while it's missing" do
+      on_exit(fn -> Application.put_env(:daily_output, :openai_api_key, "test") end)
+      direct = %DailyOutput.Settings.Config{ai_provider: "direct"}
+
+      assert AI.key_var(direct) == "OPENAI_API_KEY"
+      assert AI.key_var(%{direct | ai_provider: "openrouter"}) == "OPENROUTER_API_KEY"
+      assert AI.missing_key_var(direct) == nil
+
+      Application.put_env(:daily_output, :openai_api_key, "")
+      assert AI.missing_key_var(direct) == "OPENAI_API_KEY"
+    end
+
+    test "boot warns about a missing key and stays quiet once it's set" do
+      on_exit(fn -> Application.put_env(:daily_output, :openai_api_key, "test") end)
+
+      assert capture_log(&AI.warn_if_key_missing/0) == ""
+
+      Application.put_env(:daily_output, :openai_api_key, "")
+
+      assert capture_log(&AI.warn_if_key_missing/0) =~
+               "AI: OPENAI_API_KEY is not set, so AI features won't work"
+    end
   end
 
   describe "chat/1" do
-    test "returns the reply text and records the call's usage under its purpose" do
+    test "returns the reply text, records the call's usage under its purpose, and logs it" do
       expect_ai("Hoi zäme!")
+      # Tests log warnings and up, so let this module's info line through.
+      Logger.put_module_level(AI, :info)
+      on_exit(fn -> Logger.delete_module_level(AI) end)
 
-      assert AI.chat(
-               purpose: "starter",
-               messages: [%{role: "user", content: "Hoi"}],
-               max_tokens: 10
-             ) ==
-               {:ok, "Hoi zäme!"}
+      log =
+        capture_log(fn ->
+          assert AI.chat(
+                   purpose: "starter",
+                   messages: [%{role: "user", content: "Hoi"}],
+                   max_tokens: 10
+                 ) ==
+                   {:ok, "Hoi zäme!"}
+        end)
 
       assert [%{purpose: "starter", model: "gpt-6.1-sol", input_tokens: 100, output_tokens: 20}] =
                Repo.all(DailyOutput.Stats.ApiUsage)
+
+      assert log =~ ~r/AI starter gpt-6.1-sol: \d+ ms, 100 in \/ 20 out tokens/
+    end
+
+    test "logs a failure's status and message, without the request" do
+      Req.Test.expect(DailyOutput.AI, fn conn ->
+        conn
+        |> Plug.Conn.put_status(401)
+        |> Req.Test.json(%{
+          "error" => %{
+            "message" => "Incorrect API key provided.",
+            "type" => "invalid_request_error"
+          }
+        })
+      end)
+
+      log =
+        capture_log(fn ->
+          assert {:error, _} =
+                   AI.chat(
+                     purpose: "starter",
+                     messages: [%{role: "user", content: "Grüezi"}],
+                     max_tokens: 10
+                   )
+        end)
+
+      assert log =~ "AI starter gpt-6.1-sol failed: API request failed (401)"
+      assert log =~ "Incorrect API key provided."
+      refute log =~ "Grüezi"
+    end
+
+    test "a missing key fails without a request and the log names its env var" do
+      on_exit(fn -> Application.put_env(:daily_output, :openai_api_key, "test") end)
+      Application.put_env(:daily_output, :openai_api_key, "")
+
+      log =
+        capture_log(fn ->
+          assert AI.chat(purpose: "focus", messages: [], max_tokens: 10) ==
+                   {:error, :api_key_not_set}
+        end)
+
+      assert log =~ "AI focus gpt-6.1-sol failed: OPENAI_API_KEY is not set"
     end
   end
 

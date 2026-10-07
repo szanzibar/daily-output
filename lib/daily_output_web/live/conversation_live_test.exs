@@ -63,13 +63,38 @@ defmodule DailyOutputWeb.ConversationLiveTest do
     render_async(view)
     assert has_element?(view, "#prepare-error")
 
-    expect_ai(@focus)
+    test = self()
+
+    expect_ai(1, fn _body ->
+      send(test, {:writing, self()})
+      receive do: (:go -> @focus)
+    end)
+
     expect_ai("Hoi!")
     view |> element("#prepare-error button") |> render_click()
+    assert_receive {:writing, task}
+    assert has_element?(view, "#prepare-loading")
+
+    send(task, :go)
     render_async(view)
 
     refute has_element?(view, "#prepare-error")
     assert has_element?(view, "#opener", "Hoi!")
+  end
+
+  test "without an API key, the error names the env var and offers no retry", %{conn: conn} do
+    on_exit(fn -> Application.put_env(:daily_output, :openai_api_key, "test") end)
+    Application.put_env(:daily_output, :openai_api_key, "")
+
+    activity =
+      Activities.create(%{kind: "conversation", angle: "story", focus: %{"category" => nil}})
+
+    {:ok, view, _html} = live(conn, ~p"/conversation/#{activity.id}")
+    render_async(view)
+
+    assert has_element?(view, "#prepare-error-missing-key", "OPENAI_API_KEY")
+    assert has_element?(view, "#prepare-error-missing-key a[href='/settings']")
+    refute has_element?(view, "#prepare-error button")
   end
 
   test "a turn is saved, then corrected and answered in parallel", %{conn: conn} do
